@@ -75,5 +75,7 @@ def group_contacts(rows,links):
         domain=person.pop('domain')
         group=groups.setdefault(domain,dict(domain=domain,company=links.get(domain,''),contacts=[]))
         group['contacts'].append(person)
+    for domain,company in links.items():
+        groups.setdefault(domain,dict(domain=domain,company=company,contacts=[]))
     for group in groups.values():group['contacts'].sort(key=lambda p:(p['name'].casefold(),p['email']))
     return sorted(groups.values(),key=lambda g:(g['company'].casefold() or g['domain'],g['domain']))

@@ -1,5 +1,6 @@
 'use strict';
 const $=id=>document.getElementById(id);
+let contactPage=1,contactPageSize=20;
 let contactData=[],contactDrafts={},contactsLoading=false,contactsLoaded=false;
 const state={folder:'all',unread:false,search:'',emails:[],selected:null,offset:0,request:0,instance:null,busy:false,drafts:{},draftMeta:{},intents:{},lastList:'',pending:0};
 let draftHydrated=false,draftHydrating=false,draftSaving=false,draftTimer=null,draftDirty={},draftRevisions={},draftBaseline={},draftConflicts={};
@@ -86,11 +87,14 @@ async function loadContacts(force=false){
  }catch(e){$('contactCount').textContent='Contacts could not be loaded. Try Refresh contacts.';throw e;}finally{contactsLoading=false;}
 }
 function renderContacts(){
- const query=$('contactSearch').value.toLowerCase().trim();const root=$('contactGroups');root.replaceChildren();let shown=0,total=0;
- for(const group of contactData){
-  const groupMatch=(group.domain+' '+group.company).toLowerCase().includes(query);
-  const people=group.contacts.filter(p=>groupMatch||(p.name+' '+p.email).toLowerCase().includes(query));if(!people.length)continue;
-  total+=people.length;shown++;
+ const query=$('contactSearch').value.toLowerCase().trim();const root=$('contactGroups');root.replaceChildren();
+ const matches=contactData.map(group=>{const groupMatch=(group.domain+' '+group.company).toLowerCase().includes(query);return {group,people:group.contacts.filter(p=>groupMatch||(p.name+' '+p.email).toLowerCase().includes(query)),groupMatch};}).filter(row=>row.people.length||row.groupMatch);
+ const pages=Math.max(1,Math.ceil(matches.length/contactPageSize));contactPage=Math.min(Math.max(1,contactPage),pages);
+ const start=(contactPage-1)*contactPageSize,end=Math.min(start+contactPageSize,matches.length);
+ const total=matches.reduce((sum,row)=>sum+row.people.length,0);
+ const companies=new Set(matches.map(row=>row.group.company.toLowerCase()).filter(Boolean)).size;
+ $('contactCount').textContent=total+' contacts · '+companies+' linked companies · '+matches.length+' domains'+(matches.length?' · Showing '+(start+1)+'–'+end:'');
+ for(const {group,people} of matches.slice(start,end)){
   const card=document.createElement('details');card.className='contact-group';card.open=!!query;
   const summary=text('summary','');summary.append(text('strong',group.company||group.domain),text('span',(group.company?group.domain+' · ':'')+people.length+' contacts','muted small'));card.append(summary);
   const form=document.createElement('form');form.className='company-link';
@@ -105,9 +109,10 @@ function renderContacts(){
   for(const person of people){const row=text('div','','contact-person');const info=text('div','','contact-person-info');info.append(text('strong',person.name),text('span',person.email,'muted small'));const mail=text('button','Search mail');mail.onclick=()=>{state.folder='all';state.unread=false;state.search=person.email;$('search').value=person.email;$('all').classList.add('selected');$('unread').classList.remove('selected');$('mail').classList.remove('detail-open');view('mail');Promise.all([folders(),loadEmails()]).catch(e=>notice(e.message));};row.append(info,text('span',person.message_count+' messages','muted small'),mail);card.append(row);}
   root.append(card);
  }
- $('contactCount').textContent=total+' contacts across '+shown+' domains';if(!shown)root.append(text('p','No matching cached senders.','muted'));
+ if(!matches.length)root.append(text('p','No matches. Try another person, company, or domain.','muted'));
+ renderContactPagination(pages,matches.length);
 }
-$('contactSearch').oninput=renderContacts;
+$('contactSearch').oninput=()=>{contactPage=1;renderContacts();};
 $('refreshContacts').onclick=()=>busy($('refreshContacts'),()=>loadContacts(true));
 
 $('companyDomainsForm').onsubmit=e=>{e.preventDefault();const form=e.currentTarget;const button=form.querySelector('button');busy(button,async()=>{
@@ -115,3 +120,14 @@ $('companyDomainsForm').onsubmit=e=>{e.preventDefault();const form=e.currentTarg
  const company=$('linkCompanyName').value.trim();if(!company)throw new Error('Enter a company name.');
  await api('/api/contact-company',{domains,company});form.reset();await loadContacts(true);notice('Domains linked to '+company+'.');
 });};
+
+function renderContactPagination(pages,count){
+ for(const id of ['contactPaginationTop','contactPaginationBottom']){
+  const nav=$(id);nav.replaceChildren();
+  const change=page=>{contactPage=page;renderContacts();$('contacts').scrollTop=0;$(id==='contactPaginationBottom'?'contactPaginationTop':id).querySelector('select').focus();};
+  for(const [label,page,disabled] of [['First',1,contactPage===1],['Previous',contactPage-1,contactPage===1]]){const button=text('button',label);button.disabled=disabled;button.onclick=()=>change(page);nav.append(button);}
+  const select=document.createElement('select');select.setAttribute('aria-label','Contacts page');for(let page=1;page<=pages;page++)select.append(new Option('Page '+page+' of '+pages,String(page)));select.value=String(contactPage);select.disabled=!count;select.onchange=()=>change(Number(select.value));nav.append(select);
+  for(const [label,page,disabled] of [['Next',contactPage+1,contactPage===pages],['Last',pages,contactPage===pages]]){const button=text('button',label);button.disabled=disabled;button.onclick=()=>change(page);nav.append(button);}
+ }
+}
+$('contactPageSize').onchange=()=>{contactPageSize=Number($('contactPageSize').value);contactPage=1;renderContacts();};

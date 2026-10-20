@@ -43,3 +43,8 @@ class ContactTests(unittest.TestCase):
         self.assertIsNone(suggest_company('gmail.com',['Gmail'],{}))
         self.assertEqual(suggest_company('acme.co.uk',['Acme Corporation'],{})['company'],'Acme Corporation')
         self.assertEqual(suggest_company('mail.acme.com',[],{'acme.com':'Acme'})['company'],'Acme')
+
+    def test_linked_domains_remain_visible_without_cached_mail(self):
+        groups=group_contacts([],{'first.example':'One Company','second.example':'One Company'})
+        self.assertEqual({g['domain'] for g in groups},{'first.example','second.example'})
+        self.assertTrue(all(g['company']=='One Company' and g['contacts']==[] for g in groups))
