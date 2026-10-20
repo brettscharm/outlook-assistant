@@ -57,3 +57,5 @@
 .automatic-tasks{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 0}.automatic-tasks p{margin:5px 0 0}.automatic-tasks button{flex-shrink:0}.scan-progress:has(progress[hidden]):has(button[hidden]){display:none}
 
 .task-actions{justify-content:flex-end;margin-bottom:16px}
+
+.sync-controls{justify-content:flex-end;flex-wrap:wrap;gap:8px 12px}.sync-controls #syncTime{font-size:12px}.sync-controls #sync{min-width:100px}
