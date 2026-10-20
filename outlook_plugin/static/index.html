@@ -205,21 +205,11 @@
         <!-- Folders Column -->
         <div class="folder-pane">
           <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700; padding:4px 8px; text-transform:uppercase;">Folders</div>
-          <div class="folder-item active" onclick="selectFolder('all', this)">
-            <span>📥 All Mail</span>
-            <span id="folderCountAll" class="folder-count">2000+</span>
-          </div>
-          <div class="folder-item" onclick="selectFolder('inbox', this)">
-            <span>📫 Inbox</span>
-            <span id="folderCountInbox" class="folder-count">0</span>
-          </div>
-          <div class="folder-item" onclick="selectFolder('Drafts', this)">
-            <span>📝 Drafts</span>
-            <span id="folderCountDrafts" class="folder-count">2069</span>
-          </div>
-          <div class="folder-item" onclick="selectFolder('Sent Items', this)">
-            <span>📤 Sent Items</span>
-            <span id="folderCountSent" class="folder-count">0</span>
+          <div id="foldersContainer" style="display:flex; flex-direction:column; gap:4px;">
+            <div class="folder-item active" onclick="selectFolder('all', this)">
+              <span>📥 All Mail</span>
+              <span class="folder-count">2093</span>
+            </div>
           </div>
         </div>
 
@@ -325,6 +315,7 @@
     let state = {
       activeTab: 'inboxView',
       currentFolder: 'all',
+      folders: [],
       emails: [],
       filteredEmails: [],
       selectedEmail: null,
@@ -350,7 +341,7 @@
         const [resStatus, resAccounts, resFolders, resEmails, resEvents, resBriefing, resTasks] = await Promise.all([
           fetch('/api/status').then(r => r.json()),
           fetch('/api/accounts').then(r => r.json()).catch(() => []),
-          fetch('/api/status').then(r => r.json()),
+          fetch('/api/folders').then(r => r.json()).catch(() => []),
           fetch(`/api/emails?folder=${state.currentFolder}&limit=50`).then(r => r.json()).catch(() => []),
           fetch('/api/calendar?days=7').then(r => r.json()).catch(() => []),
           fetch('/api/briefing').then(r => r.json()).catch(() => ({})),
@@ -366,12 +357,14 @@
         }
 
         state.accounts = resAccounts || [];
+        state.folders = resFolders || [];
         state.emails = resEmails || [];
         state.filteredEmails = state.emails;
         state.events = resEvents || [];
         state.tasks = resTasks || { my_tasks: [], others_tasks: [] };
 
         renderAccountSelector();
+        renderFolders();
         renderEmailsList();
         renderCalendar();
         renderTasks();
@@ -395,10 +388,24 @@
       `).join('');
     }
 
+    function renderFolders() {
+      const container = document.getElementById('foldersContainer');
+      if (!state.folders.length) return;
+      container.innerHTML = state.folders.map(f => {
+        const isAct = state.currentFolder.toLowerCase() === f.name.toLowerCase();
+        return `
+          <div class="folder-item ${isAct ? 'active' : ''}" onclick="selectFolder('${f.name}', this)">
+            <span>📁 ${f.name}</span>
+            <span class="folder-count">${f.total_messages}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
     function selectFolder(folderName, el) {
       state.currentFolder = folderName;
       document.querySelectorAll('.folder-item').forEach(f => f.classList.remove('active'));
-      el.classList.add('active');
+      if (el) el.classList.add('active');
       loadEmailsForFolder(folderName);
     }
 
@@ -440,22 +447,22 @@
       `).join('');
     }
 
-    function selectEmail(id) {
-      state.selectedEmail = state.emails.find(e => e.id === id);
+    async function selectEmail(id) {
+      state.selectedEmail = state.emails.find(e => String(e.id) === String(id));
       renderEmailsList();
       const pane = document.getElementById('readingPaneContent');
       if (!state.selectedEmail) return;
 
-      pane.className = 'reading-pane-active';
+      pane.className = 'reading-pane';
       pane.innerHTML = `
         <div class="reading-header">
           <div class="reading-title">${state.selectedEmail.subject}</div>
           <div class="reading-meta">
             <span><strong>From:</strong> ${state.selectedEmail.sender}</span>
-            <span><strong>Received:</strong> ${state.selectedEmail.received_time}</span>
+            <span><strong>Date:</strong> ${state.selectedEmail.received_time}</span>
           </div>
         </div>
-        <div class="reading-body">${state.selectedEmail.body || state.selectedEmail.preview}</div>
+        <div class="reading-body">${state.selectedEmail.body || state.selectedEmail.preview || '(No text content)'}</div>
         <div style="margin-top:20px; border-top:1px solid var(--border); padding-top:16px;">
           <h4 style="margin-bottom:8px;">✨ Calendar-Aware Smart Reply</h4>
           <textarea id="aiDraftBox" style="width:100%; height:120px; background:#0f172a; border:1px solid var(--border); border-radius:6px; color:var(--text); padding:10px; font-family:var(--font); font-size:0.85rem;" placeholder="Click Generate to draft reply with Bob AI..."></textarea>

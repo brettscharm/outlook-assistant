@@ -60,6 +60,9 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         elif path == "/api/accounts":
             return self._send_json(self.engine.list_accounts())
 
+        elif path == "/api/folders":
+            return self._send_json(self.engine.list_folders())
+
         elif path == "/api/tasks":
             return self._send_json(load_tasks())
 
@@ -70,10 +73,11 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             return self._send_json(events)
 
         elif path == "/api/emails":
-            folder = query.get("folder", ["inbox"])[0]
-            limit = int(query.get("limit", [25])[0])
+            folder = query.get("folder", ["all"])[0]
+            limit = int(query.get("limit", [50])[0])
             unread = query.get("unread_only", ["false"])[0].lower() == "true"
-            emails = self.engine.get_emails(folder=folder, limit=limit, unread_only=unread)
+            search_term = query.get("search", [None])[0]
+            emails = self.engine.get_emails(folder=folder, limit=limit, unread_only=unread, search_term=search_term)
             return self._send_json(emails)
 
         elif path == "/api/briefing":

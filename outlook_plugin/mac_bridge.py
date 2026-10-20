@@ -102,12 +102,14 @@ class MacOutlookBridge:
         tell application "Microsoft Outlook"
             set folderList to {{}}
             try
+                set totalAll to count of messages
+                set end of folderList to ("All Mail" & "{FIELD_SEP}" & totalAll & "{FIELD_SEP}" & totalAll)
+                
                 set fList to every mail folder
                 repeat with f in fList
                     set fName to name of f
                     set fCount to count of messages of f
-                    set fUnread to count of (messages of f whose is read is false)
-                    set end of folderList to (fName & "{FIELD_SEP}" & fCount & "{FIELD_SEP}" & fUnread)
+                    set end of folderList to (fName & "{FIELD_SEP}" & fCount & "{FIELD_SEP}" & fCount)
                 end repeat
             end try
             
@@ -116,15 +118,8 @@ class MacOutlookBridge:
         end tell
         """
         raw = self._run_applescript(script)
-        folders = [
-            {"name": "Inbox", "total_messages": 0, "unread_messages": 0},
-            {"name": "Sent Items", "total_messages": 0, "unread_messages": 0},
-            {"name": "Drafts", "total_messages": 0, "unread_messages": 0},
-            {"name": "Archive", "total_messages": 0, "unread_messages": 0},
-            {"name": "Deleted Items", "total_messages": 0, "unread_messages": 0},
-        ]
         if not raw:
-            return folders
+            return [{"name": "All Mail", "total_messages": 0, "unread_messages": 0}]
 
         ret = []
         for item in raw.split(ITEM_SEP):
@@ -137,21 +132,21 @@ class MacOutlookBridge:
                     "total_messages": int(parts[1].strip() or "0"),
                     "unread_messages": int(parts[2].strip() or "0"),
                 })
-        return ret if ret else folders
+        return ret
 
     def get_emails(
         self,
-        folder: str = "inbox",
+        folder: str = "all",
         limit: int = 50,
         unread_only: bool = False,
         search_term: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
-        Read emails from a specified folder (e.g. 'inbox', 'Drafts', 'all').
+        Read emails from a specified folder (e.g. 'all', 'inbox', 'Drafts').
         """
         filter_clause = "whose is read is false" if unread_only else ""
         
-        if folder.lower() in ["all", "all mail"]:
+        if folder.lower() in ["all", "all mail", ""]:
             target_source = "every message"
         elif folder.lower() == "inbox":
             target_source = "messages of inbox"
