@@ -33,7 +33,7 @@ def current(key):
     if key and saved.get('credential')==identity(key,team) and saved.get('state') in MESSAGES:
         state=saved['state'];checked=saved.get('checked_at')
     title,message=MESSAGES[state]
-    return dict(state=state,title=title,message=message,checked_at=checked)
+    return dict(state=state,title=title,message=message,checked_at=checked,key_name=cfg.get('bob_key_name','') or 'Bob key')
 
 def classify(error):
     raw=json.dumps(error) if not isinstance(error,str) else error

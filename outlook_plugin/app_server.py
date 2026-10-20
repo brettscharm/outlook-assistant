@@ -95,7 +95,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         if path=='/api/config':
             cfg=read_config()
             return self._send_json({'bob_configured':bool(get_bob_api_key()),'bob_installed':bool(bob_executable()),
-                                   'bob_team_id':cfg.get('bob_team_id',''),'user_context':cfg.get('user_context',{}),'writing_samples':cfg.get('writing_samples',''),
+                                   'bob_team_id':cfg.get('bob_team_id',''),'bob_key_name':cfg.get('bob_key_name',''),'user_context':cfg.get('user_context',{}),'writing_samples':cfg.get('writing_samples',''),
                                    'outlook_profile':cfg.get('outlook_profile',''),'profiles':[str(p) for p in profiles()]})
         if path=='/api/contacts':
             backend=self.engine.get_active_backend()
@@ -170,6 +170,9 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         if path=='/api/config':
             changes={}
             if data.get('bob_api_key','').strip(): changes['bob_api_key']=data['bob_api_key'].strip()
+            if 'bob_key_name' in data:
+                if not isinstance(data['bob_key_name'],str) or len(data['bob_key_name'].strip())>80: raise ValueError('Use a key name of up to 80 characters.')
+                changes['bob_key_name']=data['bob_key_name'].strip()
             if 'bob_team_id' in data: changes['bob_team_id']=str(data['bob_team_id']).strip()[:200]
             if 'outlook_profile' in data:
                 profile=data['outlook_profile']

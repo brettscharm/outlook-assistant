@@ -34,3 +34,17 @@ class BobStatusTests(unittest.TestCase):
         run.return_value=Mock(returncode=0,stdout=json.dumps({'status':'success','last_message':'OK','stats':{}}),stderr='')
         self.assertEqual(agent._call_llm('synthetic'),'OK')
         self.assertEqual(bob_status.current('secret-value')['state'],'connected')
+
+    def test_key_name_persists_without_changing_credential_status(self):
+        from outlook_plugin.app_server import AppRequestHandler
+        handler=object.__new__(AppRequestHandler);handler._send_json=Mock()
+        config.update_config({'bob_api_key':'private-key'})
+        bob_status.remember('private-key',None,'connected')
+        handler._post('/api/config',{'bob_key_name':' IBM work '})
+        status=bob_status.current('private-key')
+        self.assertEqual(status['key_name'],'IBM work')
+        self.assertEqual(status['state'],'connected')
+        self.assertEqual(config.read_config()['bob_api_key'],'private-key')
+        self.assertNotIn('private-key',json.dumps(status))
+        with self.assertRaises(ValueError):handler._post('/api/config',{'bob_key_name':'x'*81})
+        self.assertEqual(config.read_config()['bob_key_name'],'IBM work')
