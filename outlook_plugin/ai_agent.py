@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 logger = logging.getLogger(__name__)
 
 from .config import read_config, update_config
-from . import usage
+from . import usage, bob_status
 import shutil
 import subprocess
 import tempfile
@@ -103,19 +103,21 @@ class BobAIAgent:
                     result = subprocess.run(command, input=text, capture_output=True, text=True,
                                             env=env, cwd=workspace, timeout=120)
                 except subprocess.TimeoutExpired:
-                    raise RuntimeError("Bob timed out after 120 seconds. Please retry.") from None
+                    raise bob_status.failure(self.api_key,team,'timed out') from None
                 try:
                     payload = json.loads(result.stdout)
                 except ValueError:
-                    raise RuntimeError("Bob did not return JSON. Check your key, team ID, and Bob Shell setup.") from None
+                    raise bob_status.failure(self.api_key,team,result.stderr or 'Invalid response') from None
                 reported_stats=payload.get('stats',{}) if isinstance(payload,dict) else {}
-                if result.returncode or payload.get("status") != "success":
-                    raise RuntimeError("Bob request failed. Check your key, team ID, subscription balance, and Bob Shell login.")
+                if not isinstance(payload,dict) or result.returncode or payload.get('status')!='success':
+                    error=payload.get('error',{}) if isinstance(payload,dict) else {}
+                    raise bob_status.failure(self.api_key,team,json.dumps(error)+' '+result.stderr)
                 self.last_usage = reported_stats if isinstance(reported_stats,dict) else {}
                 answer = payload.get("last_message", "").strip()
                 if not answer:
                     raise RuntimeError("Bob returned no answer. Please retry.")
                 success=True
+                bob_status.remember(self.api_key,team,'connected')
                 return answer
         finally:
             try:

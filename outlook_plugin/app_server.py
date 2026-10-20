@@ -14,7 +14,7 @@ from .engine import OutlookEngine
 from .local_store import profiles, LocalStoreBridge
 from .contacts import group_contacts, link_company, link_companies, suggest_company
 from .tasks import load_tasks, add_task, toggle_task, delete_task, edit_task
-from . import task_workflow, email_chat, workspace, setup_check, drafts, storage, usage
+from . import task_workflow, email_chat, workspace, setup_check, drafts, storage, usage, bob_status
 from .updater import check_and_apply_update
 
 PORT = 8484
@@ -73,6 +73,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         path = parsed.path
         q = urllib.parse.parse_qs(parsed.query)
         if path=='/api/drafts': return self._send_json(drafts.load())
+        if path=='/api/bob-status': return self._send_json(bob_status.current(get_bob_api_key()))
         if path=='/api/usage': return self._send_json(usage.snapshot())
         if path=='/api/storage': return self._send_json({'directory':str(drafts.DRAFTS_FILE.parent),'backup_directory':str(storage.backups(drafts.DRAFTS_FILE)[0].parent),'recoveries':storage.RECOVERIES})
         if path=='/api/setup': return self._send_json(setup_check.check())

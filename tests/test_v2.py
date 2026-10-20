@@ -30,7 +30,7 @@ class CoreTests(unittest.TestCase):
         run.return_value=Mock(returncode=0,stdout=json.dumps({'status':'success','last_message':'Real answer','stats':{'session_costs':.1}}))
         agent=BobAIAgent('secret');self.assertEqual(agent._call_llm('private content'),'Real answer')
         args,kw=run.call_args;self.assertNotIn('secret',' '.join(args[0]));self.assertNotIn('private content',' '.join(args[0]));self.assertEqual(kw['env']['BOB_API_KEY'],'secret');self.assertIn('private content',kw['input']);self.assertIn('--disable-tool-groups',args[0]);self.assertIn('--max-cost',args[0])
-        run.return_value=Mock(returncode=1,stdout='bad')
+        run.return_value=Mock(returncode=1,stdout='bad',stderr='')
         with self.assertRaises(RuntimeError):agent._call_llm('test')
     def test_cache_search_pagination_and_body_details(self):
         rows=[{'id':str(i),'folder_id':'8','folder':'Inbox','folder_kind':'inbox','read':'unread' if i%2 else 'read','body':'needle' if i==3 else 'text','subject':'x'} for i in range(7)]
