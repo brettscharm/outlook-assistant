@@ -7,7 +7,7 @@ import os
 import tempfile
 import threading
 import time
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from .config import read_config, update_config
 from .ai_agent import BobAIAgent, get_bob_api_key, _BOB_LOCK
@@ -30,7 +30,9 @@ def save(data):
 
 
 def options():
-    return dict({'since':date.today().replace(day=1).isoformat(),'mode':'mine','interval':15,'budget':2},**read_config().get('task_scan',{}))
+    saved=read_config().get('task_scan',{})
+    since=saved.get('since') or load().get('initial_since') or (date.today()-timedelta(days=7)).isoformat()
+    return dict({'since':since,'mode':'mine','interval':15,'budget':2},**saved)
 
 
 def validate_options(data):
@@ -158,6 +160,11 @@ def stop():
 
 
 def run(engine,opts,email_id=None):
+    if not email_id:
+        with _LOCK:
+            checkpoint=load()
+            if not checkpoint.get('initial_since'):
+                checkpoint['initial_since']=opts['since'];save(checkpoint)
     messages=candidate_messages(engine,opts,email_id)
     data=load();pending=[m for m in messages if key_for(m,opts) not in data['processed']]
     with _LOCK:JOB.update(total=len(pending),message=f'{len(pending)} new or changed cached emails to review.')
@@ -205,21 +212,31 @@ def run(engine,opts,email_id=None):
 
 def scheduler(engine,shutdown):
     last_attempt=None
+    last_poll=None
+    observed=None
     while not shutdown.wait(15):
         opts=options()
         if not opts['interval']:
-            last_attempt=None
+            last_attempt=None;last_poll=None;observed=None
             continue
         if automatic_state()!='ready' or _RUN.locked() or _BOB_LOCK.locked():continue
         now=time.monotonic()
-        if last_attempt is not None and now-last_attempt<opts['interval']*60:continue
-        # Respect persisted progress after a restart, including manual checks.
-        checked=load().get('last_check')
-        if checked:
-            try:
-                elapsed=(datetime.now().astimezone()-datetime.fromisoformat(checked).astimezone()).total_seconds()
-                if 0<=elapsed<opts['interval']*60:continue
-            except (ValueError,TypeError):pass
-        last_attempt=now
-        try:start(engine,opts)
-        except Exception:pass  # Retry at the next interval, never in a tight loop.
+        if last_poll is not None and now-last_poll<60:continue
+        last_poll=now
+        try:
+            data=load()
+            keys={key_for(m,opts) for m in candidate_messages(engine,opts)}
+            pending=keys-set(data['processed'])
+            arrivals=pending-(observed if observed is not None else set())
+            observed=keys
+            if not pending:continue  # Local checks never spend Bobcoins when nothing changed.
+            elapsed=float('inf')
+            if data.get('last_check'):
+                try:elapsed=(datetime.now().astimezone()-datetime.fromisoformat(data['last_check']).astimezone()).total_seconds()
+                except (ValueError,TypeError):pass
+            due=(last_attempt is None or now-last_attempt>=opts['interval']*60) and elapsed>=opts['interval']*60
+            if not arrivals and not due:continue
+            last_attempt=now
+            start(engine,opts)
+        except Exception as exc:
+            with _LOCK:JOB.update(status='error',message=str(exc)[:400])

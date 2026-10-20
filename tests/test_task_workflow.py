@@ -54,9 +54,9 @@ class WorkflowTests(unittest.TestCase):
 
  def test_scheduler_runs_immediately_then_waits(self):
   from unittest.mock import Mock
-  with patch.object(w,'automatic_state',return_value='ready'),patch.object(w.time,'monotonic',side_effect=[0,30,901]),patch.object(w,'start') as start:
+  with patch.object(w,'automatic_state',return_value='ready'),patch.object(w.time,'monotonic',side_effect=[0,60,901]),patch.object(w,'start') as start:
    stop=Mock();stop.wait.side_effect=[False,False,False,True]
-   w.scheduler(Engine([]),stop)
+   w.scheduler(Engine([message()]),stop)
    self.assertEqual(start.call_count,2)
 
  def test_scheduler_requires_verified_connection(self):
@@ -85,3 +85,29 @@ class WorkflowTests(unittest.TestCase):
   with patch.object(BobAIAgent,'extract_tasks') as extract:
    w.run(Engine([message()]),self.opts);extract.assert_not_called()
   self.assertEqual(w.JOB['status'],'stopped');self.assertEqual(w.load()['processed'],{})
+
+ def test_first_run_defaults_to_seven_days_and_remembers_start(self):
+  from datetime import date,timedelta
+  self.assertEqual(w.options()['since'],(date.today()-timedelta(days=7)).isoformat())
+  with patch.object(BobAIAgent,'extract_tasks',return_value=[]):w.run(Engine([]),self.opts)
+  self.assertEqual(w.options()['since'],self.opts['since'])
+
+ def test_arrival_runs_before_periodic_interval(self):
+  from unittest.mock import Mock
+  first=message();new=message(2)
+  w.save({'suggestions':{},'processed':{w.key_for(dict(id='1',subject=first['subject'],sender=first['sender'],received_time=first['received_time'],content=first['body']),w.options()):{'email_id':'1'}},'last_check':w.datetime.now().isoformat()})
+  engine=Engine([first])
+  calls=0
+  def tick(_):
+   nonlocal calls
+   calls+=1
+   if calls==2:engine.rows.append(new)
+   return calls>2
+  with patch.object(w,'automatic_state',return_value='ready'),patch.object(w.time,'monotonic',side_effect=[0,60]),patch.object(w,'start') as start:
+   w.scheduler(engine,Mock(wait=tick));start.assert_called_once()
+
+ def test_idle_watch_does_not_start_bob(self):
+  from unittest.mock import Mock
+  with patch.object(w,'automatic_state',return_value='ready'),patch.object(w,'start') as start:
+   shutdown=Mock();shutdown.wait.side_effect=[False,True]
+   w.scheduler(Engine([]),shutdown);start.assert_not_called()
