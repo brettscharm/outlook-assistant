@@ -8,6 +8,7 @@ import threading
 import time
 from pathlib import Path
 from .config import read_config
+from .mail_filters import visible_messages
 
 ROOT = Path(os.environ.get('OUTLOOK_ASSISTANT_PROFILE_ROOT', str(Path.home() / 'Library/Group Containers/UBF8T346G9.Office/Outlook/Outlook 15 Profiles'))).expanduser()
 _LOCK = threading.RLock()
@@ -70,8 +71,8 @@ class LocalStoreBridge:
 
     def status(self):
         data = self._load()
-        rows = data['rows']
-        return {'active_backend':'local_cache', 'message_count':len(rows),
+        rows = visible_messages(data['rows'])
+        return {'active_backend':'local_cache', 'message_count':len(rows), 'excluded_count':len(data['rows'])-len(rows),
                 'full_body_count':sum(m['body_complete'] for m in rows),
                 'preview_count':sum(not m['body_complete'] for m in rows),
                 'newest_message':rows[0]['received_time'] if rows else None,
@@ -85,7 +86,7 @@ class LocalStoreBridge:
 
     def list_folders(self):
         folders = {}
-        for m in self._load()['rows']:
+        for m in visible_messages(self._load()['rows']):
             f = folders.setdefault(m['folder_id'], {'id':m['folder_id'], 'name':('Unnamed local folder' if re.fullmatch(r'(?:\{[0-9A-Fa-f-]{36}\}\d*|[0-9A-Fa-f-]{36})',m['folder']) else m['folder']) or 'Unknown folder',
                                    'kind':m['folder_kind'], 'total_messages':0, 'unread_messages':0})
             f['total_messages'] += 1
@@ -93,7 +94,7 @@ class LocalStoreBridge:
         return sorted(folders.values(), key=lambda f:(f['kind']!='inbox', f['name'].lower(), f['id']))
 
     def get_emails(self, folder='all', limit=50, unread_only=False, search_term=None, offset=0):
-        rows = self._load()['rows']
+        rows = visible_messages(self._load()['rows'])
         if folder.lower() not in ('all','all mail',''):
             rows = [m for m in rows if folder in (m['folder_id'],m['folder']) or folder.lower()==m['folder_kind']]
         if unread_only:
@@ -101,10 +102,10 @@ class LocalStoreBridge:
         if search_term:
             q = search_term.casefold()
             rows = [m for m in rows if q in '\n'.join(str(m.get(k,'')) for k in ('subject','sender','preview','body')).casefold()]
-        return [{k:v for k,v in m.items() if k!='body'} for m in rows[offset:offset+limit]]
+        return [{k:v for k,v in m.items() if k!='body'} for m in rows[offset:None if limit is None else offset+limit]]
 
     def get_email_details(self, message_id):
-        return next((m for m in self._load()['rows'] if m['id']==str(message_id)),None)
+        return next((m for m in visible_messages(self._load()['rows']) if m['id']==str(message_id)),None)
 
     def get_upcoming_events(self, **kwargs):
         raise RuntimeError('Calendar events are not supported by the local cache reader yet. Mail invites are searchable in Mail; they do not prove availability.')

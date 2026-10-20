@@ -5,6 +5,7 @@ from unittest.mock import patch
 from outlook_plugin import email_chat as chat
 
 class Engine:
+    def get_active_backend(self):return self
     def get_emails(self,**kw):return [{'id':'1'},{'id':'2'}]
     def get_email_details(self,id):return {'id':id,'subject':'Acme renewal' if id=='1' else 'Lunch','sender':'Pat','body':'Renew by November 12' if id=='1' else 'Lunch tomorrow','received_time':'2026-10-20'}
 class AI:

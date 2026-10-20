@@ -32,7 +32,8 @@ def retrieve(engine, question, previous):
     terms = set(re.findall(r'[\w@.-]+', question.casefold())) - STOP
     old_terms = set(re.findall(r'[\w@.-]+', ' '.join(m['text'] for m in previous[-4:] if m['role']=='user').casefold())) - STOP
     ranked = []
-    rows = engine.get_emails(folder='all', limit=100000)
+    from .local_store import LocalStoreBridge
+    rows = engine.get_emails(folder='all', limit=None if isinstance(engine.get_active_backend(),LocalStoreBridge) else 100000)
     for row in rows:
         message = engine.get_email_details(str(row['id'])) or row
         header = (message.get('subject','')+' '+message.get('sender','')).casefold()

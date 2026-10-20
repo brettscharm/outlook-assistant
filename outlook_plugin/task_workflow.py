@@ -121,7 +121,8 @@ def candidate_messages(engine,opts,email_id=None):
     if email_id:
         rows=[engine.get_email_details(email_id)]
     else:
-        rows=backend.get_emails(folder='all',limit=100000)
+        from .local_store import LocalStoreBridge
+        rows=backend.get_emails(folder='all',limit=None if isinstance(backend,LocalStoreBridge) else 100000)
     result=[]
     for row in rows:
         if not row:continue

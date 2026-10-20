@@ -96,12 +96,12 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             cfg=read_config()
             return self._send_json({'bob_configured':bool(get_bob_api_key()),'bob_installed':bool(bob_executable()),
                                    'bob_team_id':cfg.get('bob_team_id',''),'bob_key_name':cfg.get('bob_key_name',''),'user_context':cfg.get('user_context',{}),'writing_samples':cfg.get('writing_samples',''),
-                                   'outlook_profile':cfg.get('outlook_profile',''),'profiles':[str(p) for p in profiles()]})
+                                   'excluded_domains':cfg.get('excluded_domains',[]),'outlook_profile':cfg.get('outlook_profile',''),'profiles':[str(p) for p in profiles()]})
         if path=='/api/contacts':
             backend=self.engine.get_active_backend()
             if not isinstance(backend,LocalStoreBridge): raise RuntimeError('Contacts currently requires the local Outlook cache reader.')
             cfg=read_config()
-            groups=group_contacts(backend.get_emails(folder='all',limit=100000),cfg.get('domain_companies',{}))
+            groups=group_contacts(backend.get_emails(folder='all',limit=None),cfg.get('domain_companies',{}))
             accounts=cfg.get('user_context',{}).get('accounts','')
             companies=sorted(set([row.split('\t')[0].strip() for row in accounts.splitlines() if row.strip()]+list(cfg.get('domain_companies',{}).values())),key=str.casefold)
             for group in groups:
@@ -169,6 +169,9 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             return self._send_json({'saved':True,'domain_companies':links})
         if path=='/api/config':
             changes={}
+            if 'excluded_domains' in data:
+                from .mail_filters import normalize_domains
+                changes['excluded_domains']=normalize_domains(data['excluded_domains'])
             if data.get('bob_api_key','').strip(): changes['bob_api_key']=data['bob_api_key'].strip()
             if 'bob_key_name' in data:
                 if not isinstance(data['bob_key_name'],str) or len(data['bob_key_name'].strip())>80: raise ValueError('Use a key name of up to 80 characters.')
