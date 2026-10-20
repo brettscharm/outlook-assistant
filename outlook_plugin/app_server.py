@@ -12,9 +12,11 @@ import urllib.parse
 from pathlib import Path
 from typing import Any, Dict
 
+from . import __version__
 from .ai_agent import BobAIAgent, get_bob_api_key, save_bob_api_key
 from .engine import OutlookEngine
 from .tasks import load_tasks, add_task, toggle_task, delete_task
+from .updater import check_and_apply_update
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +58,14 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
 
         if path == "/api/status":
             return self._send_json(self.engine.get_status())
+
+        elif path == "/api/version":
+            has_update, update_msg = check_and_apply_update(auto_pull=False)
+            return self._send_json({
+                "version": __version__,
+                "update_available": has_update,
+                "status_message": update_msg,
+            })
 
         elif path == "/api/accounts":
             return self._send_json(self.engine.list_accounts())
@@ -105,23 +115,27 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         except Exception:
             data = {}
 
-        if path == "/api/tasks":
+        if path == "/api/update":
+            updated, msg = check_and_apply_update(auto_pull=True)
+            return self._send_json({"updated": updated, "message": msg, "version": __version__})
+
+        elif path == "/api/tasks":
             action = data.get("action", "add")
             if action == "add":
                 task_type = data.get("type", "my")
                 text = data.get("text", "")
                 assignee = data.get("assignee")
                 due = data.get("due_date")
-                item = add_task(task_type, text, assignee=assignee, due_date=due)
-                return self._send_json(item)
+                updated_tasks = add_task(task_type, text, assignee=assignee, due_date=due)
+                return self._send_json(updated_tasks)
             elif action == "toggle":
                 task_id = data.get("id")
-                success = toggle_task(task_id)
-                return self._send_json({"success": success})
+                updated_tasks = toggle_task(task_id)
+                return self._send_json(updated_tasks)
             elif action == "delete":
                 task_id = data.get("id")
-                success = delete_task(task_id)
-                return self._send_json({"success": success})
+                updated_tasks = delete_task(task_id)
+                return self._send_json(updated_tasks)
 
         elif path == "/api/config":
             key = data.get("bob_api_key", "").strip()

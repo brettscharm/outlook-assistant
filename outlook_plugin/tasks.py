@@ -28,29 +28,30 @@ def load_tasks() -> Dict[str, List[Dict[str, Any]]]:
         except Exception as e:
             logger.error(f"Error loading tasks: {e}")
 
-    return {
+    default_data = {
         "my_tasks": [
             {
                 "id": str(uuid.uuid4()),
-                "text": "Review weekly sprint agenda before team sync",
+                "text": "Review weekly engineering update",
                 "completed": False,
                 "due_date": "Today",
-                "source": "Calendar Sync",
+                "assignee": "Me",
                 "created_at": datetime.now().isoformat(),
             }
         ],
         "others_tasks": [
             {
                 "id": str(uuid.uuid4()),
-                "text": "Waiting on budget spreadsheet from Finance",
-                "assignee": "Finance Team",
+                "text": "Waiting on budget approval",
+                "assignee": "Finance",
                 "completed": False,
                 "due_date": "Tomorrow",
-                "source": "Email Thread",
                 "created_at": datetime.now().isoformat(),
             }
         ],
     }
+    save_tasks(default_data)
+    return default_data
 
 
 def save_tasks(tasks: Dict[str, List[Dict[str, Any]]]):
@@ -67,9 +68,8 @@ def add_task(
     text: str,
     assignee: Optional[str] = None,
     due_date: Optional[str] = None,
-    source: Optional[str] = None,
-) -> Dict[str, Any]:
-    """Add a new task to 'my_tasks' or 'others_tasks'."""
+) -> Dict[str, List[Dict[str, Any]]]:
+    """Add a new task and return all updated tasks."""
     tasks = load_tasks()
     key = "others_tasks" if task_type == "others" else "my_tasks"
 
@@ -79,34 +79,30 @@ def add_task(
         "assignee": assignee.strip() if assignee else ("Me" if key == "my_tasks" else "Other"),
         "completed": False,
         "due_date": due_date or "Flexible",
-        "source": source or "Manual",
         "created_at": datetime.now().isoformat(),
     }
 
     tasks[key].insert(0, new_item)
     save_tasks(tasks)
-    return new_item
+    return tasks
 
 
-def toggle_task(task_id: str) -> bool:
-    """Toggle completed status of a task."""
+def toggle_task(task_id: str) -> Dict[str, List[Dict[str, Any]]]:
+    """Toggle completed status of a task and return all updated tasks."""
     tasks = load_tasks()
     for category in ["my_tasks", "others_tasks"]:
         for item in tasks[category]:
-            if item.get("id") == task_id:
+            if str(item.get("id")) == str(task_id):
                 item["completed"] = not item.get("completed", False)
                 save_tasks(tasks)
-                return True
-    return False
+                return tasks
+    return tasks
 
 
-def delete_task(task_id: str) -> bool:
-    """Delete a task by ID."""
+def delete_task(task_id: str) -> Dict[str, List[Dict[str, Any]]]:
+    """Delete a task by ID and return all updated tasks."""
     tasks = load_tasks()
     for category in ["my_tasks", "others_tasks"]:
-        orig_len = len(tasks[category])
-        tasks[category] = [t for t in tasks[category] if t.get("id") != task_id]
-        if len(tasks[category]) < orig_len:
-            save_tasks(tasks)
-            return True
-    return False
+        tasks[category] = [t for t in tasks[category] if str(t.get("id")) != str(task_id)]
+    save_tasks(tasks)
+    return tasks
