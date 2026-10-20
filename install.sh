@@ -42,6 +42,9 @@ fi
 
 cd "$INSTALL_DIR"
 
+# Strip quarantine attributes
+xattr -cr "$INSTALL_DIR" 2>/dev/null || true
+
 # 4. Set up CLI executable
 mkdir -p "$BIN_DIR"
 WRAPPER="$BIN_DIR/outlook-assistant"

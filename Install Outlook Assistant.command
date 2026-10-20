@@ -8,6 +8,9 @@ echo "========================================================"
 echo "📬 Setting up Outlook Assistant on your Mac..."
 echo "========================================================"
 
+# Strip macOS quarantine flags automatically to prevent Gatekeeper malware prompts
+xattr -cr "$DIR" 2>/dev/null || true
+
 chmod +x ./install.sh
 ./install.sh
 
