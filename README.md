@@ -82,3 +82,11 @@ Contacts groups unique senders from the local cache by exact email domain. It is
 The **Ask your email** tab searches downloaded mail locally, then asks IBM Bob to answer with supporting email links. Follow-up questions include recent conversation context. Retrieval ranks word matches in subjects, senders, and cached bodies; it is not a complete semantic mailbox search. Each answer receives at most 12 matching message excerpts of 6,000 characters each, with a Bob reported usage cap of 1. Missing cache data is not evidence that a message or commitment does not exist.
 
 Chat history is saved in `~/.outlook_assistant_chat.json` with owner-only permissions, survives app/laptop restarts, and can be cleared independently of tasks and mail. Draft questions are retained in browser local storage. Nothing is sent or edited in Outlook.
+
+### Everyday workspace features
+
+- **Writing style:** paste examples you wrote, ask Bob to produce a guide, review it, and save. The guide is included in future reply requests. This is prompt personalization, not fine-tuning. Raw samples are not saved by the app.
+- **Drafts:** typed and generated replies survive page/browser restarts in the current browser’s local storage. Continue, copy, discard, or undo the latest discard. These drafts are not synced to Outlook or other browsers. Clearing browser data removes them.
+- **Settings → Start at login:** creates a per-user macOS LaunchAgent for the current app location, effective at the next login. Leave the app at that location. It starts the local server without opening a browser; scheduled task checks remain separately configurable. Turning this off removes the login configuration, without interrupting the current app. Actual login behavior depends on macOS permissions and device policy.
+- **Settings → Download a backup:** exports tasks, review state, chat, selected preferences, and current-browser drafts as JSON. Bob API keys, team settings, Outlook profile paths, and the mailbox are excluded. Keep this file private. There is no in-app restore workflow yet.
+- **Data integrity:** unreadable task files are preserved rather than reset. Updates defer while Bob requests are active.

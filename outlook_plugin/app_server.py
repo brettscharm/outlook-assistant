@@ -8,13 +8,13 @@ import urllib.parse
 import uuid
 from pathlib import Path
 from . import __version__
-from .ai_agent import BobAIAgent, bob_executable, get_bob_api_key, save_bob_api_key
+from .ai_agent import BobAIAgent, bob_executable, get_bob_api_key, save_bob_api_key, _BOB_LOCK
 from .config import read_config, update_config
 from .engine import OutlookEngine
 from .local_store import profiles, LocalStoreBridge
 from .contacts import group_contacts, link_company
 from .tasks import load_tasks, add_task, toggle_task, delete_task, edit_task
-from . import task_workflow, email_chat
+from . import task_workflow, email_chat, workspace
 from .updater import check_and_apply_update
 
 PORT = 8484
@@ -71,6 +71,8 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
         q = urllib.parse.parse_qs(parsed.query)
+        if path=='/api/startup': return self._send_json(workspace.startup_status())
+        if path=='/api/backup': return self._send_json(workspace.export_data())
         if path=='/api/chat': return self._send_json(email_chat.history())
         if path=='/api/task-review':
             return self._send_json(task_workflow.snapshot(q.get('email_id',[None])[0]))
@@ -112,7 +114,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             return self._send_json(self.engine.get_upcoming_events(days_ahead=7,limit=50))
         if path.startswith('/api/'):
             return self._send_json({'error':'Unknown endpoint.'},404)
-        if path not in ('/','/index.html','/app.js','/tasks-ui.js','/chat-ui.js','/style.css'):
+        if path not in ('/','/index.html','/app.js','/tasks-ui.js','/chat-ui.js','/workspace-ui.js','/style.css'):
             return self._send_json({'error':'Not found.'},404)
         return super().do_GET()
 
@@ -132,6 +134,9 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json({'error':str(exc)},503)
 
     def _post(self,path,data):
+        if path=='/api/startup': return self._send_json(workspace.set_startup(data.get('enabled')))
+        if path=='/api/writing-learn': return self._send_json(workspace.learn_style(self.ai,data.get('examples')))
+        if path=='/api/writing-style': return self._send_json(workspace.save_style(data.get('guide')))
         if path=='/api/chat': return self._send_json(email_chat.ask(self.engine,data.get('question')))
         if path=='/api/chat-clear': return self._send_json(email_chat.clear())
         if path=='/api/task-scan-settings':return self._send_json(task_workflow.settings(data))
@@ -212,7 +217,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             else: raise ValueError('Unknown task action.')
             return self._send_json(tasks)
         if path=='/api/update':
-            if task_workflow.snapshot()['job']['running'] or email_chat._LOCK.locked():return self._send_json({'updated':False,'message':'Update deferred until the current AI work completes.'})
+            if task_workflow.snapshot()['job']['running'] or email_chat._LOCK.locked() or _BOB_LOCK.locked():return self._send_json({'updated':False,'message':'Update deferred until the current AI work completes.'})
             updated,msg=check_and_apply_update(auto_pull=True)
             self._send_json({'updated':updated,'message':msg})
             if updated:

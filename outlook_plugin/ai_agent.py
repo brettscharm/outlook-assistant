@@ -180,7 +180,8 @@ My Current Calendar Schedule:
 {schedule_text}
 
 Instructions:
-- Keep it concise, friendly, and professional.
+- Follow the saved writing_style guide for voice and structure. Use only facts from this email and the user's current intent, never facts from style examples.
+- Keep it concise, friendly, and professional unless the saved guide requests otherwise.
 - If they asked to meet, treat the supplied calendar as a limited snapshot. Do not assert free time or agree to a meeting without confirmed availability.
 - Directly address their questions.
 """

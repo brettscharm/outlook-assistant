@@ -30,7 +30,7 @@ def load_tasks() -> Dict[str, List[Dict[str, Any]]]:
                     "others_tasks": data.get("others_tasks", []),
                 }
         except Exception as e:
-            logger.error(f"Error loading tasks: {e}")
+            raise RuntimeError("Saved tasks could not be read. The existing file has been preserved; restore it from a backup before continuing.") from e
 
     default_data = {'my_tasks': [], 'others_tasks': []}
     save_tasks(default_data)
