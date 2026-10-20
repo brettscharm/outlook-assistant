@@ -59,3 +59,24 @@
 .task-actions{justify-content:flex-end;margin-bottom:16px}
 
 .sync-controls{justify-content:flex-end;flex-wrap:wrap;gap:8px 12px}.sync-controls #syncTime{font-size:12px}.sync-controls #sync{min-width:100px}
+
+/* Shared desktop palette and controls. */
+:root{color:#1d1d1f;background:#fff;--blue:#007aff;--line:#e5e5ea;--muted:#68686e;font-size:14px}
+body{color:#1d1d1f}button,input,textarea,select,dialog{color:#1d1d1f}
+button{border-color:#d8d8dd;border-radius:8px;padding:8px 12px;background:#fff;transition:background .12s ease}
+button:hover{background:#f0f0f3}.primary,.selected{background:var(--blue);border-color:var(--blue);color:#fff}.primary:hover,.selected:hover{background:#0066d6}
+input,textarea,select{border-color:#d8d8dd;border-radius:8px;padding:10px 12px}input:focus,textarea:focus,select:focus{box-shadow:0 0 0 3px #007aff20}
+.sidebar{background:#f5f5f7;border-color:var(--line)}.brand{color:#1d1d1f;font-weight:650}.mark{width:30px;height:30px;font-size:21px;background:#007aff;border-radius:8px}
+.sidebar button{color:#45454b}.sidebar button.active{background:#e3ecf9;color:#005fc7}.sidebar button:hover{background:#eaeaee}
+header{height:68px;padding:0 28px;background:#ffffffed}h1{font-size:24px;letter-spacing:-.6px;font-weight:650}h2{font-size:22px;letter-spacing:-.4px}h3{font-size:16px}p{line-height:1.55}
+.content{padding:26px 30px}.task-workspace{background:#fafafa}.task-stat{padding:15px;border-radius:10px}.task-stat strong{font-size:25px;color:#1d1d1f}.task-stat span{color:var(--muted)}
+.automatic-tasks{padding:6px 0 18px}.scan-panel{border-radius:10px;margin-bottom:20px}.scan-panel>summary{padding:13px 16px}.scan-panel-body{padding:0 16px 16px}.scan-panel-body>button{margin-top:12px}
+.action-card,.workspace-card{border-radius:10px;box-shadow:none}.task-empty{border:1px solid var(--line);background:#fff;padding:32px 20px}.task-empty h3{font-size:16px}
+.quiet-details{margin-bottom:18px;color:var(--muted);font-size:12px}.quiet-details summary{cursor:pointer;padding:5px 0}.quiet-details p{margin:8px 0}
+.settings-section{border-block:1px solid var(--line);padding:14px 0;margin:18px 0}.settings-section>summary{cursor:pointer;font-weight:600;margin-bottom:10px}
+dialog{max-height:calc(100dvh - 48px);overflow:auto;border-radius:16px;box-shadow:0 24px 80px #0002}dialog::backdrop{background:#0004}.dialog-heading{position:sticky;top:-30px;padding:12px 0;background:#fff;z-index:2}
+.app-footer{background:#fafafa}.message{color:#1d1d1f}.message.active{background:#edf4ff}.message-column{background:#fff}.body-text{font-size:14px;line-height:1.7}.reader-meta{margin:16px 0}.task-heading>div>p:last-child{margin-bottom:12px}
+@media(max-width:760px){header{height:auto;padding:14px 18px}.content{padding:20px 18px}.dialog-heading{top:-30px}.sync-controls #syncTime{font-size:11px}.sidebar button.active{border-radius:7px}}
+@media(prefers-reduced-motion:reduce){button{transition:none}}
+
+#settingsForm{gap:14px}#settingsForm>p{margin:0}.mail-settings{margin:0;padding:10px 0}.mail-settings .form{gap:14px;padding-top:10px}#settingsForm>.quiet-details{margin:0}#settingsForm .dialog-heading{padding-top:0;padding-bottom:8px}.workspace-settings>h3{margin-top:22px}
