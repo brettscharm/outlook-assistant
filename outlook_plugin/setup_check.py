@@ -12,7 +12,7 @@ def check():
     major=int(version.split('.')[0]) if version and version.split('.')[0].isdigit() else 0
     supported=platform.system()=='Darwin' and major>=13 and machine in ('arm64','x86_64')
     arch='arm64' if machine=='arm64' else 'amd64'
-    helper=Path(__file__).parent/'bin'/('hxmail-darwin-'+arch)
+    helper=Path(__file__).parent/'bin'/'hxmail-darwin'
     cfg=read_config()
     try:
         available=local_store.profiles()

@@ -43,7 +43,7 @@ class LocalStoreBridge:
             if not force and _CACHE.get('fingerprint') == fingerprint and time.time()-_CACHE.get('checked',0)<60:
                 return _CACHE
             arch = 'arm64' if platform.machine() == 'arm64' else 'amd64'
-            helper = Path(__file__).parent / 'bin' / ('hxmail-darwin-' + arch)
+            helper = Path(__file__).parent / 'bin' / 'hxmail-darwin'
             if not helper.exists():
                 raise RuntimeError('Local Outlook reader is missing. Install the complete Mac release.')
             try:

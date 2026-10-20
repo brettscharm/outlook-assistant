@@ -28,3 +28,4 @@ done
 lipo -create "$NATIVE_BUILD/window-arm64" "$NATIVE_BUILD/window-x86_64" -output "$OUTPUT/Outlook Assistant.app/Contents/MacOS/Outlook Assistant"
 codesign --force --deep --sign "${SIGNING_IDENTITY:--}" "$OUTPUT/Outlook Assistant.app"
 codesign --verify --deep --strict "$OUTPUT/Outlook Assistant.app"
+"$PYTHON" "$ROOT/scripts/check_mac_architectures.py" "$OUTPUT/Outlook Assistant.app"

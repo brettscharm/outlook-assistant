@@ -6,7 +6,7 @@ Read the mail **already cached by New Outlook on your Mac**, search it, keep tas
 
 Download the Mac app from [Releases](https://github.com/brettscharm/outlook-assistant/releases), unzip it, move **Outlook Assistant.app** into Applications, and open it. Python and the local mail reader are included. Version 2.8 opens its own native Mac window with a Dock icon and menus. Its bundled local service starts automatically without a Terminal window. The browser interface remains available for migration and troubleshooting, but is no longer the main entry point.
 
-The release provides one **Universal Mac** download for Apple silicon and Intel, requiring **macOS 13 or later**. Python and architecture-specific cache readers are bundled; recipients do not need Python, Git, Xcode, or Homebrew to launch the app. IBM Bob Shell 2.x and its Node.js 24+ runtime remain separate prerequisites for AI features. The native Apple silicon and translated Intel app paths were smoke-tested with isolated empty settings. Physical Intel hardware, other macOS versions, and other Outlook cache layouts have not been verified. This is ad-hoc signed, not Developer ID signed or notarized: macOS or company policy may block it. Do not disable security controls to run it.
+The release provides one **Universal Mac** download for Apple silicon and Intel, requiring **macOS 13 or later**. Python and a universal cache reader are bundled; recipients do not need Python, Git, Xcode, or Homebrew to launch the app. IBM Bob Shell 2.x and its Node.js 24+ runtime remain separate prerequisites for AI features. The native Apple silicon and translated Intel app paths were smoke-tested with isolated empty settings. Physical Intel hardware, other macOS versions, and other Outlook cache layouts have not been verified. This is ad-hoc signed, not Developer ID signed or notarized: macOS or company policy may block it. Do not disable security controls to run it.
 
 For source users, double-click **Launch Outlook Assistant.command**, or run `./run.sh`. No administrator access, launch agent, shell-profile edit, or background installer is required.
 
@@ -61,7 +61,7 @@ python3 -m unittest discover -s tests -v
 cd vendor/hxmail && go test ./...
 ```
 
-Build the reader with Go 1.27+ for `GOOS=darwin`, `GOARCH=arm64` and `amd64` into `outlook_plugin/bin/hxmail-darwin-<arch>`. Build the app with Python and PyInstaller using `scripts/build_mac.sh`. Legacy Outlook integration tests require `OUTLOOK_LEGACY_E2E=1` and a populated Legacy Outlook account.
+Build the reader with Go 1.27+ for `GOOS=darwin`, `GOARCH=arm64` and `amd64` and combine them with `scripts/build_readers.sh` into the universal `outlook_plugin/bin/hxmail-darwin`. Build the app with Python and PyInstaller using `scripts/build_mac.sh`. Legacy Outlook integration tests require `OUTLOOK_LEGACY_E2E=1` and a populated Legacy Outlook account.
 
 See `vendor/hxmail/UPSTREAM.md`, `LICENSE`, and `THIRD_PARTY_NOTICES.md` for provenance and licenses. No real emails or credentials are included in test fixtures.
 
