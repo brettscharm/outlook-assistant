@@ -30,11 +30,32 @@ def save_bob_api_key(api_key):
     update_config({"bob_api_key": api_key.strip()})
 
 
+def executable_directories():
+    home=Path.home()
+    paths=[Path('/opt/homebrew/bin'),Path('/usr/local/bin'),home/'.local/bin',home/'.npm-global/bin',home/'.volta/bin']
+    for pattern in ('.nvm/versions/node/*/bin','.local/share/fnm/node-versions/*/installation/bin','.local/share/mise/installs/node/*/bin'):
+        paths.extend(sorted(home.glob(pattern),reverse=True)[:10])
+    return paths
+
+
 def bob_executable():
-    for candidate in [os.environ.get("BOB_EXECUTABLE"), shutil.which("bob"),
-                      "/opt/homebrew/bin/bob", "/usr/local/bin/bob", str(Path.home()/".local/bin/bob")]:
-        if candidate and os.path.isfile(candidate) and os.access(candidate, os.X_OK):
-            return candidate
+    candidates=[os.environ.get("BOB_EXECUTABLE"),shutil.which("bob")]+[str(p/'bob') for p in executable_directories()]
+    for candidate in candidates:
+        if candidate and os.path.isfile(candidate) and os.access(candidate,os.X_OK): return candidate
+    return None
+
+
+def node_executable(bob=None):
+    candidates=([str(Path(bob).parent/'node')] if bob else [])+[shutil.which('node')]+[str(p/'node') for p in executable_directories()]
+    checked=set()
+    for candidate in candidates:
+        if not candidate or candidate in checked or not os.path.isfile(candidate) or not os.access(candidate,os.X_OK): continue
+        checked.add(candidate)
+        try:
+            result=subprocess.run([candidate,'--version'],capture_output=True,text=True,timeout=3)
+            major=int(result.stdout.strip().lstrip('v').split('.')[0])
+            if result.returncode==0 and major>=24:return candidate
+        except (ValueError,OSError,subprocess.TimeoutExpired):continue
     return None
 
 
@@ -53,6 +74,9 @@ class BobAIAgent:
         executable = bob_executable()
         if not executable:
             raise RuntimeError("Install IBM Bob Shell 2.x, then reopen this app. See README for the official installer.")
+        node = node_executable(executable)
+        if not node:
+            raise RuntimeError("IBM Bob Shell needs Node.js 24 or later. Install it through IBM’s setup instructions, then retry.")
         if not _BOB_LOCK.acquire(blocking=False):
             raise RuntimeError("Bob is working on another request. Please wait and retry.")
         try:
@@ -65,7 +89,7 @@ class BobAIAgent:
                 if team:
                     command += ["--team-id", team]
                 env = dict(os.environ, BOB_API_KEY=self.api_key)
-                env['PATH'] = '/opt/homebrew/bin:/usr/local/bin:' + env.get('PATH', '')
+                env['PATH'] = str(Path(node).parent)+':'+str(Path(executable).parent)+':/opt/homebrew/bin:/usr/local/bin:' + env.get('PATH', '')
                 settings = read_config()
                 profile = dict(settings.get("user_context", {}))
                 profile["company_domains"] = settings.get("domain_companies", {})

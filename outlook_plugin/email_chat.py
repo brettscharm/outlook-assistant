@@ -1,3 +1,4 @@
+from .config import DATA_DIR
 """Local, persistent email chat with bounded retrieval and validated source references."""
 import json
 import os
@@ -7,7 +8,7 @@ import threading
 from pathlib import Path
 from .ai_agent import BobAIAgent
 
-CHAT_FILE = Path.home() / '.outlook_assistant_chat.json'
+CHAT_FILE = DATA_DIR / '.outlook_assistant_chat.json'
 _LOCK = threading.Lock()
 STOP = set('the a an and or to of in on for is are was were i my me you your what which who when how can could would please tell about email emails mail summarize summary did do does it this that with from have has recent latest inbox catch up'.split())
 

@@ -29,6 +29,7 @@ class OutlookEngine:
 
     def get_active_backend(self):
         """Returns the primary active bridge (macOS local or Graph API)."""
+        if getattr(self, "local_only", False): return self.local_store
         if self.prefer_mac and self.local_store.is_available():
             return self.local_store
         if self.prefer_mac and self.mac_bridge.is_available():
@@ -39,6 +40,7 @@ class OutlookEngine:
 
     def get_status(self) -> Dict[str, Any]:
         """Check connection status of local Outlook and cloud integrations."""
+        if getattr(self, "local_only", False): return self.local_store.status()
         if self.local_store.is_available() and self.prefer_mac:
             return self.local_store.status()
         is_mac_avail = self.mac_bridge.is_available()

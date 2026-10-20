@@ -14,7 +14,7 @@ from .engine import OutlookEngine
 from .local_store import profiles, LocalStoreBridge
 from .contacts import group_contacts, link_company
 from .tasks import load_tasks, add_task, toggle_task, delete_task, edit_task
-from . import task_workflow, email_chat, workspace
+from . import task_workflow, email_chat, workspace, setup_check
 from .updater import check_and_apply_update
 
 PORT = 8484
@@ -25,6 +25,7 @@ INSTANCE = uuid.uuid4().hex
 class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         self.engine = OutlookEngine()
+        self.engine.local_only = True
         self.ai = BobAIAgent()
         super().__init__(*args, directory=str(STATIC_DIR), **kwargs)
 
@@ -71,6 +72,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
         q = urllib.parse.parse_qs(parsed.query)
+        if path=='/api/setup': return self._send_json(setup_check.check())
         if path=='/api/startup': return self._send_json(workspace.startup_status())
         if path=='/api/backup': return self._send_json(workspace.export_data())
         if path=='/api/chat': return self._send_json(email_chat.history())
@@ -79,7 +81,8 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         if path=='/api/health':
             return self._send_json({'version':__version__,'instance':INSTANCE})
         if path=='/api/status':
-            status = self.engine.get_status()
+            try: status = self.engine.get_status()
+            except (RuntimeError, OSError) as exc: status = {'active_backend':'local_cache','mail_error':str(exc)}
             status.update(bob_configured=bool(get_bob_api_key()),bob_installed=bool(bob_executable()),version=__version__)
             return self._send_json(status)
         if path=='/api/version':
@@ -232,7 +235,9 @@ def start_app_server(port=PORT,open_browser=True):
     server.daemon_threads=True
     server.restart=False
     scan_shutdown=threading.Event()
-    threading.Thread(target=task_workflow.scheduler,args=(OutlookEngine(),scan_shutdown),daemon=True).start()
+    scan_engine = OutlookEngine()
+    scan_engine.local_only = True
+    threading.Thread(target=task_workflow.scheduler,args=(scan_engine,scan_shutdown),daemon=True).start()
     print(f'Outlook Assistant: http://localhost:{port}',flush=True)
     if open_browser:
         import webbrowser

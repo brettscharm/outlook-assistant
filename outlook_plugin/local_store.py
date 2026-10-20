@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 from .config import read_config
 
-ROOT = Path.home() / 'Library/Group Containers/UBF8T346G9.Office/Outlook/Outlook 15 Profiles'
+ROOT = Path(os.environ.get('OUTLOOK_ASSISTANT_PROFILE_ROOT', str(Path.home() / 'Library/Group Containers/UBF8T346G9.Office/Outlook/Outlook 15 Profiles'))).expanduser()
 _LOCK = threading.RLock()
 _CACHE = {}
 

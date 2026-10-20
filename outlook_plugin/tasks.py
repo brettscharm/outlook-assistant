@@ -1,3 +1,4 @@
+from .config import DATA_DIR
 """
 Task Management Module for Outlook Assistant
 Manages 'Your Tasks' (action items for you) and 'Others' Tasks' (waiting on someone else).
@@ -16,7 +17,7 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-TASKS_FILE = Path.home() / ".outlook_assistant_tasks.json"
+TASKS_FILE = DATA_DIR / ".outlook_assistant_tasks.json"
 
 
 def load_tasks() -> Dict[str, List[Dict[str, Any]]]:

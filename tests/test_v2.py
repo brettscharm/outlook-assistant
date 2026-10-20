@@ -22,9 +22,10 @@ class CoreTests(unittest.TestCase):
         config.update_config({'user_context':{'role':'Engineer'}})
         self.assertEqual(config.read_config()['bob_api_key'],'secret')
         self.assertEqual(config.CONFIG_PATH.stat().st_mode&0o777,0o600)
+    @patch('outlook_plugin.ai_agent.node_executable',return_value='/tmp/node')
     @patch('outlook_plugin.ai_agent.bob_executable',return_value='/tmp/bob')
     @patch('outlook_plugin.ai_agent.subprocess.run')
-    def test_bob_uses_stdin_environment_and_no_tools(self,run,exe):
+    def test_bob_uses_stdin_environment_and_no_tools(self,run,exe,node):
         run.return_value=Mock(returncode=0,stdout=json.dumps({'status':'success','last_message':'Real answer','stats':{'session_costs':.1}}))
         agent=BobAIAgent('secret');self.assertEqual(agent._call_llm('private content'),'Real answer')
         args,kw=run.call_args;self.assertNotIn('secret',' '.join(args[0]));self.assertNotIn('private content',' '.join(args[0]));self.assertEqual(kw['env']['BOB_API_KEY'],'secret');self.assertIn('private content',kw['input']);self.assertIn('--disable-tool-groups',args[0]);self.assertIn('--max-cost',args[0])

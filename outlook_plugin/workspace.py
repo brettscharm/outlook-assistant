@@ -27,6 +27,8 @@ def set_startup(enabled):
     payload = {'Label': 'com.brettscharm.outlookassistant', 'ProgramArguments': command,
                'RunAtLoad': True, 'WorkingDirectory': root,
                'EnvironmentVariables': {'PYTHONPATH': root}}
+    for key in ('OUTLOOK_ASSISTANT_DATA_DIR','OUTLOOK_ASSISTANT_PROFILE_ROOT'):
+        if os.environ.get(key): payload['EnvironmentVariables'][key]=os.environ[key]
     LOGIN_FILE.parent.mkdir(parents=True, exist_ok=True)
     fd, name = tempfile.mkstemp(dir=LOGIN_FILE.parent, prefix='.outlook-startup-')
     try:

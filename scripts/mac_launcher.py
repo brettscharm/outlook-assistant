@@ -11,7 +11,7 @@ from pathlib import Path
 def main():
     if getattr(sys,'frozen',False):
         bundled=Path(sys.executable).resolve().parents[1]/'Resources'/'app'
-        root=Path.home()/'Library/Application Support/Outlook Assistant/app'
+        root=(Path(os.environ['OUTLOOK_ASSISTANT_DATA_DIR']).expanduser()/'app' if os.environ.get('OUTLOOK_ASSISTANT_DATA_DIR') else Path.home()/'Library/Application Support/Outlook Assistant/app')
         if not (root/'outlook_plugin/app_server.py').exists():
             import shutil
             root.mkdir(parents=True,exist_ok=True,mode=0o700)

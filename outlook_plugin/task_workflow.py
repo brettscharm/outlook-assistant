@@ -1,3 +1,4 @@
+from .config import DATA_DIR
 """Persistent, resumable task review and bounded background scanning."""
 import hashlib
 import json
@@ -11,7 +12,7 @@ from .config import read_config, update_config
 from .ai_agent import BobAIAgent
 from .tasks import load_tasks, add_task
 
-WORKFLOW_FILE=Path.home()/'.outlook_assistant_task_review.json'
+WORKFLOW_FILE=DATA_DIR/'.outlook_assistant_task_review.json'
 _LOCK=threading.RLock()
 _RUN=threading.Lock()
 _STOP=threading.Event()

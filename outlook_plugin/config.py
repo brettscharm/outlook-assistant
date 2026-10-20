@@ -5,7 +5,10 @@ import tempfile
 import threading
 from pathlib import Path
 
-CONFIG_PATH = Path.home() / '.outlook_assistant_config.json'
+DATA_DIR = Path(os.environ.get('OUTLOOK_ASSISTANT_DATA_DIR', str(Path.home()))).expanduser()
+if 'OUTLOOK_ASSISTANT_DATA_DIR' in os.environ:
+    DATA_DIR.mkdir(parents=True, exist_ok=True, mode=0o700)
+CONFIG_PATH = DATA_DIR / '.outlook_assistant_config.json'
 _LOCK = threading.RLock()
 
 

@@ -4,9 +4,9 @@ Read the mail **already cached by New Outlook on your Mac**, search it, keep tas
 
 ## Open the Mac app
 
-Download the Mac app from [Releases](https://github.com/brettscharm/outlook-assistant/releases), unzip it, and open **Outlook Assistant.app**. Python and the local mail reader are included. The app opens your browser at `http://localhost:8484`.
+Download the Mac app from [Releases](https://github.com/brettscharm/outlook-assistant/releases), unzip it, move **Outlook Assistant.app** into Applications, and open it. Python and the local mail reader are included. The app opens your browser at `http://localhost:8484`.
 
-The initial packaged release is built and tested on Apple silicon. Both Apple silicon and Intel cache readers are included; the source launcher works with Python 3.9+ on either architecture. An Intel app bundle must be built on an Intel Mac or with a compatible universal Python distribution. This is not a signed/notarized enterprise deployment: managed Macs may require IT approval. Do not disable macOS security controls to run it.
+Version 2.6 provides one **Universal Mac** download for Apple silicon and Intel, requiring **macOS 13 or later**. Python and architecture-specific cache readers are bundled; recipients do not need Python, Git, Xcode, or Homebrew to launch the app. IBM Bob Shell 2.x and its Node.js 24+ runtime remain separate prerequisites for AI features. The native Apple silicon and translated Intel app paths were smoke-tested with isolated empty settings. Physical Intel hardware, other macOS versions, and other Outlook cache layouts have not been verified. This is ad-hoc signed, not Developer ID signed or notarized: macOS or company policy may block it. Do not disable security controls to run it.
 
 For source users, double-click **Launch Outlook Assistant.command**, or run `./run.sh`. No administrator access, launch agent, shell-profile edit, or background installer is required.
 
@@ -90,3 +90,16 @@ Chat history is saved in `~/.outlook_assistant_chat.json` with owner-only permis
 - **Settings → Start at login:** creates a per-user macOS LaunchAgent for the current app location, effective at the next login. Leave the app at that location. It starts the local server without opening a browser; scheduled task checks remain separately configurable. Turning this off removes the login configuration, without interrupting the current app. Actual login behavior depends on macOS permissions and device policy.
 - **Settings → Download a backup:** exports tasks, review state, chat, selected preferences, and current-browser drafts as JSON. Bob API keys, team settings, Outlook profile paths, and the mailbox are excluded. Keep this file private. There is no in-app restore workflow yet.
 - **Data integrity:** unreadable task files are preserved rather than reset. Updates defer while Bob requests are active.
+
+### Fresh Mac requirements and setup
+
+1. macOS 13+ on Apple silicon or Intel; download the Universal Mac ZIP. Move the app to Applications before enabling Start at login.
+2. New Outlook must be signed in and have a supported local HxStore cache. Open Outlook and allow mail to download. Cache formats differ across Outlook versions; support is not guaranteed just because Outlook is installed.
+3. Install IBM Bob Shell 2.x through IBM’s official distribution, then provide your own Bob key in Settings. Use Test Bob connection to verify the subscription.
+4. Use **Finish setup** / Settings for the first-run checklist. Add your name and work email in My context before task extraction.
+
+The desktop app does not automatically fall back to AppleScript if the cache is missing. It reports what setup is needed without prompting to automate Outlook. These checks identify prerequisites; they cannot override company policy or prove a cache format is supported until it is read.
+
+Builds default to `--target-arch universal2` and require universal Python and compatible libraries. The build declares macOS 13 as its minimum, stamps the app version, and verifies its signature. `SIGNING_IDENTITY` can select an available developer identity; notarization still requires a separate Apple-authorized release step.
+
+For isolated testing, `OUTLOOK_ASSISTANT_DATA_DIR` puts settings and runtime code in a separate directory, and `OUTLOOK_ASSISTANT_PROFILE_ROOT` selects a separate cache search location. Defaults preserve existing users’ files and profile discovery.
