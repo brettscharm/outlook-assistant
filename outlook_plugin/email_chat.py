@@ -1,3 +1,4 @@
+from .storage import read_json, write_json
 from .config import DATA_DIR
 """Local, persistent email chat with bounded retrieval and validated source references."""
 import json
@@ -13,19 +14,11 @@ _LOCK = threading.Lock()
 STOP = set('the a an and or to of in on for is are was were i my me you your what which who when how can could would please tell about email emails mail summarize summary did do does it this that with from have has recent latest inbox catch up'.split())
 
 def history():
-    try:
-        return json.loads(CHAT_FILE.read_text())
-    except FileNotFoundError:
-        return {'messages': []}
+    return read_json(CHAT_FILE,{'messages': []})
 
 def save(data):
-    fd, name = tempfile.mkstemp(dir=CHAT_FILE.parent, prefix='.outlook-chat-')
-    try:
-        with os.fdopen(fd, 'w') as f:
-            json.dump(data, f)
-        os.replace(name, CHAT_FILE)
-    finally:
-        if os.path.exists(name): os.unlink(name)
+    write_json(CHAT_FILE,data)
+
 
 def clear():
     if not _LOCK.acquire(False): raise ValueError('Wait for the current answer before clearing chat.')

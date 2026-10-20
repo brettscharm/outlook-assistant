@@ -4,9 +4,9 @@ Read the mail **already cached by New Outlook on your Mac**, search it, keep tas
 
 ## Open the Mac app
 
-Download the Mac app from [Releases](https://github.com/brettscharm/outlook-assistant/releases), unzip it, move **Outlook Assistant.app** into Applications, and open it. Python and the local mail reader are included. The app opens your browser at `http://localhost:8484`.
+Download the Mac app from [Releases](https://github.com/brettscharm/outlook-assistant/releases), unzip it, move **Outlook Assistant.app** into Applications, and open it. Python and the local mail reader are included. Version 2.7 opens its own native Mac window with a Dock icon and menus. Its bundled local service starts automatically without a Terminal window. The browser interface remains available for migration and troubleshooting, but is no longer the main entry point.
 
-Version 2.6 provides one **Universal Mac** download for Apple silicon and Intel, requiring **macOS 13 or later**. Python and architecture-specific cache readers are bundled; recipients do not need Python, Git, Xcode, or Homebrew to launch the app. IBM Bob Shell 2.x and its Node.js 24+ runtime remain separate prerequisites for AI features. The native Apple silicon and translated Intel app paths were smoke-tested with isolated empty settings. Physical Intel hardware, other macOS versions, and other Outlook cache layouts have not been verified. This is ad-hoc signed, not Developer ID signed or notarized: macOS or company policy may block it. Do not disable security controls to run it.
+The release provides one **Universal Mac** download for Apple silicon and Intel, requiring **macOS 13 or later**. Python and architecture-specific cache readers are bundled; recipients do not need Python, Git, Xcode, or Homebrew to launch the app. IBM Bob Shell 2.x and its Node.js 24+ runtime remain separate prerequisites for AI features. The native Apple silicon and translated Intel app paths were smoke-tested with isolated empty settings. Physical Intel hardware, other macOS versions, and other Outlook cache layouts have not been verified. This is ad-hoc signed, not Developer ID signed or notarized: macOS or company policy may block it. Do not disable security controls to run it.
 
 For source users, double-click **Launch Outlook Assistant.command**, or run `./run.sh`. No administrator access, launch agent, shell-profile edit, or background installer is required.
 
@@ -16,7 +16,7 @@ Install [IBM Bob Shell 2.x](https://bob.ibm.com/docs/shell/getting-started/insta
 
 The app invokes `bob run --format json`, passes prompts on stdin and the key through `BOB_API_KEY`, and reads `last_message` plus session usage. Requests use your Bob subscription; the app does not use an invented Bob HTTP API or substitute canned replies. Each request has a 120-second timeout, three-turn limit, and one-Bobcoin cost limit. Only one Bob request runs at a time. File, command, MCP, skill, subagent, and mode tools are disabled for these sessions.
 
-Bob runs **only when you request a test, draft, or briefing**. Mail refresh does not consume Bob usage. Email text is untrusted context, not an instruction to execute commands. Generated drafts stay in the browser until you copy them; the app cannot send mail.
+Bob runs when you request an AI action or enable scheduled task scans. Mail refresh does not consume Bob usage. Email text is untrusted context, not an instruction to execute commands. Generated drafts autosave locally until you copy them; the app cannot send mail.
 
 ## Local Outlook data
 
@@ -85,10 +85,10 @@ Chat history is saved in `~/.outlook_assistant_chat.json` with owner-only permis
 
 ### Everyday workspace features
 
-- **Writing style:** paste examples you wrote, ask Bob to produce a guide, review it, and save. The guide is included in future reply requests. This is prompt personalization, not fine-tuning. Raw samples are not saved by the app.
-- **Drafts:** typed and generated replies survive page/browser restarts in the current browser’s local storage. Continue, copy, discard, or undo the latest discard. These drafts are not synced to Outlook or other browsers. Clearing browser data removes them.
+- **Writing style:** paste examples you wrote, ask Bob to produce a guide, and refine it. Samples and guide changes autosave. The guide is included in future reply requests. This is prompt personalization, not fine-tuning. Raw samples stay in your private local settings and are sent to Bob only when you request learning.
+- **Drafts:** typed and generated replies autosave to a private data file, with a browser recovery copy for pending edits. Continue, copy, discard, or undo the latest discard. They are shared by app windows on this Mac, not synced to Outlook.
 - **Settings → Start at login:** creates a per-user macOS LaunchAgent for the current app location, effective at the next login. Leave the app at that location. It starts the local server without opening a browser; scheduled task checks remain separately configurable. Turning this off removes the login configuration, without interrupting the current app. Actual login behavior depends on macOS permissions and device policy.
-- **Settings → Download a backup:** exports tasks, review state, chat, selected preferences, and current-browser drafts as JSON. Bob API keys, team settings, Outlook profile paths, and the mailbox are excluded. Keep this file private. There is no in-app restore workflow yet.
+- **Settings → Download a backup:** exports tasks, review state, chat, selected preferences, saved drafts, and pending browser drafts as JSON. Bob API keys, team settings, Outlook profile paths, and the mailbox are excluded. Keep this file private. There is no in-app restore workflow yet.
 - **Data integrity:** unreadable task files are preserved rather than reset. Updates defer while Bob requests are active.
 
 ### Fresh Mac requirements and setup
@@ -103,3 +103,13 @@ The desktop app does not automatically fall back to AppleScript if the cache is 
 Builds default to `--target-arch universal2` and require universal Python and compatible libraries. The build declares macOS 13 as its minimum, stamps the app version, and verifies its signature. `SIGNING_IDENTITY` can select an available developer identity; notarization still requires a separate Apple-authorized release step.
 
 For isolated testing, `OUTLOOK_ASSISTANT_DATA_DIR` puts settings and runtime code in a separate directory, and `OUTLOOK_ASSISTANT_PROFILE_ROOT` selects a separate cache search location. Defaults preserve existing users’ files and profile discovery.
+
+### Desktop app and durable storage (2.7)
+
+- Open **Outlook Assistant.app** normally. Closing its window leaves the app/background checks running; reopen it from the Dock. Quit stops the service when that window launched it. An existing independently launched service is left intact. No Terminal or browser tab is required.
+- Existing tasks, chat, identity, account list, company links, style, and scan progress remain in the same private user files, outside the app bundle and update directory. Updates do not replace those files.
+- Reply drafts now autosave to `~/.outlook_assistant_drafts.json`. Existing browser drafts migrate when that browser page first loads 2.7. The native app reads the same disk file. Wait for **Saved on this Mac** before clearing old browser data. Offline edits retain a browser recovery copy and retry. Conflicting edits are preserved for review rather than silently overwritten.
+- Context, writing samples/style, company links, valid scan settings, and edits to saved tasks autosave. Credential fields save on change/blur. Creating/accepting a new task and invoking AI remain explicit actions.
+- JSON saves flush file contents, replace the primary atomically, and flush the directory. Private recovery copies live in `~/.outlook_assistant_backups`: three previous saves and up to seven daily versions per file. Existing files receive an initial copy on startup. If a file is missing or invalid JSON, the reader restores an available valid copy and preserves a damaged original. Settings shows recovery notices. A recovered copy can be older than the last edit.
+- Local recovery copies may contain the saved API key and private work content; directory permissions are owner-only and files are owner-readable/writable. Downloaded exports still exclude the configured API key. These copies share the laptop’s disk, so they do not protect against disk failure or loss of the laptop; use an external Mac backup for that.
+- A stopped process or restart does not remove completed saves. An interrupted AI request or unfinished scan batch may need another run. No actual OS reboot was performed in QA; a forced native-app/service termination and reopen was tested.

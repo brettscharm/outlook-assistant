@@ -14,7 +14,7 @@ from .engine import OutlookEngine
 from .local_store import profiles, LocalStoreBridge
 from .contacts import group_contacts, link_company
 from .tasks import load_tasks, add_task, toggle_task, delete_task, edit_task
-from . import task_workflow, email_chat, workspace, setup_check
+from . import task_workflow, email_chat, workspace, setup_check, drafts, storage
 from .updater import check_and_apply_update
 
 PORT = 8484
@@ -72,6 +72,8 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
         q = urllib.parse.parse_qs(parsed.query)
+        if path=='/api/drafts': return self._send_json(drafts.load())
+        if path=='/api/storage': return self._send_json({'directory':str(drafts.DRAFTS_FILE.parent),'backup_directory':str(storage.backups(drafts.DRAFTS_FILE)[0].parent),'recoveries':storage.RECOVERIES})
         if path=='/api/setup': return self._send_json(setup_check.check())
         if path=='/api/startup': return self._send_json(workspace.startup_status())
         if path=='/api/backup': return self._send_json(workspace.export_data())
@@ -91,7 +93,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         if path=='/api/config':
             cfg=read_config()
             return self._send_json({'bob_configured':bool(get_bob_api_key()),'bob_installed':bool(bob_executable()),
-                                   'bob_team_id':cfg.get('bob_team_id',''),'user_context':cfg.get('user_context',{}),
+                                   'bob_team_id':cfg.get('bob_team_id',''),'user_context':cfg.get('user_context',{}),'writing_samples':cfg.get('writing_samples',''),
                                    'outlook_profile':cfg.get('outlook_profile',''),'profiles':[str(p) for p in profiles()]})
         if path=='/api/contacts':
             backend=self.engine.get_active_backend()
@@ -137,6 +139,17 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json({'error':str(exc)},503)
 
     def _post(self,path,data):
+        if path=='/api/context-autosave':
+            fields=data.get('fields',{})
+            if not isinstance(fields,dict) or any(k not in ('full_name','email_addresses','role','accounts','priorities','writing_style','writing_samples') or not isinstance(v,str) or len(v)>(24000 if k=='writing_samples' else 12000) for k,v in fields.items()): raise ValueError('Invalid context fields.')
+            from .config import _LOCK as config_lock
+            with config_lock:
+                cfg=read_config();ctx=dict(cfg.get('user_context',{}));ctx.update({k:v for k,v in fields.items() if k!='writing_samples'})
+                changes={'user_context':ctx}
+                if 'writing_samples' in fields:changes['writing_samples']=fields['writing_samples']
+                update_config(changes)
+            return self._send_json({'saved':True})
+        if path=='/api/drafts': return self._send_json(drafts.save_changes(data))
         if path=='/api/startup': return self._send_json(workspace.set_startup(data.get('enabled')))
         if path=='/api/writing-learn': return self._send_json(workspace.learn_style(self.ai,data.get('examples')))
         if path=='/api/writing-style': return self._send_json(workspace.save_style(data.get('guide')))
@@ -231,6 +244,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
 
 
 def start_app_server(port=PORT,open_browser=True):
+    workspace.initialize_storage()
     server=http.server.ThreadingHTTPServer(('127.0.0.1',port),AppRequestHandler)
     server.daemon_threads=True
     server.restart=False

@@ -1,3 +1,4 @@
+from .storage import read_json, write_json
 from .config import DATA_DIR
 """
 Task Management Module for Outlook Assistant
@@ -22,31 +23,12 @@ TASKS_FILE = DATA_DIR / ".outlook_assistant_tasks.json"
 
 def load_tasks() -> Dict[str, List[Dict[str, Any]]]:
     """Load tasks from disk or return default template."""
-    if TASKS_FILE.exists():
-        try:
-            with open(TASKS_FILE, "r") as f:
-                data = json.load(f)
-                return {
-                    "my_tasks": data.get("my_tasks", []),
-                    "others_tasks": data.get("others_tasks", []),
-                }
-        except Exception as e:
-            raise RuntimeError("Saved tasks could not be read. The existing file has been preserved; restore it from a backup before continuing.") from e
-
-    default_data = {'my_tasks': [], 'others_tasks': []}
-    save_tasks(default_data)
-    return default_data
+    data=read_json(TASKS_FILE,{'my_tasks':[],'others_tasks':[]})
+    return {'my_tasks':data.get('my_tasks',[]),'others_tasks':data.get('others_tasks',[])}
 
 
-def save_tasks(tasks: Dict[str, List[Dict[str, Any]]]):
-    """Save tasks dictionary to disk."""
-    fd, name = tempfile.mkstemp(dir=TASKS_FILE.parent, prefix='.outlook-tasks-')
-    try:
-        with os.fdopen(fd, 'w') as stream:
-            json.dump(tasks, stream)
-        os.replace(name, TASKS_FILE)
-    finally:
-        if os.path.exists(name): os.unlink(name)
+def save_tasks(tasks):
+    write_json(TASKS_FILE,tasks)
 
 
 def add_task(

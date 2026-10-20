@@ -1,3 +1,4 @@
+from .storage import read_json, write_json
 from .config import DATA_DIR
 """Persistent, resumable task review and bounded background scanning."""
 import hashlib
@@ -21,18 +22,10 @@ REASONS={'not_mine':'Not my task','not_role':'Not relevant to my role','done':'A
 
 
 def load():
-    with _LOCK:
-        try:return json.loads(WORKFLOW_FILE.read_text())
-        except FileNotFoundError:return {'suggestions':{},'processed':{},'last_check':None}
-
+    return read_json(WORKFLOW_FILE,{'suggestions':{},'processed':{},'last_check':None})
 
 def save(data):
-    fd,name=tempfile.mkstemp(dir=WORKFLOW_FILE.parent,prefix='.outlook-review-')
-    try:
-        with os.fdopen(fd,'w') as f:json.dump(data,f)
-        os.replace(name,WORKFLOW_FILE)
-    finally:
-        if os.path.exists(name):os.unlink(name)
+    write_json(WORKFLOW_FILE,data)
 
 
 def options():
