@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "outlook-assistant-plugin"
-version = "2.4.0"
+version = "2.4.1"
 description = "A powerful plugin to read emails and track upcoming calendar events directly from Microsoft Outlook on your computer."
 readme = "README.md"
 requires-python = ">=3.9"
