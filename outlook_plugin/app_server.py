@@ -14,7 +14,7 @@ from .engine import OutlookEngine
 from .local_store import profiles, LocalStoreBridge
 from .contacts import group_contacts, link_company
 from .tasks import load_tasks, add_task, toggle_task, delete_task, edit_task
-from . import task_workflow
+from . import task_workflow, email_chat
 from .updater import check_and_apply_update
 
 PORT = 8484
@@ -71,6 +71,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
         q = urllib.parse.parse_qs(parsed.query)
+        if path=='/api/chat': return self._send_json(email_chat.history())
         if path=='/api/task-review':
             return self._send_json(task_workflow.snapshot(q.get('email_id',[None])[0]))
         if path=='/api/health':
@@ -111,7 +112,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             return self._send_json(self.engine.get_upcoming_events(days_ahead=7,limit=50))
         if path.startswith('/api/'):
             return self._send_json({'error':'Unknown endpoint.'},404)
-        if path not in ('/','/index.html','/app.js','/tasks-ui.js','/style.css'):
+        if path not in ('/','/index.html','/app.js','/tasks-ui.js','/chat-ui.js','/style.css'):
             return self._send_json({'error':'Not found.'},404)
         return super().do_GET()
 
@@ -131,6 +132,8 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json({'error':str(exc)},503)
 
     def _post(self,path,data):
+        if path=='/api/chat': return self._send_json(email_chat.ask(self.engine,data.get('question')))
+        if path=='/api/chat-clear': return self._send_json(email_chat.clear())
         if path=='/api/task-scan-settings':return self._send_json(task_workflow.settings(data))
         if path=='/api/task-scan':return self._send_json(task_workflow.start(self.engine,data,email_id=data.get('email_id')))
         if path=='/api/task-scan-stop':return self._send_json(task_workflow.stop())
@@ -209,7 +212,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             else: raise ValueError('Unknown task action.')
             return self._send_json(tasks)
         if path=='/api/update':
-            if task_workflow.snapshot()['job']['running']:return self._send_json({'updated':False,'message':'Update deferred until the task scan completes.'})
+            if task_workflow.snapshot()['job']['running'] or email_chat._LOCK.locked():return self._send_json({'updated':False,'message':'Update deferred until the current AI work completes.'})
             updated,msg=check_and_apply_update(auto_pull=True)
             self._send_json({'updated':updated,'message':msg})
             if updated:

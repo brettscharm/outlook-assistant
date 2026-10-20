@@ -76,3 +76,9 @@ Private local data: `~/.outlook_assistant_config.json` stores identity, context,
 ## Contacts and companies
 
 Contacts groups unique senders from the local cache by exact email domain. It is not a full Outlook address-book sync. Expand a domain, choose a company suggested from your saved account list (first spreadsheet column), or type a new name, then Save company. Multiple domains can use the same company name; subdomains remain separate groups. Company links are private local settings, can be unlinked, and are included as context only when you request a Bob action. Shared domains such as gmail.com are not reliable company identifiers. Search contacts by person, address, domain, or linked company; Search mail opens a mailbox search for that address.
+
+### Ask your email
+
+The **Ask your email** tab searches downloaded mail locally, then asks IBM Bob to answer with supporting email links. Follow-up questions include recent conversation context. Retrieval ranks word matches in subjects, senders, and cached bodies; it is not a complete semantic mailbox search. Each answer receives at most 12 matching message excerpts of 6,000 characters each, with a Bob reported usage cap of 1. Missing cache data is not evidence that a message or commitment does not exist.
+
+Chat history is saved in `~/.outlook_assistant_chat.json` with owner-only permissions, survives app/laptop restarts, and can be cleared independently of tasks and mail. Draft questions are retained in browser local storage. Nothing is sent or edited in Outlook.
