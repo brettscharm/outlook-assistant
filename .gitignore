@@ -33,3 +33,6 @@ bob-key.txt
 *.sqlite
 *.db
 *.spec
+
+# App bundles are release artifacts, not source files.
+*.app/

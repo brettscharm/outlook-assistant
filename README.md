@@ -52,7 +52,7 @@ Your selected email and saved context go to IBM Bob when generating a draft. Bri
 
 While the page is open, updates are checked automatically after 45 seconds and then every five minutes. Installation waits until the page has been idle for 30 seconds, Bob is not working, Settings is closed, and no task suggestions are awaiting review. The update restarts the local server. The open page detects the new server instance and refreshes automatically. Draft text is retained across that refresh. Source checkouts with local changes are not overwritten. ZIP/app installs stage the new package and validate archive paths before replacing it. Updates use HTTPS and the repository's exact commit; they are not independently cryptographically signed.
 
-The bundled Python runtime stays inside the app; updateable application code lives in `~/Library/Application Support/Outlook Assistant/app`. Runtime changes may require downloading a new app release. Your settings and tasks survive code updates.
+The bundled Python runtime stays inside the app; updateable application code lives in `~/Library/Application Support/Outlook Assistant/app`. Keep one installed copy at `~/Applications/Outlook Assistant.app` (or `/Applications/Outlook Assistant.app`). App updates replace code in the same Application Support folder; they do not create another app. Runtime upgrades should replace the existing app at the same path, rather than keeping numbered copies. Start at login prefers the installed app service. Your settings and tasks survive code updates.
 
 ## Development and validation
 

@@ -9,6 +9,13 @@ from pathlib import Path
 from . import __version__, config, tasks, task_workflow, email_chat, drafts, storage, usage
 
 LOGIN_FILE = Path.home() / 'Library/LaunchAgents/com.brettscharm.outlookassistant.plist'
+INSTALLATIONS = [Path.home()/'Applications/Outlook Assistant.app',Path('/Applications/Outlook Assistant.app')]
+
+def installed_service():
+    for app in INSTALLATIONS:
+        service=app/'Contents/MacOS/Outlook Assistant Service'
+        if service.is_file():return str(service)
+    return None
 
 def startup_status():
     return {'enabled': LOGIN_FILE.exists(), 'supported': sys.platform == 'darwin'}
@@ -20,7 +27,7 @@ def set_startup(enabled):
         LOGIN_FILE.unlink(missing_ok=True)
         return startup_status()
     if getattr(sys, 'frozen', False):
-        command = [sys.executable, '--no-browser']
+        command = [installed_service() or sys.executable, '--no-browser']
     else:
         command = [sys.executable, '-m', 'outlook_plugin.cli', 'app', '--no-browser']
     root = str(Path(__file__).resolve().parent.parent)

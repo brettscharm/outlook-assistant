@@ -40,3 +40,11 @@ class WorkspaceTests(unittest.TestCase):
         ai._call_llm.assert_not_called()
         ai._call_llm.return_value='Keep it concise.'
         self.assertEqual(workspace.learn_style(ai,'Hello Pat, thanks for the update. Please send the revised proposal when you have a moment. Best, Alex.'),{'guide':'Keep it concise.'})
+
+    def test_frozen_startup_prefers_installed_service(self):
+        service=self.root/'Applications/Outlook Assistant.app/Contents/MacOS/Outlook Assistant Service'
+        service.parent.mkdir(parents=True);service.write_text('test')
+        with patch.object(workspace,'INSTALLATIONS',[service.parents[2]]),patch.object(workspace.sys,'frozen',True,create=True),patch.object(workspace.sys,'platform','darwin'):
+            workspace.set_startup(True)
+        data=plistlib.loads(workspace.LOGIN_FILE.read_bytes())
+        self.assertEqual(data['ProgramArguments'][0],str(service))
