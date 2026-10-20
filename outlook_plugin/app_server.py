@@ -13,7 +13,8 @@ from .config import read_config, update_config
 from .engine import OutlookEngine
 from .local_store import profiles, LocalStoreBridge
 from .contacts import group_contacts, link_company
-from .tasks import load_tasks, add_task, toggle_task, delete_task
+from .tasks import load_tasks, add_task, toggle_task, delete_task, edit_task
+from . import task_workflow
 from .updater import check_and_apply_update
 
 PORT = 8484
@@ -70,6 +71,8 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
         q = urllib.parse.parse_qs(parsed.query)
+        if path=='/api/task-review':
+            return self._send_json(task_workflow.snapshot(q.get('email_id',[None])[0]))
         if path=='/api/health':
             return self._send_json({'version':__version__,'instance':INSTANCE})
         if path=='/api/status':
@@ -108,7 +111,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             return self._send_json(self.engine.get_upcoming_events(days_ahead=7,limit=50))
         if path.startswith('/api/'):
             return self._send_json({'error':'Unknown endpoint.'},404)
-        if path not in ('/','/index.html','/app.js','/style.css'):
+        if path not in ('/','/index.html','/app.js','/tasks-ui.js','/style.css'):
             return self._send_json({'error':'Not found.'},404)
         return super().do_GET()
 
@@ -128,6 +131,10 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json({'error':str(exc)},503)
 
     def _post(self,path,data):
+        if path=='/api/task-scan-settings':return self._send_json(task_workflow.settings(data))
+        if path=='/api/task-scan':return self._send_json(task_workflow.start(self.engine,data,email_id=data.get('email_id')))
+        if path=='/api/task-scan-stop':return self._send_json(task_workflow.stop())
+        if path=='/api/task-review':return self._send_json(task_workflow.action(data))
         if path=='/api/contact-company':
             links=link_company(data.get('domain',''),data.get('company',''))
             return self._send_json({'saved':True,'domain_companies':links})
@@ -142,7 +149,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             if 'user_context' in data:
                 ctx=data['user_context']
                 if not isinstance(ctx,dict): raise ValueError('Invalid context.')
-                changes['user_context']={k:str(ctx.get(k,''))[:12000] for k in ('role','accounts','priorities','writing_style')}
+                changes['user_context']={k:str(ctx.get(k,''))[:12000] for k in ('full_name','email_addresses','role','accounts','priorities','writing_style')}
             update_config(changes)
             return self._send_json({'status':'saved'})
         if path=='/api/bob-test':
@@ -191,12 +198,18 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
                     if not evidence or ' '.join(evidence.split()) not in ' '.join(content.split()):
                         raise ValueError('The supporting quote could not be verified in the source email.')
                     source=dict(email_id=str(message['id']),email_subject=message.get('subject','(No subject)'),evidence=evidence)
-                tasks=add_task(data.get('type','my'),text,source=source)
+                due=str(data.get('due_date',''))
+                if due:
+                    from datetime import date
+                    date.fromisoformat(due)
+                tasks=add_task(data.get('type','my'),text,str(data.get('owner',''))[:200],due,source=source)
+            elif action=='edit':tasks=edit_task(str(data.get('id','')),str(data.get('text','')),str(data.get('owner','')),data.get('type','my'),str(data.get('due_date','')))
             elif action=='toggle': tasks=toggle_task(data.get('id'))
             elif action=='delete': tasks=delete_task(data.get('id'))
             else: raise ValueError('Unknown task action.')
             return self._send_json(tasks)
         if path=='/api/update':
+            if task_workflow.snapshot()['job']['running']:return self._send_json({'updated':False,'message':'Update deferred until the task scan completes.'})
             updated,msg=check_and_apply_update(auto_pull=True)
             self._send_json({'updated':updated,'message':msg})
             if updated:
@@ -210,13 +223,17 @@ def start_app_server(port=PORT,open_browser=True):
     server=http.server.ThreadingHTTPServer(('127.0.0.1',port),AppRequestHandler)
     server.daemon_threads=True
     server.restart=False
+    scan_shutdown=threading.Event()
+    threading.Thread(target=task_workflow.scheduler,args=(OutlookEngine(),scan_shutdown),daemon=True).start()
     print(f'Outlook Assistant: http://localhost:{port}',flush=True)
     if open_browser:
         import webbrowser
         webbrowser.open(f'http://localhost:{port}')
     try: server.serve_forever()
     except KeyboardInterrupt: pass
-    finally: server.server_close()
+    finally:
+        scan_shutdown.set()
+        server.server_close()
     if server.restart:
         args = ['--port',str(port),'--no-browser']
         if not getattr(sys,'frozen',False): args = ['-m','outlook_plugin.cli','app'] + args

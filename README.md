@@ -61,7 +61,17 @@ See `vendor/hxmail/UPSTREAM.md`, `LICENSE`, and `THIRD_PARTY_NOTICES.md` for pro
 
 ## Tasks from mail
 
-Tasks is the default screen. **Find tasks in my emails** sends up to 30 recent messages matching the Mail folder, search, and unread filter to IBM Bob, using up to 6,000 cached characters per message plus your saved context. Suggestions include a verified supporting quote and a link to the source email. Edit the title or owner, then Add task or Dismiss. Saved tasks retain the email link; duplicate titles from the same source are not added twice. This is a limited AI review, not a complete mailbox audit.
+Tasks opens first. Set your full name, email addresses/aliases, role, and account context in My context. Bob distinguishes explicit requests to you, commitments you made, other named owners, and unclear ownership. Email previews show a task summary above the message after scanning.
+
+Choose a starting date (this month by default) and My tasks / All tasks. Scans review all matching cached messages in batches of ten, with up to 6,000 characters per message. Completed batches are remembered using message content, scan mode, and your context; restarting resumes unprocessed or changed messages. A configurable per-scan Bob reported-usage cap pauses work, and Stop finishes the current batch. Missing cloud mail is not fetched. AI extraction remains limited to the cached text supplied.
+
+Automatic checks are opt-in at 15, 30, or 60 minutes. They run while the local server is running even if the browser is closed, use the saved Bob key and allowance, and review only unprocessed/changed messages within the chosen range. The timer restarts when the app restarts. Updates defer during an active scan.
+
+Review suggestions before adding them. Each has an owner, source quote, company when linked, and a due date only when supported by a literal deadline quote. Bob interprets relative dates using the source message's received timestamp; ambiguous dates remain undated or flagged for review. Edit owners and dates before or after saving. My tasks, others/unclear, completed, and due-date filters keep the lists separate.
+
+Dismissal reasons (not mine, not relevant to role, already done, duplicate, not an action) persist, can be restored, and provide limited feedback for future extraction. Stable source/evidence IDs suppress repeated suggestions; this is not a guarantee of semantic deduplication across different emails.
+
+Private local data: `~/.outlook_assistant_config.json` stores identity, context, key, company links, and scan settings; `~/.outlook_assistant_tasks.json` stores accepted tasks; `~/.outlook_assistant_task_review.json` stores suggestions, supporting quotes, dismissals, and scan checkpoints. Files use owner-only permissions, not encryption. Keys are never included in browser configuration responses or releases.
 
 ## Contacts and companies
 

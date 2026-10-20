@@ -1,0 +1,212 @@
+"""Persistent, resumable task review and bounded background scanning."""
+import hashlib
+import json
+import os
+import tempfile
+import threading
+import time
+from datetime import date, datetime
+from pathlib import Path
+from .config import read_config, update_config
+from .ai_agent import BobAIAgent
+from .tasks import load_tasks, add_task
+
+WORKFLOW_FILE=Path.home()/'.outlook_assistant_task_review.json'
+_LOCK=threading.RLock()
+_RUN=threading.Lock()
+_STOP=threading.Event()
+JOB={'running':False,'status':'idle','scanned':0,'total':0,'usage':0,'message':''}
+REASONS={'not_mine':'Not my task','not_role':'Not relevant to my role','done':'Already done','duplicate':'Duplicate','not_action':'Not a real action item'}
+
+
+def load():
+    with _LOCK:
+        try:return json.loads(WORKFLOW_FILE.read_text())
+        except FileNotFoundError:return {'suggestions':{},'processed':{},'last_check':None}
+
+
+def save(data):
+    fd,name=tempfile.mkstemp(dir=WORKFLOW_FILE.parent,prefix='.outlook-review-')
+    try:
+        with os.fdopen(fd,'w') as f:json.dump(data,f)
+        os.replace(name,WORKFLOW_FILE)
+    finally:
+        if os.path.exists(name):os.unlink(name)
+
+
+def options():
+    return dict({'since':date.today().replace(day=1).isoformat(),'mode':'mine','interval':0,'budget':2},**read_config().get('task_scan',{}))
+
+
+def validate_options(data):
+    opts=options()
+    for key in ('since','mode','interval','budget'):
+        if key in data:opts[key]=data[key]
+    date.fromisoformat(opts['since'])
+    if opts['since']>date.today().isoformat():raise ValueError('Choose a start date on or before today.')
+    if opts['mode'] not in ('mine','all'):raise ValueError('Choose My tasks or All email tasks.')
+    if opts['interval'] not in (0,15,30,60):raise ValueError('Choose a supported check interval.')
+    if opts['budget'] not in (1,2,5):raise ValueError('Choose a supported Bob usage cap.')
+    return opts
+
+
+def identity_ready():
+    ctx=read_config().get('user_context',{})
+    return bool(ctx.get('full_name','').strip() and '@' in ctx.get('email_addresses',''))
+
+
+def settings(data):
+    opts=validate_options(data)
+    if opts['interval'] and not identity_ready():raise ValueError('Save your name and work email in My context before enabling automatic checks.')
+    update_config({'task_scan':opts})
+    return opts
+
+
+def snapshot(email_id=None):
+    data=load()
+    with _LOCK:job=dict(JOB)
+    items=list(data['suggestions'].values())
+    saved=load_tasks()
+    linked={t.get('suggestion_id'):t for group in saved.values() for t in group if t.get('suggestion_id')}
+    for item in items:
+        if item['status']=='accepted' and item['id'] in linked:
+            task=linked[item['id']]
+            item.update(text=task['text'],owner=task.get('assignee','Owner unclear'),type=task.get('type',item['type']),due_date=task.get('due_date',''),completed=task.get('completed',False))
+    if email_id:items=[t for t in items if t['email_id']==email_id]
+    return {'suggestions':items,'job':job,'options':options(),'last_check':data.get('last_check'),
+            'identity_ready':identity_ready(),'reasons':REASONS,
+            'email_scanned':any(p.get('email_id')==email_id for p in data['processed'].values()) if email_id else False}
+
+
+def action(data):
+    with _LOCK:
+        store=load();item=store['suggestions'].get(str(data.get('id','')))
+        if not item:raise ValueError('Suggestion not found.')
+        act=data.get('action')
+        if act=='dismiss':
+            reason=data.get('reason')
+            if reason not in REASONS:raise ValueError('Choose a dismissal reason.')
+            item.update(status='dismissed',reason=reason)
+        elif act=='restore':item.update(status='review',reason='')
+        elif act=='accept':
+            title=str(data.get('text',item['text'])).strip()[:2000]
+            owner=str(data.get('owner',item['owner'])).strip()[:200]
+            kind=data.get('type',item['type']);due=str(data.get('due_date',item.get('due_date','')))
+            if not title:raise ValueError('Enter a task title.')
+            if kind not in ('my','others','unclear'):raise ValueError('Choose an owner group.')
+            if due:date.fromisoformat(due)
+            source={k:item.get(k,'') for k in ('email_id','email_subject','evidence','owner_evidence','due_evidence','due_note','company')}
+            source['suggestion_id']=item['id']
+            # Preserve idempotence even if an accepted suggestion is retried with an edited title.
+            existing=load_tasks()
+            if not any(t.get('suggestion_id')==item['id'] for group in existing.values() for t in group):
+                add_task(kind,title,owner,due,source)
+            item.update(status='accepted',text=title,owner=owner,type=kind,due_date=due)
+        else:raise ValueError('Unknown review action.')
+        save(store)
+    return snapshot()
+
+
+def key_for(message,opts):
+    ctx=read_config().get('user_context',{})
+    return hashlib.sha256(json.dumps([message,opts['mode'],ctx],sort_keys=True).encode()).hexdigest()
+
+
+def candidate_messages(engine,opts,email_id=None):
+    backend=engine.get_active_backend()
+    if email_id:
+        rows=[engine.get_email_details(email_id)]
+    else:
+        rows=backend.get_emails(folder='all',limit=100000)
+    result=[]
+    for row in rows:
+        if not row:continue
+        received=str(row.get('received_time',''))
+        try:received_day=datetime.fromisoformat(received.replace('Z','+00:00')).astimezone().date().isoformat()
+        except (ValueError,TypeError):received_day=''
+        if not email_id and (not received_day or received_day<opts['since']):continue
+        message=row if 'body' in row else engine.get_email_details(str(row['id']))
+        if not message:continue
+        result.append(dict(id=str(message['id']),subject=message.get('subject',''),sender=message.get('sender',''),
+            received_time=received,content=(message.get('body') or message.get('preview') or '')[:6000]))
+    return sorted(result,key=lambda m:m['received_time'],reverse=True)
+
+
+def start(engine,settings_override=None,email_id=None):
+    opts=validate_options(settings_override or {})
+    if not identity_ready():raise ValueError('First save your name and email addresses in My context so Bob can identify your tasks.')
+    if not _RUN.acquire(blocking=False):raise ValueError('A task scan is already running.')
+    _STOP.clear()
+    with _LOCK:JOB.update(running=True,status='running',scanned=0,total=0,usage=0,message='Finding cached emails in your date range…')
+    def worker():
+        try:run(engine,opts,email_id)
+        except Exception as exc:
+            with _LOCK:JOB.update(status='error',message=str(exc)[:400])
+        finally:
+            with _LOCK:JOB['running']=False
+            _RUN.release()
+    threading.Thread(target=worker,daemon=True).start()
+    return snapshot()
+
+
+def stop():
+    _STOP.set()
+    with _LOCK:JOB['message']='Stopping after the current batch. Completed work is saved.'
+    return snapshot()
+
+
+def run(engine,opts,email_id=None):
+    messages=candidate_messages(engine,opts,email_id)
+    data=load();pending=[m for m in messages if key_for(m,opts) not in data['processed']]
+    with _LOCK:JOB.update(total=len(pending),message=f'{len(pending)} new or changed cached emails to review.')
+    spent=0;ai=BobAIAgent()
+    for offset in range(0,len(pending),10):
+        if _STOP.is_set():
+            with _LOCK:JOB.update(status='stopped',message='Stopped. Start another scan to resume remaining messages.')
+            return
+        remaining=opts['budget']-spent
+        if remaining<0.01:
+            with _LOCK:JOB.update(status='paused',message='Bob usage cap reached. Start another scan to resume remaining messages.')
+            return
+        batch=pending[offset:offset+10]
+        with _LOCK:JOB['message']=f'Reviewing emails {offset+1}–{offset+len(batch)} of {len(pending)}…'
+        current=load()
+        feedback=[dict(text=t['text'],reason=REASONS.get(t.get('reason'),'Dismissed')) for t in current['suggestions'].values() if t['status']=='dismissed'][-20:]
+        request_cap=min(1,remaining)
+        found=ai.extract_tasks(batch,mode=opts['mode'],feedback=feedback,max_cost=request_cap)
+        reported=ai.last_usage.get('session_costs',request_cap)
+        try:cost=max(0,float(reported))
+        except (TypeError,ValueError):cost=request_cap
+        spent+=cost
+        links=read_config().get('domain_companies',{})
+        from email.utils import parseaddr
+        sources={m['id']:m for m in batch}
+        with _LOCK:
+            data=load()
+            existing=load_tasks()
+            known={(t.get('email_id'),' '.join(t['text'].lower().split())) for group in existing.values() for t in group}
+            for item in found:
+                # Stable evidence identity suppresses rephrased suggestions and remembered dismissals.
+                normalized=' '.join(item['evidence'].casefold().split())
+                sid=hashlib.sha256((item['email_id']+'\n'+normalized).encode()).hexdigest()[:24]
+                if sid in data['suggestions']:continue
+                domain=parseaddr(sources[item['email_id']]['sender'])[1].rsplit('@',1)[-1].lower()
+                item.update(id=sid,status='accepted' if (item['email_id'],' '.join(item['text'].lower().split())) in known else 'review',reason='',company=links.get(domain,''))
+                data['suggestions'][sid]=item
+            for m in batch:data['processed'][key_for(m,opts)]={'email_id':m['id'],'checked':datetime.now().isoformat()}
+            data['last_check']=datetime.now().isoformat();save(data)
+            JOB.update(scanned=offset+len(batch),usage=round(spent,6))
+    with _LOCK:
+        data=load();data['last_check']=datetime.now().isoformat();save(data)
+        JOB.update(status='complete',message='Scan complete. Review new suggestions below.' if pending else 'No new or changed cached messages in this range.')
+
+
+def scheduler(engine,shutdown):
+    last_attempt=time.monotonic()
+    while not shutdown.wait(15):
+        opts=options()
+        if not opts['interval'] or time.monotonic()-last_attempt<opts['interval']*60:continue
+        last_attempt=time.monotonic()
+        if _RUN.locked() or not identity_ready():continue
+        try:start(engine,opts)
+        except Exception:pass  # Manual scan status exposes failures; retry at next scheduled interval.

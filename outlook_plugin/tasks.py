@@ -57,7 +57,7 @@ def add_task(
 ) -> Dict[str, List[Dict[str, Any]]]:
     """Add a new task and return all updated tasks."""
     tasks = load_tasks()
-    key = "others_tasks" if task_type == "others" else "my_tasks"
+    key = "my_tasks" if task_type == "my" else "others_tasks"
 
     if source:
         for items in tasks.values():
@@ -69,7 +69,8 @@ def add_task(
         "text": text.strip(),
         "assignee": assignee.strip() if assignee else ("Me" if key == "my_tasks" else "Other"),
         "completed": False,
-        "due_date": due_date or "Flexible",
+        "due_date": due_date or "",
+        "type": task_type,
         "created_at": datetime.now().isoformat(),
     }
 
@@ -110,3 +111,20 @@ load_tasks = _serialized(load_tasks)
 add_task = _serialized(add_task)
 toggle_task = _serialized(toggle_task)
 delete_task = _serialized(delete_task)
+
+
+@_serialized
+def edit_task(task_id, text, owner, kind, due_date):
+    from datetime import date
+    if not text.strip(): raise ValueError('Enter a task.')
+    if kind not in ('my','others','unclear'): raise ValueError('Choose an owner group.')
+    if due_date: date.fromisoformat(due_date)
+    data=load_tasks()
+    for group in ('my_tasks','others_tasks'):
+        for item in data[group]:
+            if item['id']==task_id:
+                item.update(text=text.strip()[:2000],assignee=owner.strip()[:200] or 'Owner unclear',type=kind,due_date=due_date)
+                data[group].remove(item)
+                data['my_tasks' if kind=='my' else 'others_tasks'].insert(0,item)
+                save_tasks(data);return data
+    raise ValueError('Task not found.')
