@@ -14,7 +14,7 @@ from .engine import OutlookEngine
 from .local_store import profiles, LocalStoreBridge
 from .contacts import group_contacts, link_company, link_companies, suggest_company
 from .tasks import load_tasks, add_task, toggle_task, delete_task, edit_task
-from . import task_workflow, email_chat, workspace, setup_check, drafts, storage, usage, bob_status
+from . import task_workflow, email_chat, workspace, setup_check, drafts, storage, usage, bob_status, outlook_status
 from .updater import check_and_apply_update
 
 PORT = 8484
@@ -83,11 +83,11 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         if path=='/api/task-review':
             return self._send_json(task_workflow.snapshot(q.get('email_id',[None])[0]))
         if path=='/api/health':
-            return self._send_json({'version':__version__,'instance':INSTANCE})
+            return self._send_json({'version':__version__,'instance':INSTANCE,'outlook_running':outlook_status.running()})
         if path=='/api/status':
             try: status = self.engine.get_status()
             except (RuntimeError, OSError) as exc: status = {'active_backend':'local_cache','mail_error':str(exc)}
-            status.update(bob_configured=bool(get_bob_api_key()),bob_installed=bool(bob_executable()),version=__version__)
+            status.update(outlook_running=outlook_status.running(),bob_configured=bool(get_bob_api_key()),bob_installed=bool(bob_executable()),version=__version__)
             return self._send_json(status)
         if path=='/api/version':
             available,msg=check_and_apply_update(auto_pull=False)
@@ -187,6 +187,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
                 changes['user_context']={k:str(ctx.get(k,''))[:12000] for k in ('full_name','email_addresses','role','accounts','priorities','writing_style')}
             update_config(changes)
             return self._send_json({'status':'saved'})
+        if path=='/api/open-outlook':return self._send_json(outlook_status.open_outlook())
         if path=='/api/bob-test':
             answer=self.ai._call_llm('Respond with exactly BOB_CONNECTION_OK.')
             return self._send_json({'connected':answer.strip()=='BOB_CONNECTION_OK','usage':self.ai.last_usage})
