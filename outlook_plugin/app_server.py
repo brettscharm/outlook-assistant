@@ -133,7 +133,8 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             if self.headers.get('Content-Type','').split(';')[0]!='application/json':
                 return self._send_json({'error':'JSON required.'},415)
             size=int(self.headers.get('Content-Length','0'))
-            if size<0 or size>100000: return self._send_json({'error':'Request too large.'},413)
+            limit=1500000 if urllib.parse.urlparse(self.path).path=='/api/drafts' else 100000
+            if size<0 or size>limit: return self._send_json({'error':'Request too large.'},413)
             data=json.loads(self.rfile.read(size) or '{}')
             if not isinstance(data,dict): raise ValueError('Expected an object.')
             self._post(urllib.parse.urlparse(self.path).path,data)

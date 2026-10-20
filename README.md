@@ -4,11 +4,17 @@ Read the mail **already cached by New Outlook on your Mac**, search it, keep tas
 
 ## Open the Mac app
 
-Download the Mac app from [Releases](https://github.com/brettscharm/outlook-assistant/releases), unzip it, move **Outlook Assistant.app** into Applications, and open it. Python and the local mail reader are included. Version 2.7 opens its own native Mac window with a Dock icon and menus. Its bundled local service starts automatically without a Terminal window. The browser interface remains available for migration and troubleshooting, but is no longer the main entry point.
+Download the Mac app from [Releases](https://github.com/brettscharm/outlook-assistant/releases), unzip it, move **Outlook Assistant.app** into Applications, and open it. Python and the local mail reader are included. Version 2.8 opens its own native Mac window with a Dock icon and menus. Its bundled local service starts automatically without a Terminal window. The browser interface remains available for migration and troubleshooting, but is no longer the main entry point.
 
 The release provides one **Universal Mac** download for Apple silicon and Intel, requiring **macOS 13 or later**. Python and architecture-specific cache readers are bundled; recipients do not need Python, Git, Xcode, or Homebrew to launch the app. IBM Bob Shell 2.x and its Node.js 24+ runtime remain separate prerequisites for AI features. The native Apple silicon and translated Intel app paths were smoke-tested with isolated empty settings. Physical Intel hardware, other macOS versions, and other Outlook cache layouts have not been verified. This is ad-hoc signed, not Developer ID signed or notarized: macOS or company policy may block it. Do not disable security controls to run it.
 
 For source users, double-click **Launch Outlook Assistant.command**, or run `./run.sh`. No administrator access, launch agent, shell-profile edit, or background installer is required.
+
+## Everyday workflow
+
+Use Tasks, Mail, Ask your email, Drafts, and Contacts for daily work. More contains context, writing style, usage, calendar, and briefing. Setup links take you to the missing step. Tasks and Drafts are searchable and paginated. Saved drafts can be edited without their source email, and the compact email toolbar keeps additional formatting under More formatting. Large rich-text saves and browser recovery conflicts are handled without blocking other drafts.
+
+Usage shows locally recorded Bobcoins and available token counts; it is not an account-wide balance or dollar invoice. Invalid, expired, and revoked keys show persistent, credential-specific warnings after a request detects the problem.
 
 ## Connect Bob
 

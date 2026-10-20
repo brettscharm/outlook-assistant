@@ -39,5 +39,9 @@ function richEditor(plain,html,onChange){
  box.addEventListener('paste',event=>{event.preventDefault();const data=event.clipboardData;run(data.getData('text/html')?'insertHTML':'insertText',data.getData('text/html')?cleanEmailHTML(data.getData('text/html')):data.getData('text/plain'));});
  box.addEventListener('drop',event=>event.preventDefault());
  box.addEventListener('click',event=>{if(event.target.closest('a'))event.preventDefault();});
- wrapper.append(toolbar,box);return {wrapper,box,setHTML(value){box.innerHTML=cleanEmailHTML(value);range=null;}};
+ const more=document.createElement('details');more.className='rich-more';const summary=document.createElement('summary');summary.textContent='More formatting';const extra=document.createElement('div');extra.className='rich-toolbar';
+ const primary=new Set(['Bold','Italic','Underline','Bullets','Numbering','Undo']);
+ for(const child of [...toolbar.children])if(child.tagName!=='BUTTON'||!primary.has(child.textContent))extra.append(child);
+ more.append(summary,extra);
+ wrapper.append(toolbar,more,box);return {wrapper,box,setHTML(value){box.innerHTML=cleanEmailHTML(value);range=null;}};
 }

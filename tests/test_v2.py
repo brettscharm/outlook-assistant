@@ -87,3 +87,19 @@ class UpdateTests(unittest.TestCase):
             with patch('outlook_plugin.updater.get_latest_github_commit',return_value='abc'),patch('outlook_plugin.updater.urllib.request.urlretrieve',side_effect=download):
                 updated,msg=check_and_apply_update(d,True)
             self.assertFalse(updated);self.assertIn('older',msg);self.assertEqual((root/'outlook_plugin/app_server.py').read_text(),'original')
+
+    def test_large_formatted_draft_can_save_without_raising_other_limits(self):
+        from outlook_plugin import drafts
+        with tempfile.TemporaryDirectory() as tmp,patch.object(drafts,'DRAFTS_FILE',Path(tmp)/'drafts.json'):
+            server=ThreadingHTTPServer(('127.0.0.1',0),AppRequestHandler)
+            thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+            try:
+                base='http://127.0.0.1:'+str(server.server_port)
+                body=json.dumps({'changes':[{'id':'large','revision':0,'text':'x'*40000,'html':'<p>'+'x'*110000+'</p>'}]}).encode()
+                request=urllib.request.Request(base+'/api/drafts',data=body,headers={'Content-Type':'application/json'})
+                with urllib.request.urlopen(request) as response:self.assertEqual(response.status,200)
+                self.assertEqual(len(drafts.load()['entries']['large']['html']),110007)
+                request=urllib.request.Request(base+'/api/config',data=body,headers={'Content-Type':'application/json'})
+                with self.assertRaises(urllib.error.HTTPError) as caught:urllib.request.urlopen(request)
+                self.assertEqual(caught.exception.code,413)
+            finally:server.shutdown();server.server_close();thread.join()
