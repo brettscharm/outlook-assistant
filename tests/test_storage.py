@@ -32,3 +32,13 @@ class StorageTests(unittest.TestCase):
             first=drafts.save_changes({'changes':[{'id':'email1','revision':0,'text':'Saved text'}]});self.assertEqual(first['saved']['email1'],1)
             second=drafts.save_changes({'changes':[{'id':'email1','revision':0,'text':'Stale text'}]});self.assertEqual(second['conflicts'],['email1']);self.assertEqual(drafts.load()['entries']['email1']['text'],'Saved text')
             drafts.save_changes({'changes':[{'id':'email1','revision':1,'deleted':True}]});self.assertTrue(drafts.load()['entries']['email1']['deleted'])
+    def test_rich_draft_roundtrip_and_legacy_plain_text(self):
+        with patch.object(drafts,'DRAFTS_FILE',self.path):
+            html='<p><strong>Hello</strong></p><ul><li>Next step</li></ul>'
+            drafts.save_changes({'changes':[{'id':'rich','revision':0,'text':'Hello\nNext step','html':html},{'id':'legacy','revision':0,'text':'Plain draft'}]})
+            saved=drafts.load()['entries']
+            self.assertEqual(saved['rich']['html'],html)
+            self.assertEqual(saved['legacy']['text'],'Plain draft')
+            self.assertEqual(saved['legacy']['html'],'')
+            with self.assertRaises(ValueError):drafts.save_changes({'changes':[{'id':'rich','revision':1,'html':'a'*150001}]})
+            self.assertEqual(drafts.load()['entries']['rich']['html'],html)
