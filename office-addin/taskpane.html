@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Outlook AI Assistant</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <link rel="stylesheet" href="taskpane.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="logo-title">
+        <span class="icon">✨</span>
+        <h2>Outlook Assistant</h2>
+      </div>
+      <p class="subtitle">Contextual Email &amp; Calendar Intelligence</p>
+    </header>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="showTab('email-tab')">✉️ Active Email</button>
+      <button class="tab-btn" onclick="showTab('calendar-tab')">📅 Upcoming Events</button>
+      <button class="tab-btn" onclick="showTab('briefing-tab')">📊 Briefing</button>
+    </div>
+
+    <!-- Active Email Tab -->
+    <div id="email-tab" class="tab-content active">
+      <div class="card">
+        <h3>Current Email Context</h3>
+        <div id="email-details">
+          <p><strong>Subject:</strong> <span id="email-subject">Loading...</span></p>
+          <p><strong>From:</strong> <span id="email-from">...</span></p>
+          <p><strong>Received:</strong> <span id="email-date">...</span></p>
+        </div>
+        <button class="btn primary" onclick="summarizeEmail()">Summarize &amp; Detect Action Items</button>
+        <div id="summary-result" class="output-box hidden"></div>
+      </div>
+    </div>
+
+    <!-- Calendar Tab -->
+    <div id="calendar-tab" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <h3>Upcoming Schedule</h3>
+          <button class="btn secondary" onclick="refreshCalendar()">Refresh</button>
+        </div>
+        <div id="events-list" class="events-list">
+          <div class="empty-state">No upcoming events loaded.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Daily Briefing Tab -->
+    <div id="briefing-tab" class="tab-content">
+      <div class="card">
+        <h3>Today's Executive Briefing</h3>
+        <p class="hint">Synthesizing calendar schedule with urgent unread emails.</p>
+        <button class="btn primary" onclick="generateBriefing()">Generate Daily Briefing</button>
+        <div id="briefing-result" class="output-box hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="taskpane.js"></script>
+</body>
+</html>

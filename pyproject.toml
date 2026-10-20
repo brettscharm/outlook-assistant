@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "outlook-assistant-plugin"
+version = "1.0.0"
+description = "A powerful plugin to read emails and track upcoming calendar events directly from Microsoft Outlook on your computer."
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+    { name = "Developer" }
+]
+dependencies = []
+
+[project.scripts]
+outlook-assistant = "outlook_plugin.cli:main"
