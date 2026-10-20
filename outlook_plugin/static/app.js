@@ -1,10 +1,10 @@
 'use strict';
 const $=id=>document.getElementById(id);
-const state={folder:'all',unread:false,search:'',emails:[],selected:null,offset:0,request:0,instance:null,busy:false,drafts:{},intents:{},lastList:''};
+const state={folder:'all',unread:false,search:'',emails:[],selected:null,offset:0,request:0,instance:null,busy:false,drafts:{},intents:{},lastList:'',pending:0};
 const text=(tag,value,cls)=>{const e=document.createElement(tag);e.textContent=value??'';if(cls)e.className=cls;return e;};
 function notice(value){$('notice').textContent=value;$('notice').hidden=!value;}
 async function api(path,data){const r=await fetch(path,data===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const value=await r.json();if(!r.ok)throw Error(value.error||'Request failed');return value;}
-async function busy(button,fn){const old=button.textContent;button.disabled=true;button.textContent='Working…';try{await fn();}catch(e){notice(e.message);}finally{button.disabled=false;button.textContent=old;}}
+async function busy(button,fn){const old=button.textContent;state.pending++;button.disabled=true;button.textContent='Working…';try{await fn();}catch(e){notice(e.message);}finally{state.pending--;button.disabled=false;button.textContent=old;}}
 function view(id){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('active',e.id===id));document.querySelectorAll('[data-view]').forEach(e=>e.classList.toggle('active',e.dataset.view===id));$('pageTitle').textContent=({mail:'Mail',calendar:'Calendar',tasks:'Tasks',briefing:'Briefing',context:'My context'})[id];}
 function date(v,full=false){const d=new Date(v);return isNaN(d)?'Date unavailable':d.toLocaleString(undefined,full?{dateStyle:'medium',timeStyle:'short'}:{month:'short',day:'numeric'});}
 async function loadEmails(append=false){const serial=++state.request;$('mailCount').textContent='Loading…';const rows=await api('/api/emails?'+new URLSearchParams({folder:state.folder,limit:50,offset:append?state.emails.length:0,unread_only:state.unread,search:state.search}));if(serial!==state.request)return;state.emails=append?[...state.emails,...rows]:rows;$('more').hidden=rows.length<50;renderEmails();}
@@ -14,7 +14,7 @@ async function folders(){const rows=await api('/api/folders');const root=$('fold
 async function status(){const s=await api('/api/status');$('bobStatus').textContent=s.bob_configured&&s.bob_installed?'● Bob key saved':'Bob setup needed';$('version').textContent='Version '+s.version;$('freshness').textContent=`Local Outlook cache · ${s.message_count??0} messages · ${s.full_body_count??0} cached bodies · ${s.preview_count??0} previews · Checked ${new Date().toLocaleTimeString()}`;if(s.partial)notice('Some cache records could not be read. Available messages are shown; coverage is incomplete.');}
 async function sync(force=false){if(state.busy)return;state.busy=true;try{if(force)await api('/api/sync',{});await Promise.all([status(),folders(),loadEmails()]);}catch(e){notice(e.message);$('freshness').textContent='Local cache unavailable · '+e.message;}finally{state.busy=false;}}
 async function context(){const c=await api('/api/config');for(const key of ['role','accounts','priorities','writing_style'])$('contextForm').elements[key].value=c.user_context[key]||'';}
-async function tasks(){const data=await api('/api/tasks');for(const [key,id] of [['my_tasks','myTasks'],['others_tasks','otherTasks']]){const root=$(id);root.replaceChildren();for(const t of data[key]||[]){const row=text('div','','task-row');const check=document.createElement('input');check.type='checkbox';check.checked=t.completed;check.setAttribute('aria-label','Complete '+t.text);check.onchange=()=>api('/api/tasks',{action:'toggle',id:t.id}).then(tasks).catch(e=>notice(e.message));const del=text('button','Delete');del.onclick=()=>api('/api/tasks',{action:'delete',id:t.id}).then(tasks).catch(e=>notice(e.message));row.append(check,text('span',t.text,t.completed?'completed':''),del);root.append(row);}}}
+async function tasks(){const data=await api('/api/tasks');for(const [key,id] of [['my_tasks','myTasks'],['others_tasks','otherTasks']]){const root=$(id);root.replaceChildren();for(const t of data[key]||[]){const row=text('div','','task-row');const check=document.createElement('input');check.type='checkbox';check.checked=t.completed;check.setAttribute('aria-label','Complete '+t.text);check.onchange=()=>api('/api/tasks',{action:'toggle',id:t.id}).then(tasks).catch(e=>notice(e.message));const del=text('button','Delete');del.onclick=()=>api('/api/tasks',{action:'delete',id:t.id}).then(tasks).catch(e=>notice(e.message));const details=text('div','','task-details');details.append(text('span',t.text,t.completed?'completed':''));if(t.email_id){const link=text('button','View email: '+(t.email_subject||'(No subject)'),'source-email');link.onclick=()=>{view('mail');selectEmail(t.email_id).catch(e=>notice(e.message));};details.append(link);}row.append(check,details,del);root.append(row);}}}
 document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>view(b.dataset.view));
 $('sync').onclick=()=>busy($('sync'),()=>sync(true));
 $('more').onclick=()=>busy($('more'),()=>loadEmails(true));
@@ -27,10 +27,42 @@ $('settingsOpen').onclick=async()=>{try{const c=await api('/api/config');$('key'
 $('settingsClose').onclick=()=>$('settings').close();
 $('settingsForm').onsubmit=e=>{e.preventDefault();busy(e.submitter,async()=>{await api('/api/config',{bob_api_key:$('key').value,bob_team_id:$('team').value,outlook_profile:$('profile').value});$('key').value='';$('settingsStatus').textContent='Settings saved.';await sync();});};
 $('testBob').onclick=()=>busy($('testBob'),async()=>{await api('/api/config',{bob_api_key:$('key').value,bob_team_id:$('team').value});$('key').value='';const r=await api('/api/bob-test',{});$('settingsStatus').textContent=r.connected?'Connected to IBM Bob. Test request succeeded.':'Bob replied, but the connection check was unexpected.';});
-$('update').onclick=()=>busy($('update'),async()=>{const v=await api('/api/version');if(!v.update_available){notice(v.message);return;}notice('Installing update. This page will reload when the app restarts.');const r=await api('/api/update',{});notice(r.message);});
 async function health(){try{const h=await api('/api/health');if(state.instance&&state.instance!==h.instance){if(Object.values(state.drafts).some(Boolean)){sessionStorage.setItem('drafts',JSON.stringify(state.drafts));}sessionStorage.setItem('outlook-ui',JSON.stringify({view:document.querySelector('.view.active')?.id,search:state.search,folder:state.folder,unread:state.unread,context:Object.fromEntries(new FormData($('contextForm'))),intents:state.intents}));location.reload();}state.instance=h.instance;}catch{ /* Keep the page visible during restart. */ }}
 try{state.drafts=JSON.parse(sessionStorage.getItem('drafts')||'{}');sessionStorage.removeItem('drafts');}catch{}
 let restored=null;try{restored=JSON.parse(sessionStorage.getItem('outlook-ui')||'null');sessionStorage.removeItem('outlook-ui');if(restored){state.folder=restored.folder;state.search=restored.search;state.unread=restored.unread;state.intents=restored.intents||{};$('search').value=state.search;$('all').classList.toggle('selected',!state.unread);$('unread').classList.toggle('selected',state.unread);view(restored.view||'mail');}}catch{}
 Promise.all([sync(),context().then(()=>{if(restored?.context)for(const [k,v] of Object.entries(restored.context))$('contextForm').elements[k].value=v;}),tasks(),health()]).catch(e=>notice(e.message));setInterval(health,4000);setInterval(()=>{if(!document.hidden&&!$('settings').open)sync();},60000);
 
 $('mobileFolder').onchange=()=>{state.folder=$('mobileFolder').value;$('mail').classList.remove('detail-open');Promise.all([folders(),loadEmails()]).catch(e=>notice(e.message));};
+
+$('findTasks').onclick=()=>busy($('findTasks'),async()=>{
+ const selected=$('mobileFolder').selectedOptions[0]?.textContent||state.folder;
+ $('taskScanStatus').textContent='Bob is reviewing '+selected+(state.search?' · '+state.search:'')+(state.unread?' · Unread only':'')+'…';
+ $('taskSuggestions').replaceChildren();
+ try{
+ const result=await api('/api/extract-tasks',{folder:state.folder,search:state.search,unread:state.unread});
+ $('taskScanStatus').textContent=`Reviewed ${result.scanned} recent cached messages. ${result.suggestions.length} new suggestions. Coverage is limited; review each item.`;
+ for(const item of result.suggestions){
+  const card=text('section','','task-suggestion');
+  const title=document.createElement('input');title.value=item.text;title.setAttribute('aria-label','Suggested task');
+  const kind=document.createElement('select');kind.setAttribute('aria-label','Task owner');
+  for(const [value,label] of [['my','My task'],['others','Waiting on others']]){const option=text('option',label);option.value=value;option.selected=value===item.type;kind.append(option);}
+  const quote=text('blockquote',item.evidence);
+  const source=text('button','View email: '+item.email_subject,'source-email');source.onclick=()=>{view('mail');selectEmail(item.email_id).catch(e=>notice(e.message));};
+  const actions=text('div','','actions');const add=text('button','Add task','primary');const dismiss=text('button','Dismiss');dismiss.onclick=()=>card.remove();
+  add.onclick=()=>busy(add,async()=>{await api('/api/tasks',{action:'add',text:title.value,type:kind.value,email_id:item.email_id,evidence:item.evidence});await tasks();card.remove();notice('Task saved with its source email.');});
+  actions.append(add,dismiss);card.append(title,kind,quote,source,actions);$('taskSuggestions').append(card);
+ }
+ }catch(e){$('taskScanStatus').textContent='Could not review emails. No tasks were added.';throw e;}
+});
+
+let lastInteraction=Date.now(),updateChecking=false;
+for(const event of ['pointerdown','keydown','input'])document.addEventListener(event,()=>{lastInteraction=Date.now();},{passive:true});
+function updateIsIdle(){return !document.hidden&&!state.pending&&!state.busy&&!$('settings').open&&!$('taskSuggestions').children.length&&Date.now()-lastInteraction>30000;}
+async function autoUpdate(){
+ if(updateChecking||!updateIsIdle())return;
+ updateChecking=true;
+ try{const result=await api('/api/version');if(result.update_available&&updateIsIdle()){const installed=await api('/api/update',{});if(installed.updated)notice('Update installed. Refreshing your workspace…');}}
+ catch{/* Retry on the next check; offline use remains available. */}
+ finally{updateChecking=false;}
+}
+setTimeout(autoUpdate,45000);setInterval(autoUpdate,300000);

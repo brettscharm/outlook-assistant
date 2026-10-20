@@ -19,3 +19,5 @@
  .reader-meta{margin:15px 0;padding-bottom:15px}.body-text{font-size:14px}#reader h2{font-size:23px}.draft{margin-top:23px}.draft .actions input{font-size:13px}.content{min-height:0;overflow:auto}
  footer{font-size:10px;padding:8px 16px;min-height:0;flex-shrink:0;line-height:1.5}.form{gap:17px}.form textarea{min-height:90px}.content h2{font-size:23px}dialog{max-height:calc(100dvh - 28px);overflow:auto;padding:22px}
 }
+
+.task-details{flex:1;min-width:0}.task-details span{display:block}.source-email{display:block;text-align:left;white-space:normal;overflow-wrap:anywhere;border:0;padding:8px 0;color:var(--blue);font-size:12px;background:transparent}.task-suggestion{border:1px solid var(--line);border-radius:10px;padding:18px;margin:14px 0;max-width:780px}.task-suggestion select{margin-top:10px;width:auto;max-width:100%}.task-suggestion blockquote{margin:14px 0;padding-left:14px;border-left:3px solid var(--line);color:var(--muted);line-height:1.6;overflow-wrap:anywhere}.task-suggestion .actions{margin-top:12px}#taskScanStatus{margin-top:15px;font-size:13px;color:var(--muted)}

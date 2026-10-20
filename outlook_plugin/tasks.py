@@ -53,10 +53,16 @@ def add_task(
     text: str,
     assignee: Optional[str] = None,
     due_date: Optional[str] = None,
+    source: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, List[Dict[str, Any]]]:
     """Add a new task and return all updated tasks."""
     tasks = load_tasks()
     key = "others_tasks" if task_type == "others" else "my_tasks"
+
+    if source:
+        for items in tasks.values():
+            if any(t.get("email_id")==source["email_id"] and " ".join(t["text"].lower().split())==" ".join(text.lower().split()) for t in items):
+                return tasks
 
     new_item = {
         "id": str(uuid.uuid4()),
@@ -67,6 +73,8 @@ def add_task(
         "created_at": datetime.now().isoformat(),
     }
 
+    if source:
+        new_item.update(source)
     tasks[key].insert(0, new_item)
     save_tasks(tasks)
     return tasks

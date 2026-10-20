@@ -44,7 +44,7 @@ Your selected email and saved context go to IBM Bob when generating a draft. Bri
 
 ## Updates
 
-**Check for updates** checks GitHub and applies an available update, then restarts the local server. The open page detects the new server instance and refreshes automatically. Draft text is retained across that refresh. Source checkouts with local changes are not overwritten. ZIP/app installs stage the new package and validate archive paths before replacing it. Updates use HTTPS and the repository's exact commit; they are not independently cryptographically signed.
+While the page is open, updates are checked automatically after 45 seconds and then every five minutes. Installation waits until the page has been idle for 30 seconds, Bob is not working, Settings is closed, and no task suggestions are awaiting review. The update restarts the local server. The open page detects the new server instance and refreshes automatically. Draft text is retained across that refresh. Source checkouts with local changes are not overwritten. ZIP/app installs stage the new package and validate archive paths before replacing it. Updates use HTTPS and the repository's exact commit; they are not independently cryptographically signed.
 
 The bundled Python runtime stays inside the app; updateable application code lives in `~/Library/Application Support/Outlook Assistant/app`. Runtime changes may require downloading a new app release. Your settings and tasks survive code updates.
 
@@ -58,3 +58,7 @@ cd vendor/hxmail && go test ./...
 Build the reader with Go 1.27+ for `GOOS=darwin`, `GOARCH=arm64` and `amd64` into `outlook_plugin/bin/hxmail-darwin-<arch>`. Build the app with Python and PyInstaller using `scripts/build_mac.sh`. Legacy Outlook integration tests require `OUTLOOK_LEGACY_E2E=1` and a populated Legacy Outlook account.
 
 See `vendor/hxmail/UPSTREAM.md`, `LICENSE`, and `THIRD_PARTY_NOTICES.md` for provenance and licenses. No real emails or credentials are included in test fixtures.
+
+## Tasks from mail
+
+Tasks is the default screen. **Find tasks in my emails** sends up to 30 recent messages matching the Mail folder, search, and unread filter to IBM Bob, using up to 6,000 cached characters per message plus your saved context. Suggestions include a verified supporting quote and a link to the source email. Edit the title or owner, then Add task or Dismiss. Saved tasks retain the email link; duplicate titles from the same source are not added twice. This is a limited AI review, not a complete mailbox audit.

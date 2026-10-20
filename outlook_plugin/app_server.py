@@ -150,12 +150,36 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             if not email: return self._send_json({'error':'Message not found.'},404)
             reply=self.ai.draft_smart_reply(email,[],intent=str(data.get('intent','Draft a helpful reply without making commitments.'))[:3000])
             return self._send_json({'reply':reply,'usage':self.ai.last_usage})
+        if path=='/api/extract-tasks':
+            rows=self.engine.get_emails(folder=str(data.get('folder','inbox')),limit=30,
+                search_term=str(data.get('search',''))[:500],unread_only=bool(data.get('unread',False)))
+            messages=[]
+            for row in rows:
+                message=self.engine.get_email_details(str(row['id']))
+                if message:
+                    content=(message.get('body') or message.get('preview') or '')[:6000]
+                    messages.append(dict(id=str(message['id']),subject=message.get('subject',''),
+                        sender=message.get('sender',''),received_time=message.get('received_time',''),content=content))
+            suggestions=self.ai.extract_tasks(messages)
+            existing=load_tasks()
+            known={(t.get('email_id'),' '.join(t['text'].lower().split())) for group in existing.values() for t in group}
+            suggestions=[t for t in suggestions if (t['email_id'],' '.join(t['text'].lower().split())) not in known]
+            return self._send_json({'suggestions':suggestions,'scanned':len(messages),'usage':self.ai.last_usage})
         if path=='/api/tasks':
             action=data.get('action','add')
             if action=='add':
                 text=str(data.get('text','')).strip()[:2000]
                 if not text: raise ValueError('Enter a task.')
-                tasks=add_task(data.get('type','my'),text)
+                source=None
+                if data.get('email_id'):
+                    message=self.engine.get_email_details(str(data['email_id']))
+                    if not message: raise ValueError('The source email is no longer in the local cache.')
+                    evidence=str(data.get('evidence',''))[:1200]
+                    content=message.get('body') or message.get('preview') or ''
+                    if not evidence or ' '.join(evidence.split()) not in ' '.join(content.split()):
+                        raise ValueError('The supporting quote could not be verified in the source email.')
+                    source=dict(email_id=str(message['id']),email_subject=message.get('subject','(No subject)'),evidence=evidence)
+                tasks=add_task(data.get('type','my'),text,source=source)
             elif action=='toggle': tasks=toggle_task(data.get('id'))
             elif action=='delete': tasks=delete_task(data.get('id'))
             else: raise ValueError('Unknown task action.')
