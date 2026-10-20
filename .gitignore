@@ -26,3 +26,10 @@ ENV/
 .DS_Store
 *.log
 .outlook_assistant_update_cache.json
+
+bob-key.txt
+*.hxd
+*.eml
+*.sqlite
+*.db
+*.spec

@@ -151,7 +151,8 @@ class MacOutlookBridge:
         elif folder.lower() == "inbox":
             target_source = "messages of inbox"
         else:
-            target_source = f'messages of (mail folder "{folder}")'
+            safe_folder = folder.replace("\\", "\\\\").replace('"', '\\"')
+            target_source = f'messages of (mail folder "{safe_folder}")'
 
         script = f"""
         tell application "Microsoft Outlook"
@@ -262,6 +263,8 @@ class MacOutlookBridge:
 
     def get_email_details(self, message_id: str) -> Optional[Dict[str, Any]]:
         """Fetch full details and body content of a specific email message."""
+        if not str(message_id).isdigit():
+            raise ValueError("Invalid local message ID.")
         script = f"""
         tell application "Microsoft Outlook"
             try

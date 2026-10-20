@@ -64,6 +64,7 @@ class TestMacOutlookBridge(unittest.TestCase):
         ]
 
         engine = OutlookEngine(prefer_mac=True)
+        engine.get_active_backend = lambda: engine.mac_bridge
         briefing = engine.get_daily_briefing()
 
         self.assertEqual(briefing["upcoming_events_count"], 1)

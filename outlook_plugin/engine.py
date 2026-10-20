@@ -8,6 +8,7 @@ import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 from .mac_bridge import MacOutlookBridge
+from .local_store import LocalStoreBridge
 from .graph_bridge import GraphOutlookBridge
 
 logger = logging.getLogger(__name__)
@@ -22,11 +23,14 @@ class OutlookEngine:
         graph_token: Optional[str] = None,
     ):
         self.mac_bridge = MacOutlookBridge()
+        self.local_store = LocalStoreBridge()
         self.graph_bridge = GraphOutlookBridge(access_token=graph_token) if graph_token else None
         self.prefer_mac = prefer_mac
 
     def get_active_backend(self):
         """Returns the primary active bridge (macOS local or Graph API)."""
+        if self.prefer_mac and self.local_store.is_available():
+            return self.local_store
         if self.prefer_mac and self.mac_bridge.is_available():
             return self.mac_bridge
         if self.graph_bridge and self.graph_bridge.is_available():
@@ -35,6 +39,8 @@ class OutlookEngine:
 
     def get_status(self) -> Dict[str, Any]:
         """Check connection status of local Outlook and cloud integrations."""
+        if self.local_store.is_available() and self.prefer_mac:
+            return self.local_store.status()
         is_mac_avail = self.mac_bridge.is_available()
         is_mac_running = self.mac_bridge.is_running() if is_mac_avail else False
         is_graph_avail = self.graph_bridge.is_available() if self.graph_bridge else False

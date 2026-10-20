@@ -30,7 +30,7 @@ def format_table(headers, rows):
 
 def main():
     # Background update check (non-blocking / periodic)
-    run_background_update_check()
+    # Updates are checked explicitly in the app; never mutate a running checkout.
 
     parser = argparse.ArgumentParser(
         prog="outlook-assistant",
@@ -94,7 +94,7 @@ def main():
         return
 
     # Fire telemetry heartbeat
-    track_event(f"cli_{args.command}")
+    # No usage telemetry is emitted by the application.
 
     if args.command == "app":
         from .app_server import start_app_server

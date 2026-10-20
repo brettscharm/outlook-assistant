@@ -4,6 +4,10 @@ Manages 'Your Tasks' (action items for you) and 'Others' Tasks' (waiting on some
 """
 
 import json
+import os
+import tempfile
+import threading
+_LOCK = threading.RLock()
 import logging
 import uuid
 from datetime import datetime
@@ -28,39 +32,20 @@ def load_tasks() -> Dict[str, List[Dict[str, Any]]]:
         except Exception as e:
             logger.error(f"Error loading tasks: {e}")
 
-    default_data = {
-        "my_tasks": [
-            {
-                "id": str(uuid.uuid4()),
-                "text": "Review weekly engineering update",
-                "completed": False,
-                "due_date": "Today",
-                "assignee": "Me",
-                "created_at": datetime.now().isoformat(),
-            }
-        ],
-        "others_tasks": [
-            {
-                "id": str(uuid.uuid4()),
-                "text": "Waiting on budget approval",
-                "assignee": "Finance",
-                "completed": False,
-                "due_date": "Tomorrow",
-                "created_at": datetime.now().isoformat(),
-            }
-        ],
-    }
+    default_data = {'my_tasks': [], 'others_tasks': []}
     save_tasks(default_data)
     return default_data
 
 
 def save_tasks(tasks: Dict[str, List[Dict[str, Any]]]):
     """Save tasks dictionary to disk."""
+    fd, name = tempfile.mkstemp(dir=TASKS_FILE.parent, prefix='.outlook-tasks-')
     try:
-        with open(TASKS_FILE, "w") as f:
-            json.dump(tasks, f, indent=2)
-    except Exception as e:
-        logger.error(f"Error saving tasks: {e}")
+        with os.fdopen(fd, 'w') as stream:
+            json.dump(tasks, stream)
+        os.replace(name, TASKS_FILE)
+    finally:
+        if os.path.exists(name): os.unlink(name)
 
 
 def add_task(
@@ -106,3 +91,14 @@ def delete_task(task_id: str) -> Dict[str, List[Dict[str, Any]]]:
         tasks[category] = [t for t in tasks[category] if str(t.get("id")) != str(task_id)]
     save_tasks(tasks)
     return tasks
+
+
+def _serialized(fn):
+    def run(*args, **kwargs):
+        with _LOCK: return fn(*args, **kwargs)
+    return run
+
+load_tasks = _serialized(load_tasks)
+add_task = _serialized(add_task)
+toggle_task = _serialized(toggle_task)
+delete_task = _serialized(delete_task)

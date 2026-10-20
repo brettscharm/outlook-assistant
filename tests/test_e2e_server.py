@@ -4,6 +4,7 @@ Verifies all REST endpoints and Outlook local sync.
 """
 
 import json
+import os
 import threading
 import time
 import unittest
@@ -12,10 +13,12 @@ from outlook_plugin.app_server import PORT, start_app_server
 from outlook_plugin.engine import OutlookEngine
 
 
+@unittest.skipUnless(os.environ.get("OUTLOOK_LEGACY_E2E"), "Legacy Outlook integration is opt-in")
 class TestOutlookE2E(unittest.TestCase):
 
     def test_engine_all_emails_sync(self):
         engine = OutlookEngine()
+        engine.local_store.is_available = lambda: False
         status = engine.get_status()
         self.assertTrue(status["mac_outlook_installed"])
 
