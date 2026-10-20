@@ -12,6 +12,7 @@ from .ai_agent import BobAIAgent, bob_executable, get_bob_api_key, save_bob_api_
 from .config import read_config, update_config
 from .engine import OutlookEngine
 from .local_store import profiles, LocalStoreBridge
+from .contacts import group_contacts, link_company
 from .tasks import load_tasks, add_task, toggle_task, delete_task
 from .updater import check_and_apply_update
 
@@ -83,6 +84,14 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             return self._send_json({'bob_configured':bool(get_bob_api_key()),'bob_installed':bool(bob_executable()),
                                    'bob_team_id':cfg.get('bob_team_id',''),'user_context':cfg.get('user_context',{}),
                                    'outlook_profile':cfg.get('outlook_profile',''),'profiles':[str(p) for p in profiles()]})
+        if path=='/api/contacts':
+            backend=self.engine.get_active_backend()
+            if not isinstance(backend,LocalStoreBridge): raise RuntimeError('Contacts currently requires the local Outlook cache reader.')
+            cfg=read_config()
+            groups=group_contacts(backend.get_emails(folder='all',limit=100000),cfg.get('domain_companies',{}))
+            accounts=cfg.get('user_context',{}).get('accounts','')
+            companies=sorted(set([row.split('\t')[0].strip() for row in accounts.splitlines() if row.strip()]+list(cfg.get('domain_companies',{}).values())),key=str.casefold)
+            return self._send_json({'groups':groups,'companies':companies,'source':'Cached email senders'})
         if path=='/api/folders': return self._send_json(self.engine.list_folders())
         if path=='/api/accounts': return self._send_json(self.engine.list_accounts())
         if path=='/api/tasks': return self._send_json(load_tasks())
@@ -119,6 +128,9 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json({'error':str(exc)},503)
 
     def _post(self,path,data):
+        if path=='/api/contact-company':
+            links=link_company(data.get('domain',''),data.get('company',''))
+            return self._send_json({'saved':True,'domain_companies':links})
         if path=='/api/config':
             changes={}
             if data.get('bob_api_key','').strip(): changes['bob_api_key']=data['bob_api_key'].strip()

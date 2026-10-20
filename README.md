@@ -62,3 +62,7 @@ See `vendor/hxmail/UPSTREAM.md`, `LICENSE`, and `THIRD_PARTY_NOTICES.md` for pro
 ## Tasks from mail
 
 Tasks is the default screen. **Find tasks in my emails** sends up to 30 recent messages matching the Mail folder, search, and unread filter to IBM Bob, using up to 6,000 cached characters per message plus your saved context. Suggestions include a verified supporting quote and a link to the source email. Edit the title or owner, then Add task or Dismiss. Saved tasks retain the email link; duplicate titles from the same source are not added twice. This is a limited AI review, not a complete mailbox audit.
+
+## Contacts and companies
+
+Contacts groups unique senders from the local cache by exact email domain. It is not a full Outlook address-book sync. Expand a domain, choose a company suggested from your saved account list (first spreadsheet column), or type a new name, then Save company. Multiple domains can use the same company name; subdomains remain separate groups. Company links are private local settings, can be unlinked, and are included as context only when you request a Bob action. Shared domains such as gmail.com are not reliable company identifiers. Search contacts by person, address, domain, or linked company; Search mail opens a mailbox search for that address.

@@ -1,11 +1,12 @@
 'use strict';
 const $=id=>document.getElementById(id);
+let contactData=[],contactDrafts={},contactsLoading=false,contactsLoaded=false;
 const state={folder:'all',unread:false,search:'',emails:[],selected:null,offset:0,request:0,instance:null,busy:false,drafts:{},intents:{},lastList:'',pending:0};
 const text=(tag,value,cls)=>{const e=document.createElement(tag);e.textContent=value??'';if(cls)e.className=cls;return e;};
 function notice(value){$('notice').textContent=value;$('notice').hidden=!value;}
 async function api(path,data){const r=await fetch(path,data===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const value=await r.json();if(!r.ok)throw Error(value.error||'Request failed');return value;}
 async function busy(button,fn){const old=button.textContent;state.pending++;button.disabled=true;button.textContent='Working…';try{await fn();}catch(e){notice(e.message);}finally{state.pending--;button.disabled=false;button.textContent=old;}}
-function view(id){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('active',e.id===id));document.querySelectorAll('[data-view]').forEach(e=>e.classList.toggle('active',e.dataset.view===id));$('pageTitle').textContent=({mail:'Mail',calendar:'Calendar',tasks:'Tasks',briefing:'Briefing',context:'My context'})[id];}
+function view(id){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('active',e.id===id));document.querySelectorAll('[data-view]').forEach(e=>e.classList.toggle('active',e.dataset.view===id));$('pageTitle').textContent=({mail:'Mail',calendar:'Calendar',tasks:'Tasks',briefing:'Briefing',context:'My context',contacts:'Contacts'})[id];if(id==='contacts')loadContacts().catch(e=>notice(e.message));}
 function date(v,full=false){const d=new Date(v);return isNaN(d)?'Date unavailable':d.toLocaleString(undefined,full?{dateStyle:'medium',timeStyle:'short'}:{month:'short',day:'numeric'});}
 async function loadEmails(append=false){const serial=++state.request;$('mailCount').textContent='Loading…';const rows=await api('/api/emails?'+new URLSearchParams({folder:state.folder,limit:50,offset:append?state.emails.length:0,unread_only:state.unread,search:state.search}));if(serial!==state.request)return;state.emails=append?[...state.emails,...rows]:rows;$('more').hidden=rows.length<50;renderEmails();}
 function renderEmails(){const root=$('messages');$('mailCount').textContent=state.emails.length+' shown';const fingerprint=JSON.stringify([state.emails,state.selected]);if(fingerprint===state.lastList)return;state.lastList=fingerprint;const scroll=root.parentElement.scrollTop;root.replaceChildren();if(!state.emails.length){root.append(text('p','No matching cached messages.','empty'));return;}for(const m of state.emails){const b=text('button','',`message ${m.id===state.selected?'active':''} ${m.read==='unread'?'unread':''}`);const top=text('div','','sender');top.append(text('strong',m.from?.name||m.from?.address||m.sender),text('time',date(m.received_time)));b.append(top,text('div',m.subject||'(No subject)','subject'),text('div',m.preview||'Open to read the cached message.','preview'));b.onclick=()=>selectEmail(m.id).catch(e=>notice(e.message));root.append(b);}root.parentElement.scrollTop=scroll;}
@@ -57,7 +58,7 @@ $('findTasks').onclick=()=>busy($('findTasks'),async()=>{
 
 let lastInteraction=Date.now(),updateChecking=false;
 for(const event of ['pointerdown','keydown','input'])document.addEventListener(event,()=>{lastInteraction=Date.now();},{passive:true});
-function updateIsIdle(){return !document.hidden&&!state.pending&&!state.busy&&!$('settings').open&&!$('taskSuggestions').children.length&&Date.now()-lastInteraction>30000;}
+function updateIsIdle(){return !Object.keys(contactDrafts).length&& !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)&& !document.hidden&&!state.pending&&!state.busy&&!$('settings').open&&!$('taskSuggestions').children.length&&Date.now()-lastInteraction>30000;}
 async function autoUpdate(){
  if(updateChecking||!updateIsIdle())return;
  updateChecking=true;
@@ -70,3 +71,32 @@ setTimeout(autoUpdate,45000);setInterval(autoUpdate,300000);
 function accountListCount(){const rows=$('accountList').value.split(/\r?\n/).filter(row=>row.trim());$('accountListCount').textContent=rows.length+' non-empty rows · '+$('accountList').value.length.toLocaleString()+' / 12,000 characters';}
 $('accountList').addEventListener('input',accountListCount);
 $('tidyAccounts').onclick=()=>{const rows=$('accountList').value.split(/\r?\n/).map(row=>row.trimEnd()).filter(row=>row.trim());$('accountList').value=[...new Set(rows)].join('\n');accountListCount();notice('Blank and identical rows removed. Select Save my context to keep this list.');};
+
+async function loadContacts(force=false){
+ if(contactsLoading||(!force&&contactsLoaded))return;
+ contactsLoading=true;$('contactCount').textContent='Reading cached senders…';
+ try{const result=await api('/api/contacts');contactData=result.groups;contactsLoaded=true;
+ $('companyOptions').replaceChildren();for(const company of result.companies){const option=text('option',company);option.value=company;$('companyOptions').append(option);}renderContacts();
+ }catch(e){$('contactCount').textContent='Contacts could not be loaded. Try Refresh contacts.';throw e;}finally{contactsLoading=false;}
+}
+function renderContacts(){
+ const query=$('contactSearch').value.toLowerCase().trim();const root=$('contactGroups');root.replaceChildren();let shown=0,total=0;
+ for(const group of contactData){
+  const groupMatch=(group.domain+' '+group.company).toLowerCase().includes(query);
+  const people=group.contacts.filter(p=>groupMatch||(p.name+' '+p.email).toLowerCase().includes(query));if(!people.length)continue;
+  total+=people.length;shown++;
+  const card=document.createElement('details');card.className='contact-group';card.open=!!query;
+  const summary=text('summary','');summary.append(text('strong',group.company||group.domain),text('span',(group.company?group.domain+' · ':'')+people.length+' contacts','muted small'));card.append(summary);
+  const form=document.createElement('form');form.className='company-link';
+  const input=document.createElement('input');input.setAttribute('list','companyOptions');input.setAttribute('aria-label','Company for '+group.domain);input.placeholder='Choose or type a company';input.maxLength=200;input.value=contactDrafts[group.domain]??group.company;input.oninput=()=>{contactDrafts[group.domain]=input.value;};
+  const save=text('button','Save company','primary');save.type='submit';const unlink=text('button','Unlink');unlink.type='button';unlink.hidden=!group.company;
+  form.onsubmit=e=>{e.preventDefault();busy(save,async()=>{await api('/api/contact-company',{domain:group.domain,company:input.value});group.company=input.value.trim();delete contactDrafts[group.domain];const header=summary.querySelector('strong');header.textContent=group.company||group.domain;summary.querySelector('span').textContent=(group.company?group.domain+' · ':'')+people.length+' contacts';unlink.hidden=!group.company;notice('Company link saved for '+group.domain+'.');});};
+  unlink.onclick=()=>busy(unlink,async()=>{await api('/api/contact-company',{domain:group.domain,company:''});input.value='';group.company='';delete contactDrafts[group.domain];summary.querySelector('strong').textContent=group.domain;summary.querySelector('span').textContent=people.length+' contacts';unlink.hidden=true;notice('Company link removed.');});
+  form.append(input,save,unlink);card.append(form);
+  for(const person of people){const row=text('div','','contact-person');const info=text('div','','contact-person-info');info.append(text('strong',person.name),text('span',person.email,'muted small'));const mail=text('button','Search mail');mail.onclick=()=>{state.folder='all';state.unread=false;state.search=person.email;$('search').value=person.email;$('all').classList.add('selected');$('unread').classList.remove('selected');$('mail').classList.remove('detail-open');view('mail');Promise.all([folders(),loadEmails()]).catch(e=>notice(e.message));};row.append(info,text('span',person.message_count+' messages','muted small'),mail);card.append(row);}
+  root.append(card);
+ }
+ $('contactCount').textContent=total+' contacts across '+shown+' domains';if(!shown)root.append(text('p','No matching cached senders.','muted'));
+}
+$('contactSearch').oninput=renderContacts;
+$('refreshContacts').onclick=()=>busy($('refreshContacts'),()=>loadContacts(true));
