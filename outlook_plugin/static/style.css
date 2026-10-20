@@ -53,3 +53,7 @@
 .app-footer{display:flex;align-items:center;justify-content:space-between;gap:12px}.app-footer #freshness{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bob-indicator{display:flex;align-items:center;gap:7px;flex-shrink:0;padding:5px 9px;font-size:11px;background:white}.status-dot{display:inline-block;flex-shrink:0;width:9px;height:9px;border-radius:50%;background:#b42318}.bob-indicator[data-state=connected] .status-dot{background:#16834a}.bob-indicator[data-state=unchecked] .status-dot,.bob-indicator:not([data-state]) .status-dot{background:#a97910}#bobKeyLabel{max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}#notice[data-kind=error]{background:#fff1ef;color:#842c23;border-color:#efc3bd}.bob-warning .actions{flex-shrink:0}@media(max-width:760px){.app-footer{gap:6px;flex-wrap:wrap}.app-footer #freshness{flex-basis:100%;font-size:10px}.bob-indicator{margin-left:auto}#bobKeyLabel{max-width:130px}}
 
 #serviceWarning{display:flex;justify-content:space-between;gap:12px;align-items:center}#serviceWarning button{font-size:12px;padding:5px 8px;flex-shrink:0}
+
+.automatic-tasks{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 0}.automatic-tasks p{margin:5px 0 0}.automatic-tasks button{flex-shrink:0}.scan-progress:has(progress[hidden]):has(button[hidden]){display:none}
+
+.task-actions{justify-content:flex-end;margin-bottom:16px}

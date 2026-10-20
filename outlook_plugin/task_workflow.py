@@ -10,7 +10,8 @@ import time
 from datetime import date, datetime
 from pathlib import Path
 from .config import read_config, update_config
-from .ai_agent import BobAIAgent
+from .ai_agent import BobAIAgent, get_bob_api_key, _BOB_LOCK
+from . import bob_status
 from .tasks import load_tasks, add_task
 
 WORKFLOW_FILE=DATA_DIR/'.outlook_assistant_task_review.json'
@@ -29,7 +30,7 @@ def save(data):
 
 
 def options():
-    return dict({'since':date.today().replace(day=1).isoformat(),'mode':'mine','interval':0,'budget':2},**read_config().get('task_scan',{}))
+    return dict({'since':date.today().replace(day=1).isoformat(),'mode':'mine','interval':15,'budget':2},**read_config().get('task_scan',{}))
 
 
 def validate_options(data):
@@ -51,9 +52,16 @@ def identity_ready():
 
 def settings(data):
     opts=validate_options(data)
-    if opts['interval'] and not identity_ready():raise ValueError('Save your name and work email in My context before enabling automatic checks.')
     update_config({'task_scan':opts})
+    if not opts['interval'] and _RUN.locked():stop()
     return opts
+
+
+def automatic_state():
+    if not options()['interval']:return 'paused'
+    if not identity_ready():return 'identity'
+    if bob_status.current(get_bob_api_key())['state']!='connected':return 'bob'
+    return 'ready'
 
 
 def snapshot(email_id=None):
@@ -68,7 +76,7 @@ def snapshot(email_id=None):
             item.update(text=task['text'],owner=task.get('assignee','Owner unclear'),type=task.get('type',item['type']),due_date=task.get('due_date',''),completed=task.get('completed',False))
     if email_id:items=[t for t in items if t['email_id']==email_id]
     return {'suggestions':items,'job':job,'options':options(),'last_check':data.get('last_check'),
-            'identity_ready':identity_ready(),'reasons':REASONS,
+            'identity_ready':identity_ready(),'automatic_state':automatic_state(),'reasons':REASONS,
             'email_scanned':any(p.get('email_id')==email_id for p in data['processed'].values()) if email_id else False}
 
 
@@ -160,7 +168,7 @@ def run(engine,opts,email_id=None):
             return
         remaining=opts['budget']-spent
         if remaining<0.01:
-            with _LOCK:JOB.update(status='paused',message='Bob usage cap reached. Start another scan to resume remaining messages.')
+            with _LOCK:JOB.update(status='paused',message='Bob usage cap reached. Remaining emails will continue at the next automatic check.')
             return
         batch=pending[offset:offset+10]
         with _LOCK:JOB['message']=f'Reviewing emails {offset+1}–{offset+len(batch)} of {len(pending)}…'
@@ -196,11 +204,22 @@ def run(engine,opts,email_id=None):
 
 
 def scheduler(engine,shutdown):
-    last_attempt=time.monotonic()
+    last_attempt=None
     while not shutdown.wait(15):
         opts=options()
-        if not opts['interval'] or time.monotonic()-last_attempt<opts['interval']*60:continue
-        last_attempt=time.monotonic()
-        if _RUN.locked() or not identity_ready():continue
+        if not opts['interval']:
+            last_attempt=None
+            continue
+        if automatic_state()!='ready' or _RUN.locked() or _BOB_LOCK.locked():continue
+        now=time.monotonic()
+        if last_attempt is not None and now-last_attempt<opts['interval']*60:continue
+        # Respect persisted progress after a restart, including manual checks.
+        checked=load().get('last_check')
+        if checked:
+            try:
+                elapsed=(datetime.now().astimezone()-datetime.fromisoformat(checked).astimezone()).total_seconds()
+                if 0<=elapsed<opts['interval']*60:continue
+            except (ValueError,TypeError):pass
+        last_attempt=now
         try:start(engine,opts)
-        except Exception:pass  # Manual scan status exposes failures; retry at next scheduled interval.
+        except Exception:pass  # Retry at the next interval, never in a tight loop.

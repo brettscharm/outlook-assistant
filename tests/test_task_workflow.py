@@ -44,17 +44,42 @@ class WorkflowTests(unittest.TestCase):
   with patch.object(model,'_call_llm',return_value=json.dumps({'tasks':[item(),invalid]})):
    result=model.extract_tasks([dict(message(),content=message()['body'])])
   self.assertEqual(result[0]['type'],'my');self.assertEqual(result[0]['due_date'],'2026-10-30');self.assertEqual(result[1]['type'],'unclear');self.assertEqual(result[1]['due_date'],'')
- def test_schedule_requires_identity(self):
+ def test_automatic_default_waits_for_setup(self):
+  self.assertEqual(w.options()['interval'],15)
   config.update_config({'user_context':{}})
-  with self.assertRaises(ValueError):w.settings(dict(self.opts,interval=15))
-  self.assertEqual(w.settings(self.opts)['interval'],0)
+  w.settings(dict(self.opts,interval=15))
+  self.assertEqual(w.automatic_state(),'identity')
+  w.settings(self.opts)
+  self.assertEqual(w.automatic_state(),'paused')
 
- def test_scheduler_runs_only_at_configured_interval(self):
-  with patch.object(w,'options',return_value=dict(self.opts,interval=15)),patch.object(w.time,'monotonic',side_effect=[0,901,901]),patch.object(w,'start') as start:
-   from unittest.mock import Mock
-   stop=Mock();stop.wait.side_effect=[False,True]
+ def test_scheduler_runs_immediately_then_waits(self):
+  from unittest.mock import Mock
+  with patch.object(w,'automatic_state',return_value='ready'),patch.object(w.time,'monotonic',side_effect=[0,30,901]),patch.object(w,'start') as start:
+   stop=Mock();stop.wait.side_effect=[False,False,False,True]
    w.scheduler(Engine([]),stop)
-   start.assert_called_once()
+   self.assertEqual(start.call_count,2)
+
+ def test_scheduler_requires_verified_connection(self):
+  from unittest.mock import Mock
+  for state in ('identity','bob','paused'):
+   with patch.object(w,'automatic_state',return_value=state),patch.object(w,'start') as start:
+    stop=Mock();stop.wait.side_effect=[False,True]
+    w.scheduler(Engine([]),stop);start.assert_not_called()
+
+ def test_scheduler_respects_recent_persisted_check(self):
+  from unittest.mock import Mock
+  from datetime import datetime
+  w.save({'suggestions':{},'processed':{},'last_check':datetime.now().isoformat()})
+  with patch.object(w,'automatic_state',return_value='ready'),patch.object(w,'start') as start:
+   stop=Mock();stop.wait.side_effect=[False,True]
+   w.scheduler(Engine([]),stop);start.assert_not_called()
+
+ def test_pause_stops_current_batch_and_survives_reload(self):
+  from unittest.mock import Mock
+  with patch.object(w,'_RUN',Mock(locked=lambda:True)),patch.object(w,'stop') as stop:
+   w.settings(dict(self.opts,interval=0));stop.assert_called_once()
+  self.assertEqual(w.options()['interval'],0)
+
  def test_stop_preserves_unprocessed_messages(self):
   w._STOP.set()
   with patch.object(BobAIAgent,'extract_tasks') as extract:
