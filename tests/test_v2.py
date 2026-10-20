@@ -29,7 +29,7 @@ class CoreTests(unittest.TestCase):
     def test_bob_uses_stdin_environment_and_no_tools(self,run,exe,node):
         run.return_value=Mock(returncode=0,stdout=json.dumps({'status':'success','last_message':'Real answer','stats':{'session_costs':.1}}))
         agent=BobAIAgent('secret');self.assertEqual(agent._call_llm('private content'),'Real answer')
-        args,kw=run.call_args;self.assertNotIn('secret',' '.join(args[0]));self.assertNotIn('private content',' '.join(args[0]));self.assertEqual(kw['env']['BOB_API_KEY'],'secret');self.assertIn('private content',kw['input']);self.assertIn('--disable-tool-groups',args[0]);self.assertIn('--max-cost',args[0])
+        args,kw=run.call_args;self.assertNotIn('secret',' '.join(args[0]));self.assertNotIn('private content',' '.join(args[0]));self.assertEqual(kw['env']['BOB_API_KEY'],'secret');self.assertIn('private content',kw['input']);self.assertIn('--disable-tool-groups',args[0]);self.assertNotIn('--max-cost',args[0])
         run.return_value=Mock(returncode=1,stdout='bad',stderr='')
         with self.assertRaises(RuntimeError):agent._call_llm('test')
     def test_cache_search_pagination_and_body_details(self):

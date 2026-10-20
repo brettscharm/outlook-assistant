@@ -69,7 +69,7 @@ See `vendor/hxmail/UPSTREAM.md`, `LICENSE`, and `THIRD_PARTY_NOTICES.md` for pro
 
 Tasks opens first. Set your full name, email addresses/aliases, role, and account context in My context. Bob distinguishes explicit requests to you, commitments you made, other named owners, and unclear ownership. Email previews show a task summary above the message after scanning.
 
-Choose a starting date (this month by default) and My tasks / All tasks. Scans review all matching cached messages in batches of ten, with up to 6,000 characters per message. Completed batches are remembered using message content, scan mode, and your context; restarting resumes unprocessed or changed messages. A configurable per-scan Bob reported-usage cap pauses work, and Stop finishes the current batch. Missing cloud mail is not fetched. AI extraction remains limited to the cached text supplied.
+Choose a starting date (this month by default) and My tasks / All tasks. Scans review all matching cached messages in batches of ten, with up to 6,000 characters per message. Completed batches are remembered using message content, scan mode, and your context; restarting resumes unprocessed or changed messages. The app does not impose a spending cap; IBM account limits still apply. Stop finishes the current batch. Missing cloud mail is not fetched. AI extraction remains limited to the cached text supplied.
 
 Automatic checks are opt-in at 15, 30, or 60 minutes. They run while the local server is running even if the browser is closed, use the saved Bob key and allowance, and review only unprocessed/changed messages within the chosen range. The timer restarts when the app restarts. Updates defer during an active scan.
 
@@ -85,7 +85,7 @@ Contacts groups unique senders from the local cache by exact email domain. It is
 
 ### Ask your email
 
-The **Ask your email** tab searches downloaded mail locally, then asks IBM Bob to answer with supporting email links. Follow-up questions include recent conversation context. Retrieval ranks word matches in subjects, senders, and cached bodies; it is not a complete semantic mailbox search. Each answer receives at most 12 matching message excerpts of 6,000 characters each, with a Bob reported usage cap of 1. Missing cache data is not evidence that a message or commitment does not exist.
+The **Ask your email** tab searches downloaded mail locally, then asks IBM Bob to answer with supporting email links. Follow-up questions include recent conversation context. Retrieval ranks word matches in subjects, senders, and cached bodies; it is not a complete semantic mailbox search. Each answer receives at most 12 matching message excerpts of 6,000 characters each. Missing cache data is not evidence that a message or commitment does not exist.
 
 Chat history is saved in `~/.outlook_assistant_chat.json` with owner-only permissions, survives app/laptop restarts, and can be cleared independently of tasks and mail. Draft questions are retained in browser local storage. Nothing is sent or edited in Outlook.
 

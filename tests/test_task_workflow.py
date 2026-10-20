@@ -33,11 +33,13 @@ class WorkflowTests(unittest.TestCase):
   tasks.edit_task(rows[0]['id'],'Changed task','Jane','others','2026-11-01')
   summary=w.snapshot('1')['suggestions'][0]
   self.assertEqual(summary['due_date'],'2026-11-01');self.assertEqual(summary['owner'],'Jane')
- def test_usage_limit_and_resume(self):
+ def test_legacy_budget_does_not_limit_batches(self):
+  config.update_config({'task_scan':dict(self.opts,budget=1)})
+  self.assertNotIn('budget',w.options())
   with patch.object(BobAIAgent,'extract_tasks',return_value=[]) as extract:
-   w.run(Engine([message(i) for i in range(12)]),self.opts)
-   self.assertEqual(extract.call_count,1);self.assertEqual(w.JOB['status'],'paused');self.assertEqual(w.JOB['scanned'],10)
-   w.run(Engine([message(i) for i in range(12)]),self.opts);self.assertEqual(extract.call_count,2);self.assertEqual(w.JOB['total'],2)
+   w.run(Engine([message(i) for i in range(32)]),self.opts)
+   self.assertEqual(extract.call_count,4);self.assertEqual(w.JOB['status'],'complete');self.assertEqual(w.JOB['scanned'],32)
+   w.run(Engine([message(i) for i in range(32)]),self.opts);self.assertEqual(extract.call_count,4)
  def test_evidence_guards_ownership_and_dates(self):
   invalid=dict(item(),text='Other',evidence='send the proposal',owner_evidence='Imagined owner',due_evidence='invented date')
   model=BobAIAgent('fake')

@@ -30,20 +30,19 @@ def save(data):
 
 
 def options():
-    saved=read_config().get('task_scan',{})
+    saved={k:v for k,v in read_config().get('task_scan',{}).items() if k != 'budget'}
     since=saved.get('since') or load().get('initial_since') or (date.today()-timedelta(days=7)).isoformat()
-    return dict({'since':since,'mode':'mine','interval':15,'budget':2},**saved)
+    return dict({'since':since,'mode':'mine','interval':15},**saved)
 
 
 def validate_options(data):
     opts=options()
-    for key in ('since','mode','interval','budget'):
+    for key in ('since','mode','interval'):
         if key in data:opts[key]=data[key]
     date.fromisoformat(opts['since'])
     if opts['since']>date.today().isoformat():raise ValueError('Choose a start date on or before today.')
     if opts['mode'] not in ('mine','all'):raise ValueError('Choose My tasks or All email tasks.')
     if opts['interval'] not in (0,15,30,60):raise ValueError('Choose a supported check interval.')
-    if opts['budget'] not in (1,2,5):raise ValueError('Choose a supported Bob usage cap.')
     return opts
 
 
@@ -174,19 +173,14 @@ def run(engine,opts,email_id=None):
         if _STOP.is_set():
             with _LOCK:JOB.update(status='stopped',message='Stopped. Start another scan to resume remaining messages.')
             return
-        remaining=opts['budget']-spent
-        if remaining<0.01:
-            with _LOCK:JOB.update(status='paused',message='Bob usage cap reached. Remaining emails will continue at the next automatic check.')
-            return
         batch=pending[offset:offset+10]
         with _LOCK:JOB['message']=f'Reviewing emails {offset+1}–{offset+len(batch)} of {len(pending)}…'
         current=load()
         feedback=[dict(text=t['text'],reason=REASONS.get(t.get('reason'),'Dismissed')) for t in current['suggestions'].values() if t['status']=='dismissed'][-20:]
-        request_cap=min(1,remaining)
-        found=ai.extract_tasks(batch,mode=opts['mode'],feedback=feedback,max_cost=request_cap)
-        reported=ai.last_usage.get('session_costs',request_cap)
+        found=ai.extract_tasks(batch,mode=opts['mode'],feedback=feedback)
+        reported=ai.last_usage.get('session_costs',0)
         try:cost=max(0,float(reported))
-        except (TypeError,ValueError):cost=request_cap
+        except (TypeError,ValueError):cost=0
         spent+=cost
         links=read_config().get('domain_companies',{})
         from email.utils import parseaddr
