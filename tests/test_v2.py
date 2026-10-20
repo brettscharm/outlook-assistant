@@ -8,7 +8,7 @@ import urllib.request
 from pathlib import Path
 from unittest.mock import patch, Mock
 from http.server import ThreadingHTTPServer
-from outlook_plugin import config
+from outlook_plugin import config, usage
 from outlook_plugin.ai_agent import BobAIAgent
 from outlook_plugin.local_store import LocalStoreBridge
 from outlook_plugin.app_server import AppRequestHandler
@@ -17,6 +17,7 @@ class CoreTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
         self.patch=patch.object(config,'CONFIG_PATH',Path(self.tmp.name)/'config.json');self.patch.start();self.addCleanup(self.patch.stop)
+        self.usage_patch=patch.object(usage,'USAGE_FILE',Path(self.tmp.name)/'usage.json');self.usage_patch.start();self.addCleanup(self.usage_patch.stop)
     def test_context_preserves_secret_and_private_permissions(self):
         config.update_config({'bob_api_key':'secret'})
         config.update_config({'user_context':{'role':'Engineer'}})

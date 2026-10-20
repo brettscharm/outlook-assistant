@@ -43,3 +43,18 @@ window.nativeBackupDone=ok=>{$('startupStatus').textContent=ok?'Backup saved. Yo
 window.flushWorkspace=async()=>{document.activeElement?.blur();clearTimeout(draftTimer);clearTimeout(contextTimer);const until=Date.now()+3000;while((draftSaving||contextSaving||window.settingsSaving)&&Date.now()<until)await new Promise(resolve=>setTimeout(resolve,50));await flushDrafts();await flushContext();};
 
 for(const [id,key] of [['key','bob_api_key'],['team','bob_team_id'],['profile','outlook_profile']])$(id).addEventListener('change',async()=>{if(id==='key'&&!$(id).value.trim())return;window.settingsSaving=(window.settingsSaving||0)+1;try{await api('/api/config',{[key]:$(id).value});if(id==='key')$(id).value='';$('settingsStatus').textContent='Settings saved on this Mac.';refreshSetup();}catch(e){$('settingsStatus').textContent='Not saved: '+e.message;}finally{window.settingsSaving--;}});
+
+let usageLoading=false;
+function storageSize(value){const units=['B','KB','MB','GB','TB'];let index=0;while(value>=1024&&index<units.length-1){value/=1024;index++;}return value.toLocaleString(undefined,{maximumFractionDigits:1})+' '+units[index];}
+window.loadUsage=async()=>{
+ if(usageLoading)return;usageLoading=true;
+ try{const data=await api('/api/usage');const root=$('usageSummary');root.replaceChildren();
+ const grid=text('div','','usage-grid');
+ for(const [label,bucket] of [['Today (UTC)',data.today],['This month (UTC)',data.month],['Since tracking started',data.total]]){const card=text('article','','workspace-card');card.append(text('h3',label),text('strong',bucket.requests+' Bob requests'),text('p',bucket.succeeded+' succeeded · '+bucket.failed+' failed','muted small'),text('p',bucket.reported_units.toLocaleString(undefined,{maximumFractionDigits:6})+' reported usage units'),text('p',bucket.unreported+' requests without reported usage','muted small'));grid.append(card);}root.append(grid,text('p','Bob’s reported consumption is shown as usage units, not dollars or a verified subscription balance. Missing usage is unknown, not free. Includes requests made by this app on this Mac only.','muted small'));
+ $('usageStatus').textContent=(data.started_at?'Tracking since '+date(data.started_at,true)+'.':'Tracking begins with your next Bob request; earlier activity cannot be reconstructed.')+(data.tracking_error?' A recent request could not be recorded. Totals may be incomplete.':'');
+ const disk=$('usageStorage');disk.replaceChildren(text('h3',storageSize(data.storage.total_bytes)+' saved by this app'),text('p',storageSize(data.storage.free_bytes)+' available on this disk','muted'));
+ for(const item of data.storage.items){const row=text('div','','usage-storage-row');row.append(text('span',item.name),text('strong',storageSize(item.bytes)));disk.append(row);}
+ }catch(e){$('usageStatus').textContent='Could not read usage: '+e.message;}finally{usageLoading=false;}
+};
+$('refreshUsage').onclick=()=>window.loadUsage();
+setInterval(()=>{if(document.querySelector('.view.active')?.id==='usage'&&!document.hidden)window.loadUsage();},30000);

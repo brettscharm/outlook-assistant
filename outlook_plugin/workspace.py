@@ -6,7 +6,7 @@ import sys
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from . import __version__, config, tasks, task_workflow, email_chat, drafts, storage
+from . import __version__, config, tasks, task_workflow, email_chat, drafts, storage, usage
 
 LOGIN_FILE = Path.home() / 'Library/LaunchAgents/com.brettscharm.outlookassistant.plist'
 
@@ -45,7 +45,7 @@ def export_data():
     with task_workflow._LOCK, tasks._LOCK:
         return {'format':'outlook-assistant-backup','schema':1,'app_version':__version__,
                 'created_at':datetime.now(timezone.utc).isoformat(), 'settings':settings,
-                'tasks':tasks.load_tasks(), 'task_review':task_workflow.load(), 'chat':email_chat.history(),'drafts':drafts.load()}
+                'tasks':tasks.load_tasks(), 'task_review':task_workflow.load(), 'chat':email_chat.history(),'drafts':drafts.load(), 'usage':storage.read_json(usage.USAGE_FILE,{})}
 
 def learn_style(ai, examples):
     if not isinstance(examples, str) or not 80 <= len(examples.strip()) <= 24000:
@@ -63,6 +63,6 @@ def save_style(guide):
 
 
 def initialize_storage():
-    for path in (config.CONFIG_PATH,tasks.TASKS_FILE,task_workflow.WORKFLOW_FILE,email_chat.CHAT_FILE,drafts.DRAFTS_FILE):
+    for path in (config.CONFIG_PATH,tasks.TASKS_FILE,task_workflow.WORKFLOW_FILE,email_chat.CHAT_FILE,drafts.DRAFTS_FILE,usage.USAGE_FILE):
         try:storage.ensure_backup(path)
         except (ValueError,OSError):storage.RECOVERIES.append({'file':path.name,'message':'Could not create an initial recovery copy. Existing data was left unchanged.'})
