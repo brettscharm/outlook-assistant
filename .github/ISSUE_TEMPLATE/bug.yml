@@ -1,0 +1,32 @@
+name: Report a problem
+description: Report something that is not working in Outlook Assistant.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: "This report is public. Remove email content, names, addresses, customer details, API keys, and other private information from your description and any screenshots. Nothing is uploaded automatically."
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Include what you expected to happen instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How can we reproduce it?
+      placeholder: "1. Open…\n2. Click…\n3. The problem appears…"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version (optional)
+      description: Find this in Apple menu > About This Mac.

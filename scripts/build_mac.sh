@@ -4,6 +4,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 : "${PYTHON:=python3}"
 : "${OUTPUT:=$ROOT/dist}"
 "$PYTHON" -m PyInstaller --noconfirm --clean --windowed --onedir --target-arch "${TARGET_ARCH:-universal2}" \
+ --icon "$ROOT/assets/OutlookAssistant.icns" \
  --name 'Outlook Assistant' --osx-bundle-identifier com.brettscharm.outlookassistant \
  --paths "$ROOT" --collect-submodules outlook_plugin \
  --add-data "$ROOT/outlook_plugin:app/outlook_plugin" \

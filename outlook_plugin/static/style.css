@@ -80,3 +80,7 @@ dialog{max-height:calc(100dvh - 48px);overflow:auto;border-radius:16px;box-shado
 @media(prefers-reduced-motion:reduce){button{transition:none}}
 
 #settingsForm{gap:14px}#settingsForm>p{margin:0}.mail-settings{margin:0;padding:10px 0}.mail-settings .form{gap:14px;padding-top:10px}#settingsForm>.quiet-details{margin:0}#settingsForm .dialog-heading{padding-top:0;padding-bottom:8px}.workspace-settings>h3{margin-top:22px}
+
+.feedback-section{border-top:1px solid var(--line);margin-top:22px;padding-top:18px}.feedback-section p{margin:12px 0}.feedback-link{display:inline-block;text-decoration:none;border:1px solid var(--line);padding:9px 12px;border-radius:8px;color:var(--blue)}.feedback-link:hover{background:#f0f5ff}
+
+.brand-icon{width:34px;height:34px;object-fit:contain;flex-shrink:0}

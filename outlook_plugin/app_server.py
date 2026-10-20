@@ -123,7 +123,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             return self._send_json(self.engine.get_upcoming_events(days_ahead=7,limit=50))
         if path.startswith('/api/'):
             return self._send_json({'error':'Unknown endpoint.'},404)
-        if path not in ('/','/index.html','/app.js','/tasks-ui.js','/chat-ui.js','/workspace-ui.js','/rich-editor.js','/style.css'):
+        if path not in ('/','/index.html','/app.js','/tasks-ui.js','/chat-ui.js','/workspace-ui.js','/rich-editor.js','/style.css','/app-icon.png'):
             return self._send_json({'error':'Not found.'},404)
         return super().do_GET()
 

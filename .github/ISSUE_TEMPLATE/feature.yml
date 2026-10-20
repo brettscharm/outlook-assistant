@@ -1,0 +1,27 @@
+name: Suggest a feature
+description: Suggest an improvement to Outlook Assistant.
+title: "[Feature] "
+body:
+  - type: markdown
+    attributes:
+      value: "This is a public GitHub issue. Do not include work email content, customer information, API keys, or other private details. A GitHub account is needed to submit."
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      placeholder: Describe the workflow that could be easier.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help?
+      placeholder: Describe your suggestion and why it would be useful.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version
+    validations:
+      required: false
