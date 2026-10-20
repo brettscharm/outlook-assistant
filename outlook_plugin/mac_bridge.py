@@ -58,6 +58,44 @@ class MacOutlookBridge:
         out = self._run_applescript(script)
         return out.lower() == "true"
 
+    def list_accounts(self) -> List[Dict[str, Any]]:
+        """List configured email accounts in Outlook."""
+        script = f"""
+        tell application "Microsoft Outlook"
+            set accList to {{}}
+            try
+                repeat with acc in (every exchange account)
+                    set end of accList to ("Exchange" & "{FIELD_SEP}" & (name of acc) & "{FIELD_SEP}" & (email address of acc as text))
+                end repeat
+                repeat with acc in (every imap account)
+                    set end of accList to ("IMAP" & "{FIELD_SEP}" & (name of acc) & "{FIELD_SEP}" & (email address of acc as text))
+                end repeat
+                repeat with acc in (every pop account)
+                    set end of accList to ("POP" & "{FIELD_SEP}" & (name of acc) & "{FIELD_SEP}" & (email address of acc as text))
+                end repeat
+            end try
+            
+            set AppleScript's text item delimiters to "{ITEM_SEP}"
+            return accList as text
+        end tell
+        """
+        raw = self._run_applescript(script)
+        accounts = [{"type": "all", "name": "All Accounts", "email": "all"}]
+        if not raw:
+            return accounts
+
+        for item in raw.split(ITEM_SEP):
+            if not item.strip():
+                continue
+            parts = item.split(FIELD_SEP)
+            if len(parts) >= 3:
+                accounts.append({
+                    "type": parts[0].strip(),
+                    "name": parts[1].strip(),
+                    "email": parts[2].strip() or parts[1].strip(),
+                })
+        return accounts
+
     def list_folders(self) -> List[Dict[str, Any]]:
         """List all available mail folders in Outlook."""
         script = f"""

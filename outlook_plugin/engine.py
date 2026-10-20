@@ -48,6 +48,13 @@ class OutlookEngine:
             "graph_api_configured": is_graph_avail,
         }
 
+    def list_accounts(self) -> List[Dict[str, Any]]:
+        """List configured Outlook email accounts."""
+        backend = self.get_active_backend()
+        if hasattr(backend, "list_accounts"):
+            return backend.list_accounts()
+        return [{"type": "all", "name": "All Accounts", "email": "all"}]
+
     def list_folders(self) -> List[Dict[str, Any]]:
         """List all mailbox folders."""
         backend = self.get_active_backend()

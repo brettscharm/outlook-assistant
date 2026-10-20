@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Native macOS App Launcher for Outlook Assistant
+
+APP_BUNDLE_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+ROOT_DIR="$(cd "$APP_BUNDLE_DIR/.." && pwd)"
+
+export PYTHONPATH="$ROOT_DIR:$PYTHONPATH"
+
+# Locate Python 3
+PYTHON_BIN=""
+for p in "$(which python3 2>/dev/null)" "/opt/homebrew/bin/python3" "/usr/local/bin/python3" "/usr/bin/python3"; do
+    if [ -x "$p" ]; then
+        PYTHON_BIN="$p"
+        break
+    fi
+done
+
+if [ -z "$PYTHON_BIN" ]; then
+    osascript -e 'display alert "Python 3 Required" message "Python 3 is required to run Outlook Assistant."'
+    exit 1
+fi
+
+# Ensure launch agent is installed for auto-start across reboots
+"$ROOT_DIR/scripts/install_launchagent.sh" >/dev/null 2>&1 || true
+
+# Launch local app server and open dashboard
+exec "$PYTHON_BIN" -m outlook_plugin.cli app

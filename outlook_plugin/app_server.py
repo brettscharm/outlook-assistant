@@ -14,6 +14,7 @@ from typing import Any, Dict
 
 from .ai_agent import BobAIAgent, get_bob_api_key, save_bob_api_key
 from .engine import OutlookEngine
+from .tasks import load_tasks, add_task, toggle_task, delete_task
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,12 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         if path == "/api/status":
             return self._send_json(self.engine.get_status())
 
+        elif path == "/api/accounts":
+            return self._send_json(self.engine.list_accounts())
+
+        elif path == "/api/tasks":
+            return self._send_json(load_tasks())
+
         elif path == "/api/calendar":
             days = int(query.get("days", [7])[0])
             limit = int(query.get("limit", [50])[0])
@@ -94,7 +101,25 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         except Exception:
             data = {}
 
-        if path == "/api/config":
+        if path == "/api/tasks":
+            action = data.get("action", "add")
+            if action == "add":
+                task_type = data.get("type", "my")
+                text = data.get("text", "")
+                assignee = data.get("assignee")
+                due = data.get("due_date")
+                item = add_task(task_type, text, assignee=assignee, due_date=due)
+                return self._send_json(item)
+            elif action == "toggle":
+                task_id = data.get("id")
+                success = toggle_task(task_id)
+                return self._send_json({"success": success})
+            elif action == "delete":
+                task_id = data.get("id")
+                success = delete_task(task_id)
+                return self._send_json({"success": success})
+
+        elif path == "/api/config":
             key = data.get("bob_api_key", "").strip()
             if key:
                 save_bob_api_key(key)
