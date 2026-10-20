@@ -14,16 +14,44 @@ def normalize_domain(value):
 
 
 def link_company(domain,company):
-    domain=normalize_domain(domain)
-    if not isinstance(company,str) or len(company.strip())>200: raise ValueError('Use a company name of up to 200 characters.')
+    return link_companies([domain], company)
+
+
+def link_companies(domains, company):
+    if not isinstance(domains,list) or not 1 <= len(domains) <= 100:
+        raise ValueError('Enter between 1 and 100 domains.')
+    domains=list(dict.fromkeys(normalize_domain(d) for d in domains))
+    if not isinstance(company,str) or len(company.strip())>200:
+        raise ValueError('Use a company name of up to 200 characters.')
+    company=company.strip()
     with _LOCK:
         links=dict(read_config().get('domain_companies',{}))
-        if company.strip():
-            if domain not in links and len(links)>=1000: raise ValueError('Company link limit reached.')
-            links[domain]=company.strip()
-        else: links.pop(domain,None)
+        # Reuse existing capitalization so one company stays one company.
+        company=next((v for v in links.values() if v.casefold()==company.casefold()),company)
+        for domain in domains:
+            if company: links[domain]=company
+            else: links.pop(domain,None)
+        if len(links)>1000: raise ValueError('Company link limit reached.')
         update_config({'domain_companies':links})
     return links
+
+
+SHARED_DOMAINS={'gmail.com','googlemail.com','outlook.com','hotmail.com','live.com','yahoo.com','icloud.com','me.com','aol.com','proton.me','protonmail.com'}
+
+
+def suggest_company(domain, companies, links):
+    if domain in SHARED_DOMAINS: return None
+    for parent,company in sorted(links.items(), key=lambda item:len(item[0]), reverse=True):
+        if parent not in SHARED_DOMAINS and domain.endswith('.'+parent):
+            return {'company':company,'reason':'Related to linked domain '+parent}
+    labels=domain.split('.')
+    stem=labels[-3] if len(labels)>2 and labels[-2] in {'co','com','org','net'} else labels[-2]
+    normalize=lambda name: re.sub(r'[^a-z0-9]','',name.casefold())
+    for company in companies:
+        name=re.sub(r'\b(incorporated|corporation|company|limited|inc|corp|ltd|llc)\b\.?','',company,flags=re.I)
+        if normalize(name)==normalize(stem):
+            return {'company':company,'reason':'Matches your account list or a linked company'}
+    return {'company':stem.replace('-',' ').title(),'reason':'Suggested from the email domain; please verify'}
 
 
 def group_contacts(rows,links):

@@ -28,3 +28,18 @@ class ContactTests(unittest.TestCase):
             with self.assertRaises(ValueError):normalize_domain(domain)
         self.assertEqual(normalize_domain(' EXAMPLE.COM. '),'example.com')
         with self.assertRaises(ValueError):link_company('example.com','x'*201)
+
+    def test_bulk_domains_atomic_and_same_company(self):
+        from outlook_plugin.contacts import link_companies
+        with tempfile.TemporaryDirectory() as d,patch.object(config,'CONFIG_PATH',Path(d)/'config.json'):
+            link_company('acme.com','Acme')
+            links=link_companies(['acme.co.uk','mail.acme.com'],'acme')
+            self.assertEqual(set(links.values()),{'Acme'})
+            with self.assertRaises(ValueError):link_companies(['valid.com','invalid'],'Other')
+            self.assertNotIn('valid.com',config.read_config()['domain_companies'])
+
+    def test_suggestions_use_known_names_and_avoid_shared_providers(self):
+        from outlook_plugin.contacts import suggest_company
+        self.assertIsNone(suggest_company('gmail.com',['Gmail'],{}))
+        self.assertEqual(suggest_company('acme.co.uk',['Acme Corporation'],{})['company'],'Acme Corporation')
+        self.assertEqual(suggest_company('mail.acme.com',[],{'acme.com':'Acme'})['company'],'Acme')

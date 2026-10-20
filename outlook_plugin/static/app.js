@@ -99,6 +99,9 @@ function renderContacts(){
   form.onsubmit=e=>{e.preventDefault();busy(save,async()=>{await api('/api/contact-company',{domain:group.domain,company:input.value});group.company=input.value.trim();delete contactDrafts[group.domain];const header=summary.querySelector('strong');header.textContent=group.company||group.domain;summary.querySelector('span').textContent=(group.company?group.domain+' · ':'')+people.length+' contacts';unlink.hidden=!group.company;notice('Company link saved for '+group.domain+'.');});};
   unlink.onclick=()=>busy(unlink,async()=>{await api('/api/contact-company',{domain:group.domain,company:''});input.value='';group.company='';delete contactDrafts[group.domain];summary.querySelector('strong').textContent=group.domain;summary.querySelector('span').textContent=people.length+' contacts';unlink.hidden=true;notice('Company link removed.');});
   form.append(input,save,unlink);card.append(form);
+  if(group.suggestion){const suggestion=text('div','','company-link');const accept=text('button','Use '+group.suggestion.company);accept.type='button';suggestion.append(text('span',group.suggestion.reason,'muted small'),accept);accept.onclick=()=>{input.value=group.suggestion.company;contactDrafts[group.domain]=input.value;form.requestSubmit();suggestion.remove();};card.append(suggestion);}
+  const related=contactData.filter(g=>group.company&&g.company.toLowerCase()===group.company.toLowerCase()).map(g=>g.domain);
+  if(related.length>1)card.append(text('p','Company domains: '+related.join(', '),'company-link muted small'));
   for(const person of people){const row=text('div','','contact-person');const info=text('div','','contact-person-info');info.append(text('strong',person.name),text('span',person.email,'muted small'));const mail=text('button','Search mail');mail.onclick=()=>{state.folder='all';state.unread=false;state.search=person.email;$('search').value=person.email;$('all').classList.add('selected');$('unread').classList.remove('selected');$('mail').classList.remove('detail-open');view('mail');Promise.all([folders(),loadEmails()]).catch(e=>notice(e.message));};row.append(info,text('span',person.message_count+' messages','muted small'),mail);card.append(row);}
   root.append(card);
  }
@@ -106,3 +109,9 @@ function renderContacts(){
 }
 $('contactSearch').oninput=renderContacts;
 $('refreshContacts').onclick=()=>busy($('refreshContacts'),()=>loadContacts(true));
+
+$('companyDomainsForm').onsubmit=e=>{e.preventDefault();const form=e.currentTarget;const button=form.querySelector('button');busy(button,async()=>{
+ const domains=$('linkCompanyDomains').value.split(/[\s,;]+/).filter(Boolean);
+ const company=$('linkCompanyName').value.trim();if(!company)throw new Error('Enter a company name.');
+ await api('/api/contact-company',{domains,company});form.reset();await loadContacts(true);notice('Domains linked to '+company+'.');
+});};
