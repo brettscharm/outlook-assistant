@@ -3,10 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Outlook AI Assistant — Powered by Bob</title>
+  <title>Outlook Assistant — AI Workspace</title>
   <style>
     :root {
       --bg: #0f172a;
+      --sidebar-bg: #111827;
       --surface: #1e293b;
       --surface-hover: #334155;
       --border: #334155;
@@ -21,28 +22,38 @@
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.5; min-height: 100vh; }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.5; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
     
+    /* Top Bar */
     .navbar {
       display: flex; justify-content: space-between; align-items: center;
-      padding: 14px 24px; background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 10px 20px; background: var(--sidebar-bg); border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
     }
-    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.15rem; color: var(--primary); }
-    .status-badge {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 4px 10px; background: rgba(52, 211, 153, 0.15); color: var(--success);
-      border-radius: 999px; font-size: 0.8rem; font-weight: 600;
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.1rem; color: var(--primary); }
+    
+    .nav-tabs { display: flex; gap: 4px; background: #0f172a; padding: 4px; border-radius: 8px; border: 1px solid var(--border); }
+    .nav-tab-btn {
+      padding: 6px 14px; border-radius: 6px; font-size: 0.84rem; font-weight: 600;
+      border: none; background: transparent; color: var(--text-muted); cursor: pointer; transition: all 0.2s;
     }
-    .status-badge.error { background: rgba(244, 63, 94, 0.15); color: var(--urgent); }
-    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+    .nav-tab-btn.active { background: var(--primary); color: #0f172a; }
 
     .nav-actions { display: flex; gap: 10px; align-items: center; }
     .account-select {
       background: #0f172a; color: var(--text); border: 1px solid var(--border);
-      border-radius: 6px; padding: 7px 10px; font-size: 0.82rem; outline: none;
+      border-radius: 6px; padding: 6px 10px; font-size: 0.8rem; outline: none;
     }
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; background: rgba(52, 211, 153, 0.15); color: var(--success);
+      border-radius: 999px; font-size: 0.78rem; font-weight: 600;
+    }
+    .status-badge.error { background: rgba(244, 63, 94, 0.15); color: var(--urgent); }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+
     .btn {
-      padding: 8px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 600;
+      padding: 6px 12px; border-radius: 6px; font-size: 0.82rem; font-weight: 600;
       border: 1px solid var(--border); background: var(--surface); color: var(--text);
       cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px;
     }
@@ -50,106 +61,84 @@
     .btn.primary { background: var(--primary); color: #0f172a; border-color: var(--primary); }
     .btn.primary:hover { background: var(--primary-hover); }
 
-    .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+    /* Main Workspace Container */
+    .main-workspace { flex: 1; overflow: hidden; display: flex; }
+    .tab-view { display: none; width: 100%; height: 100%; }
+    .tab-view.active { display: flex; }
 
-    /* Executive Briefing Banner */
-    .briefing-banner {
-      background: linear-gradient(135deg, rgba(56, 189, 248, 0.1), rgba(30, 41, 59, 0.8));
-      border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px;
-      padding: 20px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;
+    /* Outlook Style 3-Pane Layout */
+    .outlook-layout { display: flex; width: 100%; height: 100%; }
+    
+    /* Left Folder Pane */
+    .folder-pane {
+      width: 220px; background: var(--sidebar-bg); border-right: 1px solid var(--border);
+      padding: 14px 10px; display: flex; flex-direction: column; gap: 4px; flex-shrink: 0;
     }
-    .briefing-text h2 { font-size: 1.2rem; margin-bottom: 4px; }
-    .briefing-text p { color: var(--text-muted); font-size: 0.9rem; }
-
-    /* Main 3-Column Grid */
-    .grid { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 20px; margin-bottom: 24px; }
-    @media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } }
-
-    .card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 10px; overflow: hidden; display: flex; flex-direction: column;
-      height: 600px;
-    }
-    .card-header {
-      padding: 16px 18px; border-bottom: 1px solid var(--border);
+    .folder-item {
       display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 12px; border-radius: 6px; color: var(--text-muted);
+      font-size: 0.85rem; font-weight: 500; cursor: pointer; transition: all 0.15s;
     }
-    .card-header h3 { font-size: 1rem; display: flex; align-items: center; gap: 8px; }
-    .card-body { padding: 16px; overflow-y: auto; flex: 1; }
+    .folder-item:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+    .folder-item.active { background: rgba(56, 189, 248, 0.12); color: var(--primary); font-weight: 600; }
+    .folder-count { font-size: 0.75rem; background: var(--surface); padding: 2px 6px; border-radius: 10px; }
 
-    /* Items */
-    .item-list { display: flex; flex-direction: column; gap: 10px; }
-    .event-card, .email-card {
-      background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border);
-      border-radius: 8px; padding: 12px; cursor: pointer; transition: all 0.2s;
+    /* Middle Message List */
+    .message-pane {
+      width: 380px; background: #0b1120; border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; flex-shrink: 0;
     }
-    .event-card:hover, .email-card:hover { border-color: var(--primary); transform: translateY(-1px); }
-    .email-card.selected { border-color: var(--primary); background: rgba(56, 189, 248, 0.08); }
-    .email-card.urgent { border-left: 4px solid var(--urgent); }
-    .email-card.action-needed { border-left: 4px solid var(--warning); }
-    .email-card.normal { border-left: 4px solid var(--primary); }
-
-    .item-title { font-weight: 600; font-size: 0.9rem; margin-bottom: 4px; }
-    .item-meta { font-size: 0.78rem; color: var(--text-muted); display: flex; justify-content: space-between; margin-bottom: 6px; }
-    .item-snippet { font-size: 0.8rem; color: #cbd5e1; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-
-    /* Smart Reply Panel */
-    .composer { display: flex; flex-direction: column; gap: 12px; height: 100%; }
-    .composer textarea {
+    .message-pane-header {
+      padding: 12px; border-bottom: 1px solid var(--border); display: flex; gap: 8px;
+    }
+    .search-input {
       flex: 1; background: #0f172a; border: 1px solid var(--border); border-radius: 6px;
-      color: var(--text); padding: 12px; font-family: var(--font); font-size: 0.88rem; resize: none;
+      color: var(--text); padding: 6px 10px; font-size: 0.82rem; outline: none;
     }
-    .composer textarea:focus { outline: none; border-color: var(--primary); }
-    .intent-selectors { display: flex; gap: 6px; flex-wrap: wrap; }
-    .intent-btn {
-      padding: 6px 10px; font-size: 0.78rem; border-radius: 6px; border: 1px solid var(--border);
-      background: var(--surface); color: var(--text-muted); cursor: pointer;
+    .message-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+    .mail-item {
+      padding: 12px 14px; border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+      cursor: pointer; transition: all 0.15s;
     }
-    .intent-btn.active { background: var(--primary); color: #0f172a; border-color: var(--primary); font-weight: 600; }
+    .mail-item:hover { background: rgba(30, 41, 59, 0.5); }
+    .mail-item.selected { background: rgba(56, 189, 248, 0.1); border-left: 3px solid var(--primary); }
+    .mail-item.unread { font-weight: 600; }
+    .mail-sender { font-size: 0.85rem; margin-bottom: 2px; display: flex; justify-content: space-between; }
+    .mail-time { font-size: 0.72rem; color: var(--text-muted); font-weight: normal; }
+    .mail-subj { font-size: 0.88rem; margin-bottom: 4px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mail-preview { font-size: 0.78rem; color: var(--text-muted); line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
-    /* Two-Column Tasks Board */
-    .tasks-section {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 10px; padding: 20px;
-    }
-    .tasks-header {
-      display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border);
-    }
+    /* Right Reading Pane */
+    .reading-pane { flex: 1; background: var(--bg); display: flex; flex-direction: column; overflow-y: auto; padding: 24px; }
+    .reading-header { border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 16px; }
+    .reading-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 10px; }
+    .reading-meta { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted); }
+    .reading-body { font-size: 0.92rem; line-height: 1.6; color: #e2e8f0; white-space: pre-wrap; flex: 1; }
+    .reading-empty { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); }
+
+    /* Other Tabs (Dashboard, Tasks, Calendar) */
+    .standard-tab-container { padding: 24px; width: 100%; overflow-y: auto; max-width: 1400px; margin: 0 auto; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+    /* Tasks Board */
     .tasks-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    @media (max-width: 800px) { .tasks-grid { grid-template-columns: 1fr; } }
-
     .task-column {
-      background: rgba(15, 23, 42, 0.5); border: 1px solid var(--border);
-      border-radius: 8px; padding: 16px; min-height: 280px; display: flex; flex-direction: column;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 18px; min-height: 400px; display: flex; flex-direction: column;
     }
-    .task-column-title {
-      font-size: 0.95rem; font-weight: 700; margin-bottom: 12px;
-      display: flex; justify-content: space-between; align-items: center;
-    }
+    .task-column-title { font-size: 1rem; font-weight: 700; margin-bottom: 14px; display: flex; justify-content: space-between; }
     .task-items { display: flex; flex-direction: column; gap: 8px; flex: 1; }
     .task-row {
       display: flex; align-items: center; justify-content: space-between;
-      background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
-      padding: 10px 12px; transition: all 0.2s;
+      background: #0f172a; border: 1px solid var(--border); border-radius: 6px;
+      padding: 10px 12px;
     }
-    .task-row:hover { border-color: var(--primary); }
     .task-left { display: flex; align-items: center; gap: 10px; flex: 1; }
-    .task-checkbox {
-      width: 18px; height: 18px; cursor: pointer; accent-color: var(--primary);
-    }
     .task-text { font-size: 0.88rem; }
-    .task-text.completed { text-decoration: line-through; color: var(--text-muted); opacity: 0.7; }
-    .task-badge {
-      font-size: 0.72rem; padding: 2px 6px; border-radius: 4px;
-      background: rgba(56, 189, 248, 0.15); color: var(--primary); margin-left: 8px;
-    }
-    .task-delete-btn {
-      background: transparent; border: none; color: var(--text-muted);
-      cursor: pointer; font-size: 0.9rem; padding: 2px 6px; border-radius: 4px;
-    }
-    .task-delete-btn:hover { color: var(--urgent); background: rgba(244, 63, 94, 0.1); }
-    .task-add-box { display: flex; gap: 8px; margin-top: 12px; }
+    .task-text.completed { text-decoration: line-through; color: var(--text-muted); }
+    .task-delete-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; }
+    .task-delete-btn:hover { color: var(--urgent); }
+    .task-add-box { display: flex; gap: 8px; margin-top: 14px; }
     .task-add-box input {
       flex: 1; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border);
       background: #0f172a; color: var(--text); font-size: 0.85rem; outline: none;
@@ -162,7 +151,7 @@
     }
     .modal {
       background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-      width: 450px; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);
+      width: 480px; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);
     }
     .modal h3 { margin-bottom: 12px; font-size: 1.1rem; }
     .form-group { margin-bottom: 16px; }
@@ -177,11 +166,21 @@
 </head>
 <body>
 
+  <!-- Top Bar -->
   <nav class="navbar">
     <div class="brand">
       <span>📬</span>
       <span>Outlook Assistant</span>
     </div>
+
+    <!-- Navigation Tabs -->
+    <div class="nav-tabs">
+      <button class="nav-tab-btn active" onclick="switchTab('inboxView')">📬 Outlook Inbox</button>
+      <button class="nav-tab-btn" onclick="switchTab('calendarView')">📅 Calendar</button>
+      <button class="nav-tab-btn" onclick="switchTab('tasksView')">✅ Task Board</button>
+      <button class="nav-tab-btn" onclick="switchTab('briefingView')">📊 Executive Briefing</button>
+    </div>
+
     <div class="nav-actions">
       <!-- Account Switcher -->
       <select id="accountSelect" class="account-select" onchange="onAccountChange()">
@@ -192,112 +191,116 @@
         <span class="status-dot"></span>
         <span id="statusText">Outlook Connected</span>
       </div>
-      <button class="btn" onclick="syncData()">🔄 Sync Now</button>
+      <button class="btn" onclick="syncData()">🔄 Sync</button>
       <button class="btn" onclick="openSettings()">⚙️ Settings &amp; API Key</button>
     </div>
   </nav>
 
-  <div class="container">
-    <!-- Executive Briefing Banner -->
-    <div class="briefing-banner">
-      <div class="briefing-text">
-        <h2 id="briefingHeadline">🗓️ Executive Briefing</h2>
-        <p id="briefingSummary">Loading your upcoming schedule and email intelligence...</p>
-      </div>
-      <button class="btn primary" onclick="syncData()">Refresh Briefing</button>
-    </div>
+  <!-- Main Viewports -->
+  <div class="main-workspace">
 
-    <!-- 3-Column Outlook View -->
-    <div class="grid">
-      <!-- Column 1: Calendar Timeline -->
-      <div class="card">
-        <div class="card-header">
-          <h3>📅 Upcoming Events (<span id="eventCount">0</span>)</h3>
-          <span style="font-size:0.8rem; color:var(--text-muted)">Next 7 Days</span>
-        </div>
-        <div class="card-body">
-          <div id="eventsContainer" class="item-list">
-            <p style="color:var(--text-muted); font-size:0.85rem;">No upcoming events.</p>
+    <!-- TAB 1: Outlook 3-Pane Full Inbox -->
+    <div id="inboxView" class="tab-view active">
+      <div class="outlook-layout">
+        <!-- Folders Column -->
+        <div class="folder-pane">
+          <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700; padding:4px 8px; text-transform:uppercase;">Folders</div>
+          <div class="folder-item active" onclick="selectFolder('all', this)">
+            <span>📥 All Mail</span>
+            <span id="folderCountAll" class="folder-count">2000+</span>
+          </div>
+          <div class="folder-item" onclick="selectFolder('inbox', this)">
+            <span>📫 Inbox</span>
+            <span id="folderCountInbox" class="folder-count">0</span>
+          </div>
+          <div class="folder-item" onclick="selectFolder('Drafts', this)">
+            <span>📝 Drafts</span>
+            <span id="folderCountDrafts" class="folder-count">2069</span>
+          </div>
+          <div class="folder-item" onclick="selectFolder('Sent Items', this)">
+            <span>📤 Sent Items</span>
+            <span id="folderCountSent" class="folder-count">0</span>
           </div>
         </div>
-      </div>
 
-      <!-- Column 2: Email Triage -->
-      <div class="card">
-        <div class="card-header">
-          <h3>✉️ Unread &amp; Action Items (<span id="emailCount">0</span>)</h3>
-          <span style="font-size:0.8rem; color:var(--text-muted)">Inbox</span>
-        </div>
-        <div class="card-body">
-          <div id="emailsContainer" class="item-list">
-            <p style="color:var(--text-muted); font-size:0.85rem;">No unread emails.</p>
+        <!-- Messages Column -->
+        <div class="message-pane">
+          <div class="message-pane-header">
+            <input type="text" id="mailSearchInput" class="search-input" placeholder="Search emails..." oninput="filterEmails(this.value)">
+            <button class="btn" onclick="syncData()">Filter</button>
+          </div>
+          <div id="mailListContainer" class="message-list">
+            <p style="padding:20px; color:var(--text-muted); font-size:0.85rem;">Loading emails from Outlook...</p>
           </div>
         </div>
-      </div>
 
-      <!-- Column 3: AI Smart Reply & Context -->
-      <div class="card">
-        <div class="card-header">
-          <h3>✨ Calendar-Aware Smart Reply</h3>
-        </div>
-        <div class="card-body">
-          <div class="composer">
-            <div id="selectedEmailInfo" style="font-size:0.85rem; color:var(--text-muted); border-bottom:1px solid var(--border); padding-bottom:8px;">
-              Select an email from the inbox to generate a contextual reply.
-            </div>
-            <div class="intent-selectors">
-              <button class="intent-btn active" onclick="setIntent('agree_meet', this)">🤝 Agree to Meet</button>
-              <button class="intent-btn" onclick="setIntent('propose_time', this)">🕒 Propose New Time</button>
-              <button class="intent-btn" onclick="setIntent('followup', this)">📝 Acknowledge</button>
-            </div>
-            <textarea id="replyText" placeholder="AI-generated draft reply will appear here..."></textarea>
-            <div style="display:flex; gap:10px;">
-              <button class="btn primary" style="flex:1" onclick="generateReply()">✨ Generate with AI</button>
-              <button class="btn" onclick="copyReply()">📋 Copy</button>
-            </div>
+        <!-- Reading Pane Column -->
+        <div class="reading-pane">
+          <div id="readingPaneContent" class="reading-empty">
+            <span>Select an email from the list to view full content and AI actions</span>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Two-Column Interactive Task Board -->
-    <div class="tasks-section">
-      <div class="tasks-header">
-        <h3>✅ Action Item &amp; Follow-up Tracker</h3>
-        <span style="font-size:0.82rem; color:var(--text-muted)">Auto-saved &amp; persistent across reboots</span>
-      </div>
-      <div class="tasks-grid">
-        <!-- Column 1: Your Tasks -->
-        <div class="task-column">
-          <div class="task-column-title">
-            <span>📋 Your Tasks (To Do)</span>
-            <span id="myTasksCount" style="font-size:0.8rem; color:var(--primary); font-weight:normal;">0 items</span>
-          </div>
-          <div id="myTasksList" class="task-items">
-            <p style="color:var(--text-muted); font-size:0.85rem;">No active tasks.</p>
-          </div>
-          <div class="task-add-box">
-            <input type="text" id="newMyTaskInput" placeholder="Add a task for yourself..." onkeydown="if(event.key==='Enter') addTask('my')">
-            <button class="btn primary" onclick="addTask('my')">+ Add</button>
-          </div>
+    <!-- TAB 2: Calendar Timeline -->
+    <div id="calendarView" class="tab-view">
+      <div class="standard-tab-container">
+        <h2 style="margin-bottom:16px;">📅 Upcoming Schedule &amp; Meetings</h2>
+        <div id="calendarListContainer" style="display:flex; flex-direction:column; gap:12px;">
+          <p style="color:var(--text-muted);">Loading calendar events...</p>
         </div>
+      </div>
+    </div>
 
-        <!-- Column 2: Others' Tasks (Waiting On) -->
-        <div class="task-column">
-          <div class="task-column-title">
-            <span>⏳ Others' Tasks (Waiting On)</span>
-            <span id="othersTasksCount" style="font-size:0.8rem; color:var(--warning); font-weight:normal;">0 items</span>
+    <!-- TAB 3: Task Board -->
+    <div id="tasksView" class="tab-view">
+      <div class="standard-tab-container">
+        <h2 style="margin-bottom:16px;">✅ Action Item &amp; Follow-Up Tracker</h2>
+        <div class="tasks-grid">
+          <!-- Your Tasks -->
+          <div class="task-column">
+            <div class="task-column-title">
+              <span>📋 Your Tasks (To Do)</span>
+              <span id="myTasksCount" style="color:var(--primary); font-size:0.85rem;">0 pending</span>
+            </div>
+            <div id="myTasksList" class="task-items"></div>
+            <div class="task-add-box">
+              <input type="text" id="newMyTaskInput" placeholder="Add task for yourself..." onkeydown="if(event.key==='Enter') addTask('my')">
+              <button class="btn primary" onclick="addTask('my')">+ Add</button>
+            </div>
           </div>
-          <div id="othersTasksList" class="task-items">
-            <p style="color:var(--text-muted); font-size:0.85rem;">No pending follow-ups.</p>
-          </div>
-          <div class="task-add-box">
-            <input type="text" id="newOthersTaskInput" placeholder="Waiting on colleague / deliverable..." onkeydown="if(event.key==='Enter') addTask('others')">
-            <button class="btn" style="background:var(--warning); color:#0f172a; border-color:var(--warning);" onclick="addTask('others')">+ Add</button>
+
+          <!-- Others' Tasks -->
+          <div class="task-column">
+            <div class="task-column-title">
+              <span>⏳ Others' Tasks (Waiting On)</span>
+              <span id="othersTasksCount" style="color:var(--warning); font-size:0.85rem;">0 pending</span>
+            </div>
+            <div id="othersTasksList" class="task-items"></div>
+            <div class="task-add-box">
+              <input type="text" id="newOthersTaskInput" placeholder="Waiting on colleague / item..." onkeydown="if(event.key==='Enter') addTask('others')">
+              <button class="btn" style="background:var(--warning); color:#0f172a;" onclick="addTask('others')">+ Add</button>
+            </div>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- TAB 4: Executive Briefing -->
+    <div id="briefingView" class="tab-view">
+      <div class="standard-tab-container">
+        <h2 style="margin-bottom:16px;">📊 Executive Morning Briefing</h2>
+        <div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:24px;">
+          <h3 id="briefingHeadline" style="margin-bottom:10px;">Executive Summary</h3>
+          <p id="briefingSummary" style="color:#cbd5e1; line-height:1.6; font-size:0.95rem; margin-bottom:20px;">
+            Loading your synthesized briefing...
+          </p>
+          <button class="btn primary" onclick="syncData()">Regenerate Briefing with Bob AI</button>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- Settings Modal -->
@@ -307,6 +310,9 @@
       <div class="form-group">
         <label>Bob API Key (for email synthesis &amp; smart replies):</label>
         <input type="password" id="bobApiKeyInput" placeholder="bob_prod_...">
+        <p style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
+          Generate your API key at <a href="https://bob.ibm.com/admin/apikeys" target="_blank" style="color:var(--primary);">bob.ibm.com/admin/apikeys</a>
+        </p>
       </div>
       <div class="form-actions">
         <button class="btn" onclick="closeSettings()">Cancel</button>
@@ -317,23 +323,37 @@
 
   <script>
     let state = {
-      events: [],
+      activeTab: 'inboxView',
+      currentFolder: 'all',
       emails: [],
+      filteredEmails: [],
+      selectedEmail: null,
+      events: [],
       accounts: [],
       tasks: { my_tasks: [], others_tasks: [] },
-      selectedEmail: null,
-      currentIntent: 'agree_meet',
       selectedAccount: 'all'
     };
 
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-view').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.nav-tab-btn').forEach(el => el.classList.remove('active'));
+      
+      const tab = document.getElementById(tabId);
+      if (tab) tab.classList.add('active');
+
+      const btn = Array.from(document.querySelectorAll('.nav-tab-btn')).find(b => b.getAttribute('onclick').includes(tabId));
+      if (btn) btn.classList.add('active');
+    }
+
     async function loadData() {
       try {
-        const [resStatus, resAccounts, resEvents, resEmails, resBriefing, resTasks] = await Promise.all([
+        const [resStatus, resAccounts, resFolders, resEmails, resEvents, resBriefing, resTasks] = await Promise.all([
           fetch('/api/status').then(r => r.json()),
           fetch('/api/accounts').then(r => r.json()).catch(() => []),
-          fetch('/api/calendar').then(r => r.json()),
-          fetch('/api/emails?unread_only=true').then(r => r.json()),
-          fetch('/api/briefing').then(r => r.json()),
+          fetch('/api/status').then(r => r.json()),
+          fetch(`/api/emails?folder=${state.currentFolder}&limit=50`).then(r => r.json()).catch(() => []),
+          fetch('/api/calendar?days=7').then(r => r.json()).catch(() => []),
+          fetch('/api/briefing').then(r => r.json()).catch(() => ({})),
           fetch('/api/tasks').then(r => r.json()).catch(() => ({ my_tasks: [], others_tasks: [] }))
         ]);
 
@@ -343,33 +363,31 @@
         if (resStatus.mac_outlook_installed) {
           badge.className = 'status-badge';
           badgeText.textContent = resStatus.mac_outlook_running ? 'Outlook Live' : 'Outlook Ready';
-        } else {
-          badge.className = 'status-badge error';
-          badgeText.textContent = 'Outlook Not Detected';
         }
 
         state.accounts = resAccounts || [];
-        state.events = resEvents || [];
         state.emails = resEmails || [];
+        state.filteredEmails = state.emails;
+        state.events = resEvents || [];
         state.tasks = resTasks || { my_tasks: [], others_tasks: [] };
 
         renderAccountSelector();
-        document.getElementById('eventCount').textContent = state.events.length;
-        document.getElementById('emailCount').textContent = state.emails.length;
-        document.getElementById('briefingSummary').textContent = resBriefing.summary || 'All caught up!';
-
-        renderEvents();
-        renderEmails();
+        renderEmailsList();
+        renderCalendar();
         renderTasks();
+
+        if (resBriefing && resBriefing.summary) {
+          document.getElementById('briefingSummary').textContent = resBriefing.summary;
+        }
+
       } catch (err) {
-        console.error('Failed to load data:', err);
+        console.error('Data load error:', err);
       }
     }
 
     function renderAccountSelector() {
       const select = document.getElementById('accountSelect');
       if (!state.accounts || !state.accounts.length) return;
-
       select.innerHTML = state.accounts.map(acc => `
         <option value="${acc.email}" ${state.selectedAccount === acc.email ? 'selected' : ''}>
           ${acc.name} (${acc.type})
@@ -377,101 +395,155 @@
       `).join('');
     }
 
-    function onAccountChange() {
-      state.selectedAccount = document.getElementById('accountSelect').value;
-      syncData();
+    function selectFolder(folderName, el) {
+      state.currentFolder = folderName;
+      document.querySelectorAll('.folder-item').forEach(f => f.classList.remove('active'));
+      el.classList.add('active');
+      loadEmailsForFolder(folderName);
     }
 
-    function renderEvents() {
-      const container = document.getElementById('eventsContainer');
-      if (!state.events.length) {
-        container.innerHTML = `<p style="color:var(--text-muted); font-size:0.85rem;">No upcoming events in the next 7 days.</p>`;
+    async function loadEmailsForFolder(folder) {
+      const list = document.getElementById('mailListContainer');
+      list.innerHTML = `<p style="padding:20px; color:var(--text-muted); font-size:0.85rem;">Loading ${folder}...</p>`;
+      const res = await fetch(`/api/emails?folder=${folder}&limit=50`).then(r => r.json()).catch(() => []);
+      state.emails = res || [];
+      state.filteredEmails = state.emails;
+      renderEmailsList();
+    }
+
+    function filterEmails(query) {
+      const q = query.toLowerCase();
+      state.filteredEmails = state.emails.filter(e => 
+        (e.subject || '').toLowerCase().includes(q) || 
+        (e.sender || '').toLowerCase().includes(q) || 
+        (e.preview || '').toLowerCase().includes(q)
+      );
+      renderEmailsList();
+    }
+
+    function renderEmailsList() {
+      const container = document.getElementById('mailListContainer');
+      if (!state.filteredEmails || !state.filteredEmails.length) {
+        container.innerHTML = `<p style="padding:20px; color:var(--text-muted); font-size:0.85rem;">No emails in this folder.</p>`;
         return;
       }
-      container.innerHTML = state.events.map(ev => `
-        <div class="event-card">
-          <div class="item-title">📌 ${ev.subject}</div>
-          <div class="item-meta">
-            <span>🕒 ${ev.start_time}</span>
-            <span>📍 ${ev.location || 'Virtual'}</span>
+
+      container.innerHTML = state.filteredEmails.map(em => `
+        <div class="mail-item ${state.selectedEmail?.id === em.id ? 'selected' : ''} ${!em.is_read ? 'unread' : ''}" onclick="selectEmail('${em.id}')">
+          <div class="mail-sender">
+            <span>${em.sender}</span>
+            <span class="mail-time">${em.received_time || ''}</span>
           </div>
-          ${ev.description ? `<div class="item-snippet">${ev.description}</div>` : ''}
+          <div class="mail-subj">${em.subject}</div>
+          <div class="mail-preview">${em.preview}</div>
         </div>
       `).join('');
     }
 
-    function renderEmails() {
-      const container = document.getElementById('emailsContainer');
-      if (!state.emails.length) {
-        container.innerHTML = `<p style="color:var(--text-muted); font-size:0.85rem;">Inbox zero! No unread messages.</p>`;
+    function selectEmail(id) {
+      state.selectedEmail = state.emails.find(e => e.id === id);
+      renderEmailsList();
+      const pane = document.getElementById('readingPaneContent');
+      if (!state.selectedEmail) return;
+
+      pane.className = 'reading-pane-active';
+      pane.innerHTML = `
+        <div class="reading-header">
+          <div class="reading-title">${state.selectedEmail.subject}</div>
+          <div class="reading-meta">
+            <span><strong>From:</strong> ${state.selectedEmail.sender}</span>
+            <span><strong>Received:</strong> ${state.selectedEmail.received_time}</span>
+          </div>
+        </div>
+        <div class="reading-body">${state.selectedEmail.body || state.selectedEmail.preview}</div>
+        <div style="margin-top:20px; border-top:1px solid var(--border); padding-top:16px;">
+          <h4 style="margin-bottom:8px;">✨ Calendar-Aware Smart Reply</h4>
+          <textarea id="aiDraftBox" style="width:100%; height:120px; background:#0f172a; border:1px solid var(--border); border-radius:6px; color:var(--text); padding:10px; font-family:var(--font); font-size:0.85rem;" placeholder="Click Generate to draft reply with Bob AI..."></textarea>
+          <div style="display:flex; gap:10px; margin-top:8px;">
+            <button class="btn primary" onclick="generateSmartReply()">✨ Generate Draft</button>
+            <button class="btn" onclick="copySmartReply()">📋 Copy Reply</button>
+          </div>
+        </div>
+      `;
+    }
+
+    async function generateSmartReply() {
+      const box = document.getElementById('aiDraftBox');
+      box.value = "✨ Generating calendar-aware reply with Bob AI...";
+      try {
+        const res = await fetch('/api/smart-reply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email_id: state.selectedEmail.id, intent: 'agree_meet' })
+        }).then(r => r.json());
+        box.value = res.reply || "Could not generate reply.";
+      } catch (err) {
+        box.value = "Error generating reply.";
+      }
+    }
+
+    function copySmartReply() {
+      const box = document.getElementById('aiDraftBox');
+      if (box && box.value) {
+        navigator.clipboard.writeText(box.value);
+        alert("✅ Reply copied to clipboard!");
+      }
+    }
+
+    function renderCalendar() {
+      const container = document.getElementById('calendarListContainer');
+      if (!state.events.length) {
+        container.innerHTML = `<p style="color:var(--text-muted);">No upcoming calendar events in the next 7 days.</p>`;
         return;
       }
-      container.innerHTML = state.emails.map(em => {
-        const isUrgent = (em.subject + em.preview).toLowerCase().includes('urgent');
-        const cardClass = isUrgent ? 'urgent' : 'normal';
-        return `
-          <div class="email-card ${cardClass} ${state.selectedEmail?.id === em.id ? 'selected' : ''}" onclick="selectEmail('${em.id}')">
-            <div class="item-title">${em.subject}</div>
-            <div class="item-meta">
-              <span>👤 ${em.sender}</span>
-              <span>🕒 ${em.received_time}</span>
-            </div>
-            <div class="item-snippet">${em.preview}</div>
+      container.innerHTML = state.events.map(ev => `
+        <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:14px;">
+          <div style="font-weight:700; font-size:1rem; margin-bottom:4px;">📌 ${ev.subject}</div>
+          <div style="font-size:0.82rem; color:var(--text-muted); display:flex; gap:16px; margin-bottom:6px;">
+            <span>🕒 ${ev.start_time} - ${ev.end_time}</span>
+            <span>📍 ${ev.location || 'Virtual'}</span>
           </div>
-        `;
-      }).join('');
+          ${ev.description ? `<div style="font-size:0.85rem; color:#cbd5e1;">${ev.description}</div>` : ''}
+        </div>
+      `).join('');
     }
 
     function renderTasks() {
-      // Render My Tasks
       const myContainer = document.getElementById('myTasksList');
       const myCount = document.getElementById('myTasksCount');
       const myItems = state.tasks.my_tasks || [];
       myCount.textContent = `${myItems.filter(t => !t.completed).length} pending`;
 
-      if (!myItems.length) {
-        myContainer.innerHTML = `<p style="color:var(--text-muted); font-size:0.85rem;">No active tasks.</p>`;
-      } else {
-        myContainer.innerHTML = myItems.map(t => `
-          <div class="task-row">
-            <div class="task-left">
-              <input type="checkbox" class="task-checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTaskStatus('${t.id}')">
-              <span class="task-text ${t.completed ? 'completed' : ''}">${t.text}</span>
-              ${t.due_date ? `<span class="task-badge">${t.due_date}</span>` : ''}
-            </div>
-            <button class="task-delete-btn" onclick="deleteTaskItem('${t.id}')" title="Delete">✕</button>
+      myContainer.innerHTML = myItems.map(t => `
+        <div class="task-row">
+          <div class="task-left">
+            <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTaskStatus('${t.id}')">
+            <span class="task-text ${t.completed ? 'completed' : ''}">${t.text}</span>
           </div>
-        `).join('');
-      }
+          <button class="task-delete-btn" onclick="deleteTaskItem('${t.id}')">✕</button>
+        </div>
+      `).join('');
 
-      // Render Others' Tasks
       const othersContainer = document.getElementById('othersTasksList');
       const othersCount = document.getElementById('othersTasksCount');
       const othersItems = state.tasks.others_tasks || [];
       othersCount.textContent = `${othersItems.filter(t => !t.completed).length} pending`;
 
-      if (!othersItems.length) {
-        othersContainer.innerHTML = `<p style="color:var(--text-muted); font-size:0.85rem;">No pending follow-ups.</p>`;
-      } else {
-        othersContainer.innerHTML = othersItems.map(t => `
-          <div class="task-row">
-            <div class="task-left">
-              <input type="checkbox" class="task-checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTaskStatus('${t.id}')">
-              <span class="task-text ${t.completed ? 'completed' : ''}">${t.text}</span>
-              ${t.assignee && t.assignee !== 'Other' ? `<span class="task-badge" style="background:rgba(251,191,36,0.15); color:var(--warning);">${t.assignee}</span>` : ''}
-            </div>
-            <button class="task-delete-btn" onclick="deleteTaskItem('${t.id}')" title="Delete">✕</button>
+      othersContainer.innerHTML = othersItems.map(t => `
+        <div class="task-row">
+          <div class="task-left">
+            <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTaskStatus('${t.id}')">
+            <span class="task-text ${t.completed ? 'completed' : ''}">${t.text}</span>
           </div>
-        `).join('');
-      }
+          <button class="task-delete-btn" onclick="deleteTaskItem('${t.id}')">✕</button>
+        </div>
+      `).join('');
     }
 
     async function addTask(type) {
-      const inputId = type === 'my' ? 'newMyTaskInput' : 'newOthersTaskInput';
-      const input = document.getElementById(inputId);
+      const input = document.getElementById(type === 'my' ? 'newMyTaskInput' : 'newOthersTaskInput');
       const text = input.value.trim();
       if (!text) return;
-
       input.value = '';
       await fetch('/api/tasks', {
         method: 'POST',
@@ -505,57 +577,6 @@
       renderTasks();
     }
 
-    function selectEmail(id) {
-      state.selectedEmail = state.emails.find(e => e.id === id);
-      renderEmails();
-      const info = document.getElementById('selectedEmailInfo');
-      if (state.selectedEmail) {
-        info.innerHTML = `<strong>Replying to:</strong> ${state.selectedEmail.sender}<br><strong>Subject:</strong> ${state.selectedEmail.subject}`;
-        generateReply();
-      }
-    }
-
-    function setIntent(intent, btn) {
-      state.currentIntent = intent;
-      document.querySelectorAll('.intent-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      if (state.selectedEmail) {
-        generateReply();
-      }
-    }
-
-    async function generateReply() {
-      if (!state.selectedEmail) {
-        alert('Please select an email first.');
-        return;
-      }
-      const replyBox = document.getElementById('replyText');
-      replyBox.value = '✨ Generating calendar-aware reply...';
-
-      try {
-        const res = await fetch('/api/smart-reply', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email_id: state.selectedEmail.id,
-            intent: state.currentIntent
-          })
-        }).then(r => r.json());
-
-        replyBox.value = res.reply || 'Could not generate draft.';
-      } catch (err) {
-        replyBox.value = 'Error generating reply.';
-      }
-    }
-
-    function copyReply() {
-      const text = document.getElementById('replyText').value;
-      if (text) {
-        navigator.clipboard.writeText(text);
-        alert('✅ Draft reply copied to clipboard!');
-      }
-    }
-
     function syncData() {
       loadData();
     }
@@ -582,7 +603,7 @@
       syncData();
     }
 
-    // Auto-refresh every 60 seconds
+    // Auto-refresh every 60s
     setInterval(loadData, 60000);
     loadData();
   </script>

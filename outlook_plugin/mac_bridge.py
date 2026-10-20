@@ -80,7 +80,7 @@ class MacOutlookBridge:
         end tell
         """
         raw = self._run_applescript(script)
-        accounts = [{"type": "all", "name": "All Accounts", "email": "all"}]
+        accounts = [{"type": "All", "name": "All Accounts", "email": "all"}]
         if not raw:
             return accounts
 
@@ -116,46 +116,53 @@ class MacOutlookBridge:
         end tell
         """
         raw = self._run_applescript(script)
+        folders = [
+            {"name": "Inbox", "total_messages": 0, "unread_messages": 0},
+            {"name": "Sent Items", "total_messages": 0, "unread_messages": 0},
+            {"name": "Drafts", "total_messages": 0, "unread_messages": 0},
+            {"name": "Archive", "total_messages": 0, "unread_messages": 0},
+            {"name": "Deleted Items", "total_messages": 0, "unread_messages": 0},
+        ]
         if not raw:
-            return []
+            return folders
 
-        folders = []
+        ret = []
         for item in raw.split(ITEM_SEP):
             if not item.strip():
                 continue
             parts = item.split(FIELD_SEP)
             if len(parts) >= 3:
-                folders.append({
+                ret.append({
                     "name": parts[0].strip(),
                     "total_messages": int(parts[1].strip() or "0"),
                     "unread_messages": int(parts[2].strip() or "0"),
                 })
-        return folders
+        return ret if ret else folders
 
     def get_emails(
         self,
         folder: str = "inbox",
-        limit: int = 25,
+        limit: int = 50,
         unread_only: bool = False,
         search_term: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
-        Read emails from a specified folder (e.g. 'inbox', 'Sent Items', etc.).
-        
-        Args:
-            folder: Name of folder (default 'inbox')
-            limit: Maximum number of messages to return
-            unread_only: If True, fetch only unread messages
-            search_term: Optional text to filter subject/sender
+        Read emails from a specified folder (e.g. 'inbox', 'Drafts', 'all').
         """
         filter_clause = "whose is read is false" if unread_only else ""
-        target_folder = "inbox" if folder.lower() == "inbox" else f'mail folder "{folder}"'
+        
+        if folder.lower() in ["all", "all mail"]:
+            target_source = "every message"
+        elif folder.lower() == "inbox":
+            target_source = "messages of inbox"
+        else:
+            target_source = f'messages of (mail folder "{folder}")'
 
         script = f"""
         tell application "Microsoft Outlook"
             set msgOutput to {{}}
             try
-                set msgList to (messages of {target_folder} {filter_clause})
+                set msgList to ({target_source} {filter_clause})
                 set maxCount to {limit}
                 if (count of msgList) < maxCount then
                     set maxCount to (count of msgList)
@@ -171,20 +178,30 @@ class MacOutlookBridge:
                     
                     try
                         set mSubj to subject of m
+                        if mSubj is "" or mSubj is missing value then set mSubj to "(No Subject)"
                     on error
                         set mSubj to "(No Subject)"
                     end try
                     
                     try
-                        set mSender to (name of sender of m) & " <" & (address of sender of m) & ">"
+                        set sndr to sender of m
+                        set mSender to (name of sndr as text) & " <" & (address of sndr as text) & ">"
                     on error
-                        set mSender to "Unknown Sender"
+                        try
+                            set mSender to (address of (sender of m) as text)
+                        on error
+                            set mSender to "Outlook User"
+                        end try
                     end try
                     
                     try
                         set mDate to (time received of m) as text
                     on error
-                        set mDate to ""
+                        try
+                            set mDate to (time sent of m) as text
+                        on error
+                            set mDate to "Recent"
+                        end try
                     end try
                     
                     try
@@ -234,11 +251,12 @@ class MacOutlookBridge:
             if len(parts) >= 6:
                 email_obj = {
                     "id": parts[0].strip(),
-                    "subject": parts[1].strip(),
-                    "sender": parts[2].strip(),
-                    "received_time": parts[3].strip(),
+                    "subject": parts[1].strip() or "(No Subject)",
+                    "sender": parts[2].strip() or "Unknown Sender",
+                    "received_time": parts[3].strip() or "Recent",
                     "is_read": parts[4].strip().lower() == "true",
                     "preview": parts[5].strip(),
+                    "folder": folder.title(),
                 }
                 if search_term:
                     st = search_term.lower()
@@ -254,10 +272,27 @@ class MacOutlookBridge:
             try
                 set m to message id {message_id}
                 set mSubj to subject of m
-                set mSender to (name of sender of m) & " <" & (address of sender of m) & ">"
-                set mDate to (time received of m) as text
-                set mRead to (is read of m) as text
-                set mContent to (plain text content of m)
+                try
+                    set sndr to sender of m
+                    set mSender to (name of sndr as text) & " <" & (address of sndr as text) & ">"
+                on error
+                    set mSender to "Outlook User"
+                end try
+                try
+                    set mDate to (time received of m) as text
+                on error
+                    set mDate to "Recent"
+                end try
+                try
+                    set mRead to (is read of m) as text
+                on error
+                    set mRead to "true"
+                end try
+                try
+                    set mContent to (plain text content of m)
+                on error
+                    set mContent to "(No text content)"
+                end try
                 
                 return mSubj & "{FIELD_SEP}" & mSender & "{FIELD_SEP}" & mDate & "{FIELD_SEP}" & mRead & "{FIELD_SEP}" & mContent
             on error errMsg
@@ -267,14 +302,13 @@ class MacOutlookBridge:
         """
         raw = self._run_applescript(script)
         if not raw or raw.startswith("ERROR:"):
-            logger.warning(f"Could not retrieve message {message_id}: {raw}")
             return None
 
         parts = raw.split(FIELD_SEP)
         if len(parts) >= 5:
             return {
                 "id": str(message_id),
-                "subject": parts[0].strip(),
+                "subject": parts[0].strip() or "(No Subject)",
                 "sender": parts[1].strip(),
                 "received_time": parts[2].strip(),
                 "is_read": parts[3].strip().lower() == "true",
@@ -288,14 +322,7 @@ class MacOutlookBridge:
         limit: int = 50,
         search_term: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
-        """
-        Fetch calendar events from Outlook for the upcoming N days.
-        
-        Args:
-            days_ahead: Number of days into future to query (default 7)
-            limit: Max events to return
-            search_term: Optional text to filter events by title or location
-        """
+        """Fetch calendar events from Outlook."""
         script = f"""
         tell application "Microsoft Outlook"
             set eventOutput to {{}}
