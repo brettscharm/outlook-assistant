@@ -4,6 +4,8 @@ from .config import DATA_DIR
 from email.utils import parseaddr
 import hashlib
 import json
+import re
+from collections import Counter
 import os
 import tempfile
 import threading
@@ -94,7 +96,7 @@ def action(data):
         if act=='dismiss':
             reason=data.get('reason')
             if reason not in REASONS:raise ValueError('Choose a dismissal reason.')
-            item.update(status='dismissed',reason=reason)
+            item.update(status='dismissed',reason=reason,dismissed_at=time.time())
         elif act=='restore':item.update(status='review',reason='')
         elif act=='accept' and item.get('action_type')=='complete':
             from . import tasks
@@ -203,6 +205,34 @@ def stop():
     return snapshot()
 
 
+def dismissal_context(suggestions,batch):
+    """Use the full history for counts and retrieval, with a bounded prompt."""
+    rows=[t for t in suggestions.values() if t.get('status')=='dismissed' and t.get('reason') in REASONS and t['reason']!='quick']
+    counts=Counter(REASONS[t['reason']] for t in rows)
+    stop={'this','that','with','from','have','will','your','please','email','task','send','review','about','next'}
+    tokens=lambda value:set(re.findall(r'[a-z0-9]{4,}',value.casefold()))-stop
+    context=tokens(' '.join(str(m.get(k,'')) for m in batch for k in ('subject','content','body','sender')))
+    ids={str(m.get('id','')) for m in batch}
+    def rank(pair):
+        index,item=pair
+        same=bool(item.get('email_id')) and str(item['email_id']) in ids
+        overlap=len(context & tokens(str(item.get('text',''))+' '+str(item.get('email_subject',''))+' '+str(item.get('company',''))))
+        stamp=item.get('dismissed_at',0)
+        return (same,overlap,stamp if isinstance(stamp,(int,float)) else 0,index)
+    ranked=sorted(enumerate(rows),key=rank,reverse=True)
+    examples=[];seen=set();size=0
+    for _,item in ranked:
+        title=str(item.get('text',''))[:300];reason=REASONS[item['reason']]
+        key=(' '.join(title.casefold().split()),reason)
+        if key in seen:continue
+        example={'text':title,'reason':reason}
+        cost=len(json.dumps(example,ensure_ascii=False))
+        if size+cost>24000:continue
+        examples.append(example);seen.add(key);size+=cost
+        if len(examples)>=100:break
+    return examples,{'total':len(rows),'by_reason':dict(counts),'examples_included':len(examples)}
+
+
 def run(engine,opts,email_id=None):
     if not email_id:
         with _LOCK:
@@ -220,9 +250,9 @@ def run(engine,opts,email_id=None):
         batch=pending[offset:offset+10]
         with _LOCK:JOB['message']=f'Reviewing emails {offset+1}–{offset+len(batch)} of {len(pending)}…'
         current=load()
-        feedback=[dict(text=t['text'],reason=REASONS.get(t.get('reason'),'Dismissed')) for t in current['suggestions'].values() if t['status']=='dismissed' and t.get('reason') not in ('quick','')][-20:]
+        feedback,feedback_summary=dismissal_context(current['suggestions'],batch)
         active=[t for rows in load_tasks().values() for t in rows if not t.get('completed')][:200]
-        found=ai.extract_tasks(batch,mode=opts['mode'],feedback=feedback,active_tasks=active)+ai.last_completions
+        found=ai.extract_tasks(batch,mode=opts['mode'],feedback=feedback,active_tasks=active,feedback_summary=feedback_summary)+ai.last_completions
         reported=ai.last_usage.get('session_costs',0)
         try:cost=max(0,float(reported))
         except (TypeError,ValueError):cost=0
