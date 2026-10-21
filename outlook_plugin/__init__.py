@@ -7,5 +7,5 @@ from .mac_bridge import MacOutlookBridge
 from .graph_bridge import GraphOutlookBridge
 from .engine import OutlookEngine
 
-__version__ = "2.10.6"
+__version__ = "2.10.7"
 __all__ = ["MacOutlookBridge", "GraphOutlookBridge", "OutlookEngine"]
