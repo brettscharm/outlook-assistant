@@ -223,3 +223,5 @@ Uploads support up to **2 GB per file**, show progress, and stream large files d
 Choose **View emails** on a project card or its task board. The list combines email sources from all saved tasks in that project (including completed tasks) with emails added directly, without duplicates. **Add emails** searches visible cached mail; associations save immediately. Open a message to read/reply, then use **Back to project emails** to return. Both lists paginate, and project search includes available cached body text.
 
 **Unlink** removes only a direct association. An email remains visible if a project task still links to it; Outlook mail is never moved or deleted. Links survive app updates and restarts but do not archive the email body: missing or excluded mail shows as unavailable without exposing its content. MCP clients can use `list_project_emails` and `link_project_email` after reconnecting.
+
+Project colors support any six-digit hex color. In **Edit project**, use the color picker or enter a code such as `#008080`. Changes autosave and apply to the project and its task cards. Existing named colors remain supported, including through MCP.

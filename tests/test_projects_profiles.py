@@ -48,3 +48,13 @@ class LocalFeatures(unittest.TestCase):
   self.assertEqual(len(projects.list_projects()[0]['meetings']),1)
   projects.save({'id':p['id'],'name':p['name'],'meetings':[]})
   self.assertEqual(projects.list_projects()[0]['meetings'],[])
+
+ def test_any_hex_project_color_persists_without_losing_legacy_colors(self):
+  for color in ('#008080','#FF0044','#ffffff','#000000','purple'):
+   existing=projects.list_projects()
+   p=projects.save({'id':existing[0]['id'] if existing else None,'name':'Colors','color':color})[0]
+   self.assertEqual(p['color'],color)
+   projects.save({'id':p['id'],'name':'Colors','description':'Updated'})
+   self.assertEqual(projects.list_projects()[0]['color'],color)
+  for color in ('red','url(evil)','#12345z','#abc',{},None):
+   with self.assertRaises(ValueError):projects.save({'id':p['id'],'name':'Colors','color':color})

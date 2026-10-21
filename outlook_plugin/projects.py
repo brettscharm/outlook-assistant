@@ -1,13 +1,17 @@
 """Local project metadata; task membership is stored on each task."""
 import uuid
+import re
 from datetime import datetime
 from urllib.parse import urlsplit
 from .config import read_config, update_config, _LOCK
 
 COLORS=('blue','purple','green','orange','pink')
 
+def valid_color(value):
+    return isinstance(value,str) and (value in COLORS or re.fullmatch(r'#[0-9a-fA-F]{6}',value) is not None)
+
 def list_projects():
-    return [dict(project,color=project.get('color') if project.get('color') in COLORS else COLORS[index%len(COLORS)]) for index,project in enumerate(read_config().get('projects', []))]
+    return [dict(project,color=project.get('color') if valid_color(project.get('color')) else COLORS[index%len(COLORS)]) for index,project in enumerate(read_config().get('projects', []))]
 
 def validate_id(value):
     if value and value not in {p['id'] for p in list_projects()}:
@@ -57,7 +61,7 @@ def save(data,request_id=None):
     if not isinstance(name,str) or not 1<=len(name.strip())<=100:raise ValueError('Enter a project name of up to 100 characters.')
     description=data.get('description','')
     if not isinstance(description,str) or len(description)>4000:raise ValueError('Keep project details under 4,000 characters.')
-    if 'color' in data and data['color'] not in COLORS:raise ValueError('Choose a supported project color.')
+    if 'color' in data and not valid_color(data['color']):raise ValueError('Choose a color or enter a six-digit hex color such as #008080.')
     links=validate_links(data['links']) if 'links' in data else None
     meetings=validate_meetings(data['meetings']) if 'meetings' in data else None
     with _LOCK:

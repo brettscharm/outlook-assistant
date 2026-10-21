@@ -347,7 +347,7 @@ function taskPriorityFlag(priority){
  flag.setAttribute('aria-label',label+' priority');flag.title=label+' priority';const icon=text('span','⚑');icon.setAttribute('aria-hidden','true');flag.append(icon,text('span',label));return flag;
 }
 function savedTaskCard(t){
- const card=text('article','','action-card task-card-v2'+(t.completed?' task-completed':''));card.dataset.color=window.projectRows?.find(p=>p.id===t.project_id)?.color||t.color||'none';
+ const card=text('article','','action-card task-card-v2'+(t.completed?' task-completed':''));card.dataset.color=window.projectRows?.find(p=>p.id===t.project_id)?.color||t.color||'none';applyProjectAccent(card,card.dataset.color);
  const top=text('div','','action-card-top');const title=text('h3',t.text);top.append(title);const priorityFlag=taskPriorityFlag(t.priority);if(priorityFlag)top.append(priorityFlag);card.append(top);addTaskCollapse(card,top,t);
  const meta=text('div','','task-meta');const due=taskDeadline(t);if(due.due)meta.append(text('span',due.label,'due-chip '+due.urgency));if(!due.due)meta.append(text('span','No due date','muted small'));card.append(meta);
  if(t.deadline?.kind==='meeting'){const meeting=text('p','Before '+t.deadline.subject,'task-meeting');if(t.deadline.availability==='unavailable')meeting.append(text('small','Meeting unavailable · Check Calendar'));card.append(meeting);}
@@ -370,7 +370,7 @@ $('taskEmailPeople').onclick=()=>busy($('taskEmailPeople'),async()=>{
  await api('/api/task-email-draft',{recipients,subject,body});$('taskEmailPeopleStatus').textContent='Draft requested in your default email app. Review it there before sending.';
 });
 
-function refreshTaskProjectColor(){const project=window.projectRows?.find(p=>p.id===$('editTaskProject').value);$('taskColor').disabled=!!project;$('taskColor').value=project?.color||$('taskColor').dataset.personalColor||'none';$('taskColorHelp').textContent=project?'Matches '+project.name+'. Change this color in the project.':'Choose a color for this task.';}
+function refreshTaskProjectColor(){const project=window.projectRows?.find(p=>p.id===$('editTaskProject').value);$('taskColor').querySelector('option[data-project-color]')?.remove();if(project&&/^#[0-9a-f]{6}$/i.test(project.color)){const option=text('option','Project color ('+project.color+')');option.value=project.color;option.dataset.projectColor='true';$('taskColor').append(option);}$('taskColor').disabled=!!project;$('taskColor').value=project?.color||$('taskColor').dataset.personalColor||'none';$('taskColorHelp').textContent=project?'Matches '+project.name+'. Change this color in the project.':'Choose a color for this task.';}
 $('editTaskProject').addEventListener('change',refreshTaskProjectColor);$('taskColor').addEventListener('change',()=>{if(!$('taskColor').disabled)$('taskColor').dataset.personalColor=$('taskColor').value;});
 
 // Keep the compact board menu predictable for pointer and keyboard users.

@@ -286,3 +286,6 @@ $('troubleshootRun').onclick=()=>busy($('troubleshootRun'),async()=>{
 $('troubleshootContact').onclick=()=>busy($('troubleshootContact'),async()=>{await api('/api/feedback',{kind:'problem'});});
 $('troubleshootOpenOutlook').onclick=()=>busy($('troubleshootOpenOutlook'),async()=>{await api('/api/open-outlook',{});});
 $('troubleshootRetryMail').onclick=()=>{const id=troubleshootingMessageId;$('troubleshootDialog').close();selectEmail(id).catch(e=>notice(e.message,'error'));};
+
+function projectColorHex(value){const palette={blue:'#578ce5',purple:'#a084d8',green:'#6ba68a',orange:'#dca366',pink:'#d588ab'};return /^#[0-9a-f]{6}$/i.test(value||'')?value:palette[value]||palette.blue;}
+function applyProjectAccent(element,value){if(/^#[0-9a-f]{6}$/i.test(value||''))element.style.setProperty('--task-accent',value);}
