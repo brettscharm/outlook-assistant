@@ -48,7 +48,7 @@ def set_startup(enabled):
 def export_data():
     cfg = config.read_config()
     # Allowlist excludes API keys, team configuration, and machine-specific paths.
-    settings = {k: cfg[k] for k in ('user_context','domain_companies','task_scan','writing_samples') if k in cfg}
+    settings = {k: cfg[k] for k in ('user_context','domain_companies','task_scan','task_lanes','writing_samples') if k in cfg}
     with task_workflow._LOCK, tasks._LOCK:
         return {'format':'outlook-assistant-backup','schema':1,'app_version':__version__,
                 'created_at':datetime.now(timezone.utc).isoformat(), 'settings':settings,

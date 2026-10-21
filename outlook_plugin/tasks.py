@@ -73,6 +73,7 @@ def toggle_task(task_id: str) -> Dict[str, List[Dict[str, Any]]]:
         for item in tasks[category]:
             if str(item.get("id")) == str(task_id):
                 item["completed"] = not item.get("completed", False)
+                item["lane_id"] = "done" if item["completed"] else "todo"
                 save_tasks(tasks)
                 return tasks
     return tasks
@@ -112,5 +113,43 @@ def edit_task(task_id, text, owner, kind, due_date, description=None):
                 if description is not None:item['description']=str(description).strip()[:4000]
                 data[group].remove(item)
                 data['my_tasks' if kind=='my' else 'others_tasks'].insert(0,item)
+                save_tasks(data);return data
+    raise ValueError('Task not found.')
+
+
+DEFAULT_LANES=[{'id':'todo','name':'My Tasks'},{'id':'progress','name':'In Progress'},{'id':'done','name':'Done'}]
+def board_lanes():
+    from .config import read_config
+    return read_config().get('task_lanes') or [dict(lane) for lane in DEFAULT_LANES]
+
+def task_lane(task):
+    if task.get('completed'):return 'done'
+    lane=task.get('lane_id','todo')
+    return lane if lane!='done' else 'todo'
+
+@_serialized
+def save_board_lanes(lanes):
+    from .config import update_config
+    if not isinstance(lanes,list) or not 2<=len(lanes)<=12:raise ValueError('Use between 2 and 12 lanes.')
+    clean=[];ids=set()
+    import re
+    for lane in lanes:
+        if not isinstance(lane,dict):raise ValueError('Invalid lane.')
+        key=lane.get('id','');name=lane.get('name','')
+        if not isinstance(key,str) or not re.fullmatch(r'[a-zA-Z0-9_-]{1,80}',key) or key in ids:raise ValueError('Invalid or duplicate lane.')
+        if not isinstance(name,str) or not name.strip() or len(name.strip())>60:raise ValueError('Name each lane using up to 60 characters.')
+        ids.add(key);clean.append({'id':key,'name':name.strip()})
+    if not {'todo','done'}<=ids:raise ValueError('Keep the starting and completed lanes; you can rename them.')
+    if any(task_lane(task) not in ids for rows in load_tasks().values() for task in rows):raise ValueError('Move tasks out of a lane before removing it.')
+    update_config({'task_lanes':clean});return clean
+
+@_serialized
+def move_task(task_id,lane_id):
+    if lane_id not in {lane['id'] for lane in board_lanes()}:raise ValueError('That lane no longer exists. Refresh the board.')
+    data=load_tasks()
+    for rows in data.values():
+        for task in rows:
+            if task['id']==task_id:
+                task.update(lane_id=lane_id,completed=lane_id=='done')
                 save_tasks(data);return data
     raise ValueError('Task not found.')

@@ -1,4 +1,5 @@
 'use strict';
+let boardLanes=[],laneDraft=[],draggedTask=null;
 let taskPage=1,taskViewChosen=false,revealSavedTask=null;
 let taskReview=null,taskSaved=[],taskView='review',taskEditor=null,taskFingerprint='',taskLoading=false,scanFormReady=false,scanPanelSettled=false;
 window.taskFormDirty=false;
@@ -41,7 +42,7 @@ if(revealSavedTask){const index=items.findIndex(revealSavedTask);if(index>=0){ta
 taskPage=Math.min(taskPage,Math.max(1,Math.ceil(items.length/20)));
 const fingerprint=JSON.stringify([items,taskView,query,filter,taskPage]);if(fingerprint===taskFingerprint)return;taskFingerprint=fingerprint;listPager('taskPages',items.length,taskPage,20,page=>{taskPage=page;taskFingerprint='';renderTaskList();$('taskPages').scrollIntoView({block:'nearest'});});
 const root=$('taskList');root.replaceChildren();if(!items.length){const empty=text('div','','task-empty');empty.append(text('h3',taskView==='review'?'Nothing waiting for review.':'No tasks in this view.'),text('p',taskView==='review'?'New suggestions appear here automatically when task discovery is on.':'Try another filter or add a task.','muted'));root.append(empty);}for(const item of items.slice((taskPage-1)*20,taskPage*20))root.append(taskCard(item,origin));}
-window.loadTaskWorkspace=function(){if(taskLoading)return taskLoading;taskLoading=(async()=>{try{const [review,saved]=await Promise.all([api('/api/task-review'),api('/api/tasks')]);taskReview=review;$('reviewBadge').textContent=review.suggestions.filter(t=>t.status==='review').length;taskSaved=[...(saved.my_tasks||[]).map(t=>({...t,type:t.type||'my'})),...(saved.others_tasks||[]).map(t=>({...t,type:t.type||'others'}))];window.taskScanRunning=review.job.running;if(lastSuccessfulSync&&!state.busy){$('syncTime').textContent=syncTimeLabel()+(review.job.running?' · Checking tasks…':review.job.status==='error'?' · Task check failed':review.last_check?' · Tasks checked '+new Date(review.last_check).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):'');}$('identityPrompt').hidden=review.identity_ready;$('findTasks').disabled=review.job.running||state.pending>0;$('stopScan').hidden=!review.job.running;$('scanProgress').max=Math.max(1,review.job.total);$('scanProgress').value=review.job.scanned;$('scanProgress').hidden=!review.job.running;
+window.loadTaskWorkspace=function(){if(taskLoading)return taskLoading;taskLoading=(async()=>{try{const [review,saved,lanes]=await Promise.all([api('/api/task-review'),api('/api/tasks'),api('/api/task-lanes')]);boardLanes=lanes;taskReview=review;$('reviewBadge').textContent=review.suggestions.filter(t=>t.status==='review').length;taskSaved=[...(saved.my_tasks||[]).map(t=>({...t,type:t.type||'my'})),...(saved.others_tasks||[]).map(t=>({...t,type:t.type||'others'}))];window.taskScanRunning=review.job.running;if(lastSuccessfulSync&&!state.busy){$('syncTime').textContent=syncTimeLabel()+(review.job.running?' · Checking tasks…':review.job.status==='error'?' · Task check failed':review.last_check?' · Tasks checked '+new Date(review.last_check).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):'');}$('identityPrompt').hidden=review.identity_ready;$('findTasks').disabled=review.job.running||state.pending>0;$('stopScan').hidden=!review.job.running;$('scanProgress').max=Math.max(1,review.job.total);$('scanProgress').value=review.job.scanned;$('scanProgress').hidden=!review.job.running;
 const auto=review.automatic_state;
 $('scanScheduleLabel').textContent=auto==='paused'?'Task discovery paused':'Automatic task discovery';
 $('toggleTaskAuto').textContent=review.options.interval?'Pause automatic discovery':'Resume automatic discovery';
@@ -75,7 +76,7 @@ $('taskEditorForm').onsubmit=e=>{e.preventDefault();busy(e.submitter,async()=>{
  view('tasks');setTaskView(target?.completed?'done':values.type==='my'?'my':'others');
  taskFingerprint='';renderTaskBoard();
  $('taskBoard').scrollIntoView({block:'start'});
- notice('Task saved in '+(target?.completed?'Completed':values.type==='my'?'My tasks':'Others / unclear')+'.');
+ notice('Task saved in '+(boardLanes.find(l=>l.id===taskLane(target||{}))?.name||'My Tasks')+'.');
 });};
 document.querySelectorAll('[data-task-view]').forEach(b=>b.onclick=()=>setTaskView(b.dataset.taskView));$('taskSearch').oninput=()=>{taskPage=1;renderTaskList();};$('taskDueFilter').onchange=()=>{taskPage=1;renderTaskList();};
 window.mountEmailTasks=function(id,root){const panel=text('section','','email-task-summary');root.insertBefore(panel,root.querySelector('.reader-meta'));renderEmailSummary(id,panel);};
@@ -92,14 +93,36 @@ function renderTaskBoard(){
  const query=$('boardSearch').value.trim().toLowerCase();
  const items=taskSaved.filter(t=>!query||[t.text,t.description,t.owner,t.assignee,t.company,t.email_subject].filter(Boolean).join(' ').toLowerCase().includes(query));
  items.sort((a,b)=>(taskDeadline(a).due||'9999').localeCompare(taskDeadline(b).due||'9999'));
- const lanes=[['my','My tasks',items.filter(t=>!t.completed&&t.type==='my')],['others','Others / waiting',items.filter(t=>!t.completed&&t.type!=='my')],['done','Completed',items.filter(t=>t.completed)]];
+ const lanes=boardLanes.map(lane=>{boardLimits[lane.id]??=20;return [lane.id,lane.name,items.filter(t=>taskLane(t)===lane.id)];});
  if(revealSavedTask){for(const [key,,rows] of lanes){const index=rows.findIndex(revealSavedTask);if(index>=0){boardLimits[key]=Math.max(boardLimits[key],index+1);revealSavedTask=null;break;}}}
- const fingerprint=JSON.stringify([lanes,boardLimits]);if(fingerprint===boardFingerprint)return;boardFingerprint=fingerprint;
+ const fingerprint=JSON.stringify([lanes,boardLimits]);if(draggedTask||fingerprint===boardFingerprint)return;boardFingerprint=fingerprint;
  const root=$('taskBoard');root.replaceChildren();
- for(const [key,label,rows] of lanes){const lane=text('section','','task-lane');lane.setAttribute('aria-label',label);const heading=text('div','','lane-heading');heading.append(text('h2',label),text('span',rows.length,'nav-count'));lane.append(heading);
- if(!rows.length)lane.append(text('p',query?'No matching tasks.':key==='done'?'Completed tasks appear here.':key==='my'?'Add a task or accept one from Tasks to review.':'Tasks owned by others or with an unclear owner appear here.','lane-empty'));
- for(const task of rows.slice(0,boardLimits[key]))lane.append(taskCard(task,'saved'));
+ for(const [key,label,rows] of lanes){const lane=text('section','','task-lane');lane.setAttribute('aria-label',label);lane.dataset.lane=key;lane.ondragover=e=>{if(draggedTask){e.preventDefault();e.dataTransfer.dropEffect='move';lane.classList.add('drop-target');}};lane.ondragleave=e=>{if(!lane.contains(e.relatedTarget))lane.classList.remove('drop-target');};lane.ondrop=e=>{e.preventDefault();lane.classList.remove('drop-target');const id=draggedTask;draggedTask=null;if(id)moveBoardTask(id,key);};const heading=text('div','','lane-heading');heading.append(text('h2',label),text('span',rows.length,'nav-count'));lane.append(heading);
+ if(!rows.length)lane.append(text('p',query?'No matching tasks.':key==='done'?'Completed tasks appear here.':'Drag tasks here or choose this lane on a card.','lane-empty'));
+ for(const task of rows.slice(0,boardLimits[key])){
+ const card=taskCard(task,'saved');card.draggable=true;card.dataset.taskId=task.id;
+ card.ondragstart=e=>{draggedTask=task.id;e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',task.id);};
+ card.ondragend=()=>{draggedTask=null;document.querySelectorAll('.drop-target').forEach(el=>el.classList.remove('drop-target'));};
+ const label=text('label','Move to','lane-move');const select=document.createElement('select');select.setAttribute('aria-label','Move '+task.text+' to lane');
+ for(const option of boardLanes){const el=text('option',option.name);el.value=option.id;el.selected=option.id===key;select.append(el);}
+ select.onchange=()=>{select.disabled=true;moveBoardTask(task.id,select.value).finally(()=>select.disabled=false);};label.append(select);card.append(label);lane.append(card);
+ }
  if(rows.length>boardLimits[key]){const more=text('button','Show more ('+(rows.length-boardLimits[key])+' remaining)');more.onclick=()=>{boardLimits[key]+=20;renderTaskBoard();};lane.append(more);}root.append(lane);
  }
 }
 $('boardSearch').oninput=()=>{boardFingerprint='';renderTaskBoard();};
+
+function taskLane(t){return t.completed?'done':t.lane_id&&t.lane_id!=='done'?t.lane_id:'todo';}
+async function moveBoardTask(id,lane){try{await api('/api/tasks',{action:'move',id,lane_id:lane});if(taskLoading)await taskLoading;await loadTaskWorkspace();notice('Moved to '+(boardLanes.find(l=>l.id===lane)?.name||'lane')+'.');}catch(e){notice(e.message,'error');boardFingerprint='';renderTaskBoard();}}
+function renderLaneEditor(){
+ const root=$('laneRows');root.replaceChildren();
+ laneDraft.forEach((lane,index)=>{const row=text('div','','lane-config-row');const name=document.createElement('input');name.value=lane.name;name.maxLength=60;name.required=true;name.setAttribute('aria-label','Lane '+(index+1)+' name');name.oninput=()=>lane.name=name.value;row.append(name);
+ if(lane.id==='todo'||lane.id==='done')row.append(text('small',lane.id==='todo'?'Starting lane':'Completed lane','muted'));
+ for(const [title,step] of [['Move up',-1],['Move down',1]]){const b=text('button',step<0?'↑':'↓');b.type='button';b.setAttribute('aria-label',title+' '+lane.name);b.disabled=index+step<0||index+step>=laneDraft.length;b.onclick=()=>{[laneDraft[index],laneDraft[index+step]]=[laneDraft[index+step],laneDraft[index]];renderLaneEditor();};row.append(b);}
+ if(!['todo','done'].includes(lane.id)){const remove=text('button','Remove');remove.type='button';remove.onclick=()=>{if(taskSaved.some(t=>taskLane(t)===lane.id)){$('laneSaveStatus').textContent='Move tasks out of this lane before removing it.';return;}laneDraft.splice(index,1);renderLaneEditor();};row.append(remove);}root.append(row);
+ });$('addLane').disabled=laneDraft.length>=12;
+}
+$('configureLanes').onclick=()=>{laneDraft=boardLanes.map(l=>({...l}));$('laneSaveStatus').textContent='';renderLaneEditor();$('laneEditor').showModal();};
+$('closeLanes').onclick=()=>$('laneEditor').close();
+$('addLane').onclick=()=>{if(laneDraft.length<12){laneDraft.push({id:'lane-'+crypto.randomUUID(),name:'New lane'});renderLaneEditor();}};
+$('laneForm').onsubmit=e=>{e.preventDefault();busy(e.submitter,async()=>{try{boardLanes=await api('/api/task-lanes',{lanes:laneDraft});$('laneEditor').close();boardFingerprint='';renderTaskBoard();notice('Lanes saved on this Mac.');}catch(error){$('laneSaveStatus').textContent=error.message;}});};

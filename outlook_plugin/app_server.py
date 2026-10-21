@@ -13,7 +13,7 @@ from .config import read_config, update_config
 from .engine import OutlookEngine
 from .local_store import profiles, LocalStoreBridge
 from .contacts import group_contacts, link_company, link_companies, suggest_company
-from .tasks import load_tasks, add_task, toggle_task, delete_task, edit_task
+from .tasks import board_lanes, save_board_lanes, move_task, load_tasks, add_task, toggle_task, delete_task, edit_task
 from . import task_workflow, email_chat, workspace, setup_check, drafts, storage, usage, bob_status, outlook_status
 from .updater import check_and_apply_update
 
@@ -109,6 +109,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             return self._send_json({'groups':groups,'companies':companies,'source':'Cached email senders'})
         if path=='/api/folders': return self._send_json(self.engine.list_folders())
         if path=='/api/accounts': return self._send_json(self.engine.list_accounts())
+        if path=='/api/task-lanes': return self._send_json(board_lanes())
         if path=='/api/tasks': return self._send_json(load_tasks())
         if path=='/api/emails':
             backend=self.engine.get_active_backend()
@@ -220,6 +221,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             known={(t.get('email_id'),' '.join(t['text'].lower().split())) for group in existing.values() for t in group}
             suggestions=[t for t in suggestions if (t['email_id'],' '.join(t['text'].lower().split())) not in known]
             return self._send_json({'suggestions':suggestions,'scanned':len(messages),'usage':self.ai.last_usage})
+        if path=='/api/task-lanes':return self._send_json(save_board_lanes(data.get('lanes')))
         if path=='/api/tasks':
             action=data.get('action','add')
             if action=='add':
@@ -240,6 +242,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
                     date.fromisoformat(due)
                 tasks=add_task(data.get('type','my'),text,str(data.get('owner',''))[:200],due,source=source,description=str(data.get('description','')))
             elif action=='edit':tasks=edit_task(str(data.get('id','')),str(data.get('text','')),str(data.get('owner','')),data.get('type','my'),str(data.get('due_date','')),description=data.get('description'))
+            elif action=='move':tasks=move_task(str(data.get('id','')),str(data.get('lane_id','')))
             elif action=='toggle': tasks=toggle_task(data.get('id'))
             elif action=='delete': tasks=delete_task(data.get('id'))
             else: raise ValueError('Unknown task action.')
