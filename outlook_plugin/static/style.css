@@ -120,3 +120,5 @@ dialog{max-height:calc(100dvh - 48px);overflow:auto;border-radius:16px;box-shado
 .action-card.task-completed{background:#f1f2f4;border-color:#d9dce1;filter:grayscale(1)}
 .task-completed h3,.task-completed .task-description{color:#626873}
 .task-completed .owner-chip,.task-completed .due-chip,.task-completed .priority-chip,.task-completed .source-chip,.task-completed .company-chip{background:#e3e5e8;color:#626873;box-shadow:none}
+
+#assistantOpen{display:flex;align-items:center;gap:9px}.assistant-identity{display:flex;align-items:center;gap:10px}.assistant-identity img,#assistantOpen img{flex-shrink:0;object-fit:contain}
