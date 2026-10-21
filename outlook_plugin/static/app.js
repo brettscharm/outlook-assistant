@@ -140,7 +140,7 @@ function renderContacts(){
   root.append(card);
  }
  if(!matches.length)root.append(text('p','No matches. Try another person, company, or domain.','muted'));
- renderContactPagination(pages,matches.length);
+ renderContactPagination(pages,matches.length);window.renderSavedGroups?.();
 }
 $('contactSearch').oninput=()=>{contactPage=1;renderContacts();};
 $('refreshContacts').onclick=()=>busy($('refreshContacts'),()=>loadContacts(true));
