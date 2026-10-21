@@ -15,3 +15,15 @@ class MeetingMailTests(unittest.TestCase):
  def test_floating_time_not_assumed_to_be_local(self):
   rows=parse_ics('BEGIN:VEVENT\nDTSTART:20261022T120000\nEND:VEVENT')
   self.assertEqual(rows[0]['start_time'],'')
+
+ def test_older_desktop_without_zoneinfo_still_reads_utc_and_date(self):
+  import sys
+  from unittest.mock import patch
+  from outlook_plugin.meeting_mail import ics_time
+  with patch.dict(sys.modules, {'zoneinfo': None}):
+   self.assertEqual(ics_time('20261022T120000', ['TZID=America/New_York']), '')
+   self.assertEqual(ics_time('20261022T120000Z', []), '2026-10-22T12:00:00+00:00')
+   self.assertEqual(ics_time('20261022', []), '2026-10-22')
+ def test_unknown_timezone_does_not_break_discovery(self):
+  from outlook_plugin.meeting_mail import ics_time
+  self.assertEqual(ics_time('20261022T120000', ['TZID=Unknown/Timezone']), '')

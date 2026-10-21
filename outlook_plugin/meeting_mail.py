@@ -3,7 +3,6 @@ These are invitation/response records, never authoritative calendar events.
 """
 import re
 from datetime import datetime,timezone
-from zoneinfo import ZoneInfo,ZoneInfoNotFoundError
 from .mail_archive import attachment_path
 
 
@@ -13,8 +12,10 @@ def ics_time(value,params):
         if value.endswith('Z'):return datetime.strptime(value,'%Y%m%dT%H%M%SZ').replace(tzinfo=timezone.utc).isoformat()
         zone=next((p[5:] for p in params if p.startswith('TZID=')),None)
         if not zone:return '' # Floating times have no reliable absolute timezone.
+        # Older desktop runtimes omit zoneinfo. Keep mail/sync usable; never guess a timezone.
+        from zoneinfo import ZoneInfo
         return datetime.strptime(value,'%Y%m%dT%H%M%S').replace(tzinfo=ZoneInfo(zone.strip('"'))).isoformat()
-    except (ValueError,ZoneInfoNotFoundError):return ''
+    except (ValueError,KeyError,ImportError):return ''
 
 
 def parse_ics(content):
