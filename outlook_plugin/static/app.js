@@ -217,6 +217,7 @@ async function refreshSyncedViews(){
  // Company labels and draft text may be mid-edit; never replace the active editor.
  if(active==='contacts'&&!$('contacts').contains(document.activeElement))jobs.push(loadContacts(true));
  if(active==='drafts'&&!$('savedDraftEditor').open)jobs.push(hydrateDrafts());
+ if(active==='calendar')jobs.push(window.loadCalendar?.(true));
  if(active==='usage')jobs.push(window.loadUsage?.());
  if(active==='chat')jobs.push(window.refreshChatHistory?.());
  const results=await Promise.allSettled(jobs);

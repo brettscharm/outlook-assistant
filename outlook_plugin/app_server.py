@@ -132,7 +132,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             return self._send_json(item if item else {'error':'Message not found.'},200 if item else 404)
         if path=='/api/meeting-mail':return self._send_json(meeting_mail.discover(self.engine))
         if path=='/api/calendar':
-            return self._send_json(calendar_cache.snapshot())
+            return self._send_json(calendar_cache.snapshot(force=q.get('refresh',[''])[0]=='1'))
         if path.startswith('/api/'):
             return self._send_json({'error':'Unknown endpoint.'},404)
         if path not in ('/','/index.html','/app.js','/tasks-ui.js','/task-files.js','/chat-ui.js','/workspace-ui.js','/organize-ui.js','/rich-editor.js','/style.css','/app-icon.png'):

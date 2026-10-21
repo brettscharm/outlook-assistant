@@ -16,3 +16,8 @@ class CalendarTests(unittest.TestCase):
   event=dict(account='a',iCalUID='one',startTime='2026-10-22T12:00:00Z',endTime='2026-10-22T13:00:00Z')
   rows,skipped=normalize([event,dict(event,account='b'),dict(event,iCalUID='bad',endTime='2026-10-20T00:00:00Z')],now,30)
   self.assertEqual(len(rows),2);self.assertEqual(skipped,1)
+ def test_embedded_outlook_occurrences_and_drafts(self):
+  now=datetime(2026,10,21,tzinfo=timezone.utc)
+  row=dict(account='user@example.com',iCalUID='instance',startTime='2026-10-22T12:00:00.000Z',endTime='2026-10-22T13:00:00.000Z',eventType='Exception',source='Teams calendar',responseType='Accept')
+  events,skipped=normalize([row,dict(row,iCalUID='draft',isDraft=True)],now,30)
+  self.assertEqual(len(events),1);self.assertEqual(events[0]['response'],'Accept');self.assertEqual(events[0]['source'],'Teams calendar');self.assertEqual(skipped,0)

@@ -30,12 +30,12 @@ def normalize(rows,now,days):
         entries[key]=(modified,row,start,end)
     result=[]
     for key,(_,row,start,end) in entries.items():
-        if row.get('isCancelled') is True:continue
+        if row.get('isCancelled') is True or row.get('isDraft') is True:continue
         if end<now or start>now+timedelta(days=days):continue
         result.append({'id':key,'subject':str(row.get('subject') or 'Untitled meeting')[:2000],
           'start_time':start.isoformat(),'end_time':end.isoformat(),'organizer':str(row.get('organizerName') or '')[:500],
           'location':str(row.get('location') or '')[:2000],'join_url':str(row.get('skypeTeamsMeetingUrl') or '')[:8000],
-          'all_day':row.get('isAllDayEvent') is True,'source':'Teams cache'})
+          'all_day':row.get('isAllDayEvent') is True,'source':str(row.get('source') or 'Teams cache'),'response':str(row.get('responseType') or '')})
     return sorted(result,key=lambda row:row['start_time']),skipped
 
 def snapshot(days=30,force=False):
@@ -51,6 +51,8 @@ def snapshot(days=30,force=False):
             if not isinstance(data,dict) or not isinstance(data.get('events'),list):raise RuntimeError('Calendar reader returned an unsupported format.')
             _CACHE.clear();_CACHE.update(data,checked=time.time())
         events,skipped=normalize(_CACHE['events'],datetime.now(timezone.utc),days)
-        return {'events':events,'checked':_CACHE['checked'],'sources':_CACHE.get('sources',0),'skipped':skipped+_CACHE.get('skipped',0),
+        cached_dates=[instant(row.get('endTime')) for row in _CACHE['events'] if isinstance(row,dict)]
+        latest=max((d for d in cached_dates if d),default=None)
+        return {'events':events,'latest_cached_end':latest.isoformat() if latest else None,'checked':_CACHE['checked'],'sources':_CACHE.get('sources',0),'skipped':skipped+_CACHE.get('skipped',0),
                 'cached_records':len(_CACHE['events']),
-                'warning':'Cached Teams meetings only. Open Teams Calendar to refresh coverage. Recurring series appear only where individual occurrences are cached; missing meetings do not mean you are free.'}
+                'warning':'From the calendar saved by Teams. Open Teams Calendar to download changes.'}
