@@ -124,16 +124,22 @@ $('taskEditorForm').addEventListener('input',()=>{if(taskEditor?.origin!=='saved
 
 const boardLimits={my:20,others:20,done:20};
 let boardFingerprint='';
+let showCompletedTasks=true;
+try{showCompletedTasks=localStorage.getItem('outlook-show-completed')!=='false';}catch{}
 window.openTaskPage=id=>{if(id==='tasks')renderTaskBoard();else{taskFingerprint='';renderTaskList();}};
 function renderTaskBoard(){
  const query=$('boardSearch').value.trim().toLowerCase();
+ const completedCount=taskSaved.filter(t=>t.completed).length;
+ $('toggleCompletedTasks').textContent=(showCompletedTasks?'Hide completed':'Show completed')+' ('+completedCount+')';
+ $('toggleCompletedTasks').setAttribute('aria-pressed',String(showCompletedTasks));
  const items=taskSaved.filter(t=>!query||[t.text,t.description,t.source_type,t.owner,t.assignee,t.company,t.email_subject].filter(Boolean).join(' ').toLowerCase().includes(query));
  items.sort((a,b)=>compareTasks(a,b,$('boardSort').value));
  const lanes=boardLanes.map(lane=>{boardLimits[lane.id]??=20;return [lane.id,lane.name,items.filter(t=>taskLane(t)===lane.id)];});
  if(revealSavedTask){for(const [key,,rows] of lanes){const index=rows.findIndex(revealSavedTask);if(index>=0){boardLimits[key]=Math.max(boardLimits[key],index+1);revealSavedTask=null;break;}}}
- const fingerprint=JSON.stringify([lanes,boardLimits,localToday()]);if(draggedTask||fingerprint===boardFingerprint)return;boardFingerprint=fingerprint;
+ const fingerprint=JSON.stringify([lanes,boardLimits,localToday(),showCompletedTasks]);if(draggedTask||fingerprint===boardFingerprint)return;boardFingerprint=fingerprint;
  const root=$('taskBoard');root.replaceChildren();
  for(const [key,label,rows] of lanes){const lane=text('section','','task-lane');lane.setAttribute('aria-label',label);lane.dataset.lane=key;lane.ondragover=e=>{if(draggedTask){e.preventDefault();e.dataTransfer.dropEffect='move';lane.classList.add('drop-target');}};lane.ondragleave=e=>{if(!lane.contains(e.relatedTarget))lane.classList.remove('drop-target');};lane.ondrop=e=>{e.preventDefault();lane.classList.remove('drop-target');const id=draggedTask;draggedTask=null;if(id)moveBoardTask(id,key);};const heading=text('div','','lane-heading');heading.append(text('h2',label),text('span',rows.length,'nav-count'));lane.append(heading);
+ if(key==='done'&&!showCompletedTasks){lane.append(text('p',rows.length?rows.length+' completed '+(rows.length===1?'task hidden.':'tasks hidden.'):'Completed tasks are hidden.','lane-empty'));root.append(lane);continue;}
  if(!rows.length)lane.append(text('p',query?'No matching tasks.':key==='done'?'Completed tasks appear here.':'Drag tasks here or choose this lane on a card.','lane-empty'));
  for(const task of rows.slice(0,boardLimits[key])){
  const card=taskCard(task,'saved');card.draggable=true;card.dataset.taskId=task.id;
@@ -223,3 +229,9 @@ $('editTaskType').addEventListener('change',()=>{
   $('editTaskOwner').dispatchEvent(new Event('input',{bubbles:true}));
  }
 });
+
+$('toggleCompletedTasks').onclick=()=>{
+ showCompletedTasks=!showCompletedTasks;
+ try{localStorage.setItem('outlook-show-completed',String(showCompletedTasks));}catch{}
+ boardFingerprint='';renderTaskBoard();
+};
