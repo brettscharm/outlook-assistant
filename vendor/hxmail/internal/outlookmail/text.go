@@ -3,6 +3,8 @@ package outlookmail
 import (
 	"html"
 	"strings"
+ "regexp"
+ "net/url"
 )
 
 // blockTags are the tags that end a run of text: a gap is put where one starts or ends, so
@@ -23,10 +25,12 @@ func HTMLText(src []byte) string { return htmlText(src, false) }
 // HTMLParagraphs preserves block boundaries for readable email display.
 func HTMLParagraphs(src []byte) string { return htmlText(src, true) }
 
+var hrefAttribute = regexp.MustCompile(`(?i)(?:^|\s)href\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))`)
 func htmlText(src []byte, paragraphs bool) string {
 	s := strings.ToValidUTF8(strings.ReplaceAll(string(src), "\x00", ""), "\ufffd")
 	lower := asciiLower(s)
 	var out strings.Builder
+ var link string
 	for i := 0; i < len(s); {
 		lt := strings.IndexByte(s[i:], '<')
 		if lt < 0 {
@@ -54,6 +58,17 @@ func htmlText(src []byte, paragraphs bool) string {
 			break
 		}
 		inside := lower[i+1 : end]
+  if paragraphs && tagName(inside)=="a" {
+   if strings.HasPrefix(inside,"/") {
+    if link!="" {out.WriteString(" ("+html.EscapeString(link)+")");link=""}
+   } else {
+    link=""
+    if match:=hrefAttribute.FindStringSubmatch(s[i+1:end]);match!=nil {
+     raw:="";for _,value:=range match[1:] {if value!="" {raw=html.UnescapeString(value);break}}
+     if parsed,err:=url.Parse(raw);err==nil && (parsed.Scheme=="https"||parsed.Scheme=="http") && parsed.Host!="" {link=raw}
+    }
+   }
+  }
 		name := tagName(inside)
 		i = end + 1
 		if (name == "script" || name == "style") && !strings.HasPrefix(inside, "/") {
