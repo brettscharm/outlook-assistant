@@ -93,7 +93,7 @@ $('copySavedDraft').onclick=()=>busy($('copySavedDraft'),async()=>{await copyRic
 let quickUsageLoading=false;
 function renderQuickUsage(data){
  const today=data.today,partial=today.unreported>0||data.tracking_error;
- const total=today.reported_units.toLocaleString(undefined,{maximumFractionDigits:3});
+ const total=today.reported_units.toLocaleString(undefined,{maximumFractionDigits:0});
  const summary=today.requests===0?'No usage today':today.unreported===today.requests?'Usage unreported':total+' Bobcoins'+(partial?' · Partial':'');
  $('usageQuick').textContent='Today (UTC) · '+summary;
  $('usageQuick').title='Today (UTC) · '+today.requests+' requests · '+today.unreported+' without reported usage. '+(data.tracking_error?'Some usage could not be recorded. ':'')+'This app on this Mac only. Click for tokens and usage details.';
