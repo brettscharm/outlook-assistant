@@ -7,13 +7,11 @@ This tracks earlier requests against implemented behavior. A local cache is not 
 - Unified work hierarchy: project boards with names/descriptions/counts, project-aware task creation, and one saved-task panel for task details, subtasks, dependencies and updates. Project context persists across page reloads; cards use a single Open task action.
 
 - Task progress: dated notes, checklist steps, waiting-on and next-step fields. Notes and steps require explicit Add; their drafts stay locally recoverable. Waiting/next-step fields autosave. Board cards show progress and the latest note.
-- Assistant proposals can add task notes/checklist steps and change waiting/next-step fields, with Apply and stale-task checks.
 - Task handoff: export/import one task as JSON, including description, source link and checklist. No email contents or update history included. Import is explicit and idempotent. This is manual transfer, not cross-device delivery.
 - Teams calendar: calendar-only read-only snapshot reader, universal helper, upcoming cached instances with local times and join links. Cancellation/deduplication/date tests pass. Reads both legacy Teams and the embedded Outlook calendar in partitioned WebStorage. Read-only validation on October 21 found 372 embedded calendar events and 92 upcoming meetings; the legacy store alone ended September 16. No free/busy guarantees or recurrence expansion.
 - Meeting-email evidence: all cached mail folders, including Deleted Items, are searched for invitation/response subjects or .ics attachments. Downloaded .ics times/status are shown as evidence, separately from confirmed events. Folder location does not establish acceptance/cancellation. Up to 500 recent matching emails are shown with an explicit truncation notice.
 - Explicit mail archive: standard .eml snapshots, including downloaded attachments, under the app’s Application Support archive directory. Existing snapshots are retained. 5 GB archive bound; 50 MB individual and 100 MB per-message attachment bounds. Missing/skipped content is counted. Excluded domains are omitted. Not a full server archive or an automatic retention bypass.
 - Private Node setup: when absent, the Bob installer obtains Node 24 from nodejs.org, verifies its published SHA-256 checksum, validates archive paths, and installs without sudo. Tested with synthetic archives/mocks; not run on a clean physical Mac.
-- Native floating Assistant: app menu → Float Assistant Above Other Apps (Cmd+J); return with the same command. Requires the 2.16 desktop bundle, not just a code update.
 - Draft team: writer and independent grounding reviewer run separate Bob sessions concurrently (maximum two), followed by an editor session. No shell tools/subagents enabled inside those sessions; all outputs remain drafts. Three inference calls per draft; actual usage recorded. Tested with synthetic responses, not private mailbox inference.
 
 ## Implemented in 2.15
@@ -21,7 +19,6 @@ This tracks earlier requests against implemented behavior. A local cache is not 
 - Projects: create/rename, description, task membership, board project filter, completion counts. Tasks remain in the existing status lanes. Project metadata and membership save locally and are included in exports.
 - AI assistants: editable per-purpose instructions and examples, autosave, restore defaults, and explicit sample tests through Bob. This is prompt customization, not model training or persistent autonomous subagents.
 - Real activity: current/recent Bob request states and timestamps for this service session. No invented agent conversations or hidden reasoning. Ordinary requests serialize; the bounded draft team in 2.16 runs two sessions concurrently.
-- Assistant task changes support priority, project, and source links as reviewable proposals.
 - Evidence-backed completion suggestions during new-mail scans, with explicit acceptance and stale-task protection. Real Bob completion quality has not been validated against a live mailbox.
 - Dismissal Undo, plus the existing Dismissed → Restore workflow.
 - Navigation: Tasks, Tasks to review, Mail, Drafts, Contacts & companies, Projects. Profile/writing/usage are accessible from Settings; incomplete Calendar and standalone Briefing are removed from primary navigation.
@@ -30,7 +27,7 @@ This tracks earlier requests against implemented behavior. A local cache is not 
 
 ## Already implemented
 
-Task review and local persistence, custom lanes, task details and email previews, optional priority, due-date indicators and sorting, hidden completed cards, owner/contact selection, contacts pagination and domain linking, formatted drafts, floating in-app Assistant, usage reporting, named-key status, dismissible errors, app code updates, universal desktop shell, automatic local recovery copies, excluded mail domains, and a mail-robot app identity.
+Task review and local persistence, custom lanes, task details and email previews, optional priority, due-date indicators and sorting, hidden completed cards, owner/contact selection, contacts pagination and domain linking, formatted drafts, usage reporting, named-key status, dismissible errors, app code updates, universal desktop shell, automatic local recovery copies, excluded mail domains, and a mail-robot app identity.
 
 ## Not implemented / requires additional verification
 
