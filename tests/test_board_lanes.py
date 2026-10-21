@@ -32,3 +32,13 @@ class BoardTests(unittest.TestCase):
   config.update_config({'user_context':{'full_name':'Test User'}})
   self.assertEqual(tasks.add_task('my','Review proposal')['my_tasks'][0]['assignee'],'Test User')
   self.assertEqual(tasks.add_task('my','Call customer','Pat')['my_tasks'][0]['assignee'],'Pat')
+ def test_task_sources_persist_and_edits_preserve_them(self):
+  task=tasks.add_task('my','Reply',source_type='slack',source_url='https://example.slack.com/archives/C1/p123')['my_tasks'][0]
+  tasks.edit_task(task['id'],'Reply today','Me','my','',description='Read https://example.com/doc')
+  saved=tasks.load_tasks()['my_tasks'][0]
+  self.assertEqual(saved['source_type'],'slack');self.assertEqual(saved['source_url'],task['source_url'])
+  tasks.edit_task(task['id'],'Reply today','Me','my','',source_type='other',source_url='')
+  self.assertEqual(tasks.load_tasks()['my_tasks'][0]['source_url'],'')
+ def test_task_source_rejects_unsafe_urls(self):
+  for value in ['javascript:alert(1)','file:///etc/passwd','https://example.com/a b']:
+   with self.assertRaises(ValueError):tasks.add_task('my','Bad link',source_type='other',source_url=value)

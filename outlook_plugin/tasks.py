@@ -39,8 +39,11 @@ def add_task(
     source: Optional[Dict[str, Any]] = None,
     description: str = "",
     request_id: Optional[str] = None,
+    source_type: Optional[str] = None,
+    source_url: str = "",
 ) -> Dict[str, List[Dict[str, Any]]]:
     """Add a new task and return all updated tasks."""
+    source_type,source_url=validate_source(source_type or ("email" if source and source.get("email_id") else "other"),source_url)
     tasks = load_tasks()
     if request_id and any(t.get("id")==request_id for rows in tasks.values() for t in rows):return tasks
     key = "my_tasks" if task_type == "my" else "others_tasks"
@@ -56,6 +59,7 @@ def add_task(
         "id": request_id or str(uuid.uuid4()),
         "text": text.strip(),
         "description": str(description).strip()[:4000],
+        "source_type":source_type,"source_url":source_url,
         "assignee": assignee.strip() if assignee else default_owner,
         "completed": False,
         "due_date": due_date or "",
@@ -104,7 +108,7 @@ delete_task = _serialized(delete_task)
 
 
 @_serialized
-def edit_task(task_id, text, owner, kind, due_date, description=None):
+def edit_task(task_id, text, owner, kind, due_date, description=None, source_type=None, source_url=None):
     from datetime import date
     if not text.strip(): raise ValueError('Enter a task.')
     if kind not in ('my','others','unclear'): raise ValueError('Choose an owner group.')
@@ -114,6 +118,9 @@ def edit_task(task_id, text, owner, kind, due_date, description=None):
         for item in data[group]:
             if item['id']==task_id:
                 item.update(text=text.strip()[:2000],assignee=owner.strip()[:200] or 'Owner unclear',type=kind,due_date=due_date)
+                if source_type is not None or source_url is not None:
+                    platform,url=validate_source(source_type if source_type is not None else item.get('source_type','email' if item.get('email_id') else 'other'),source_url if source_url is not None else item.get('source_url',''))
+                    item.update(source_type=platform,source_url=url)
                 if description is not None:item['description']=str(description).strip()[:4000]
                 data[group].remove(item)
                 data['my_tasks' if kind=='my' else 'others_tasks'].insert(0,item)
@@ -157,3 +164,15 @@ def move_task(task_id,lane_id):
                 task.update(lane_id=lane_id,completed=lane_id=='done')
                 save_tasks(data);return data
     raise ValueError('Task not found.')
+
+
+def validate_source(source_type,source_url):
+    from urllib.parse import urlsplit
+    if source_type not in ('email','slack','teams','meeting','other'):raise ValueError('Choose a supported task source.')
+    if not isinstance(source_url,str) or len(source_url)>4000:raise ValueError('Use a source link of up to 4,000 characters.')
+    value=source_url.strip()
+    if value:
+        try:parsed=urlsplit(value);valid=parsed.scheme in ('https','http') and bool(parsed.hostname) and not any(c.isspace() or ord(c)<32 for c in value)
+        except ValueError:valid=False
+        if not valid:raise ValueError('Use a complete http:// or https:// link, such as a Slack message link.')
+    return source_type,value

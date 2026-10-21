@@ -242,8 +242,8 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
                 if due:
                     from datetime import date
                     date.fromisoformat(due)
-                tasks=add_task(data.get('type','my'),text,str(data.get('owner',''))[:200],due,source=source,description=str(data.get('description','')))
-            elif action=='edit':tasks=edit_task(str(data.get('id','')),str(data.get('text','')),str(data.get('owner','')),data.get('type','my'),str(data.get('due_date','')),description=data.get('description'))
+                tasks=add_task(data.get('type','my'),text,str(data.get('owner',''))[:200],due,source=source,description=str(data.get('description','')),source_type=data.get('source_type'),source_url=data.get('source_url',''))
+            elif action=='edit':tasks=edit_task(str(data.get('id','')),str(data.get('text','')),str(data.get('owner','')),data.get('type','my'),str(data.get('due_date','')),description=data.get('description'),source_type=data.get('source_type'),source_url=data.get('source_url'))
             elif action=='move':tasks=move_task(str(data.get('id','')),str(data.get('lane_id','')))
             elif action=='toggle': tasks=toggle_task(data.get('id'))
             elif action=='delete': tasks=delete_task(data.get('id'))
