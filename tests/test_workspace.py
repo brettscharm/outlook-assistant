@@ -15,11 +15,13 @@ class WorkspaceTests(unittest.TestCase):
         for p in reversed(self.patches):p.stop()
         self.tmp.cleanup()
     def test_backup_excludes_credentials_preserves_content(self):
-        config.update_config({'bob_api_key':'secret-for-test','bob_team_id':'private-team','outlook_profile':'private-path','user_context':{'role':'Sales'}})
+        config.update_config({'bob_api_key':'secret-for-test','bob_team_id':'private-team','outlook_profile':'private-path','user_context':{'role':'Sales'},'contact_groups':[{'id':'g','name':'Engineering','emails':['pat@example.com']}], 'favorite_companies':['company:example']})
         tasks.save_tasks({'my_tasks':[{'id':'1','text':'Call Pat'}],'others_tasks':[]})
         data=workspace.export_data();raw=json.dumps(data)
         for value in ['secret-for-test','private-team','private-path']:self.assertNotIn(value,raw)
         self.assertEqual(data['tasks']['my_tasks'][0]['text'],'Call Pat')
+        self.assertEqual(data['settings']['contact_groups'][0]['name'],'Engineering')
+        self.assertEqual(data['settings']['favorite_companies'],['company:example'])
     def test_style_preserves_other_context_and_key(self):
         config.update_config({'bob_api_key':'secret-for-test','user_context':{'full_name':'Pat','role':'Sales'}})
         workspace.save_style('Short and warm')

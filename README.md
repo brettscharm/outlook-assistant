@@ -191,3 +191,7 @@ MCP attachments are restricted to saved task/project copies. Reads use paginated
 ### Troubleshooting and support
 
 **Report a problem** refreshes the local mail cache first, then asks Bob for diagnostic advice if a fix cannot be verified. A missing email that becomes readable can be opened again without a Bob call. Bob receives your typed description and basic diagnostic checks, not email bodies, local paths, or stored API keys. This uses your Bob allowance. Bob does not execute repair commands or change app code. If the issue remains, **Still not working? Contact Brett** opens an Outlook draft to brett.scharmett@ibm.com; nothing sends automatically. Feature suggestions open a draft directly.
+
+### Company contact groups
+
+Under **Contacts & companies**, expand a company and choose **Add group**. Name a team or department, select people across its linked domains, or paste addresses. Changes save automatically on this Mac. **Copy emails** copies a deduplicated semicolon-separated list for Outlook. Groups survive restarts and mail refreshes, and are included in local configuration backups. Deleting a group leaves the contacts untouched. MCP clients can use `list_contact_groups` and `save_contact_group` after reconnecting.

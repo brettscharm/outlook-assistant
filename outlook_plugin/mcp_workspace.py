@@ -13,6 +13,8 @@ OWNER={'kind':{'type':'string','enum':['task','project']},'owner':ID}
 def definitions(tool):
  from .mcp_server import PAGE
  specs=[
+ ('list_contact_groups','Read saved company contact groups, member emails and numeric revisions.',{},[],False),
+ ('save_contact_group','Create or update a company contact group; reuse the ID on retry. Revision 0 creates; existing groups require their latest revision. remove deletes the group only.',{'id':ID,'revision':{'type':'integer','minimum':0,'maximum':2147483647},'domain':S(253),'name':S(100),'emails':array(S(254),1000),'remove':BOOL},['id','revision'],True),
  ('list_mail_folders','Read mailbox folder IDs and names.',{},[],False),
  ('list_mail_accounts','Read locally configured mailbox accounts.',{},[],False),
  ('get_task_scan_settings','Read automatic task discovery settings and revision.',{},[],False),
@@ -57,6 +59,9 @@ def suggestion(identifier):
 
 def handle(engine,name,args):
  from .mcp_server import page
+ if name in ('list_contact_groups','save_contact_group'):
+  from . import contact_groups
+  return contact_groups.listing() if name=='list_contact_groups' else contact_groups.save(args)
  if name=='list_mail_folders':return engine.list_folders()
  if name=='list_mail_accounts':return engine.list_accounts()
  if name in ('get_task_scan_settings','edit_task_scan_settings'):

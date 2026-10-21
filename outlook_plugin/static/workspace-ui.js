@@ -49,7 +49,7 @@ window.flushWorkspace=async()=>{
  if(draftSaving||contextSaving||window.settingsSaving)throw Error('Saving is still in progress. Please try again.');
  if($('taskEditor').open&&taskEditor?.origin!=='saved'&&$('editTaskText').value.trim())throw Error('Add your new task or close its editor before quitting.');
  if($('projectEditor').open&&!editingProject&&$('projectName').value.trim())throw Error('Create your new project or close its editor before quitting.');
- for(const flush of [window.flushTaskEdits,window.flushTaskProgress,window.flushProjectEdits,window.flushAgentEdits,window.flushSettingsEdits,window.flushMailExclusions,window.flushScanSettings])if(flush&&await flush()===false)throw Error('Some changes could not be saved. Keep the app open and retry.');
+ for(const flush of [window.flushTaskEdits,window.flushTaskProgress,window.flushProjectEdits,window.flushAgentEdits,window.flushSettingsEdits,window.flushMailExclusions,window.flushScanSettings,window.flushContactGroups])if(flush&&await flush()===false)throw Error('Some changes could not be saved. Keep the app open and retry.');
  do{clearTimeout(draftTimer);clearTimeout(contextTimer);await flushDrafts();await flushContext();}while((Object.keys(draftDirty).some(id=>!draftConflicts[id])||window.contextDirty)&&Date.now()<until);
  if(Object.keys(draftDirty).length||Object.keys(draftConflicts).length||window.contextDirty||Object.keys(contactDrafts).length||state.pending)throw Error('Some changes still need saving. Review the save status before quitting.');
  return true;

@@ -116,6 +116,9 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             return self._send_json({'bob_configured':bool(get_bob_api_key()),'bob_installed':bool(bob_executable()),
                                    'bob_team_id':cfg.get('bob_team_id',''),'bob_key_name':cfg.get('bob_key_name',''),'user_context':cfg.get('user_context',{}),'writing_samples':cfg.get('writing_samples',''),
                                    'excluded_domains':cfg.get('excluded_domains',[]),'outlook_profile':cfg.get('outlook_profile',''),'profiles':[str(p) for p in profiles()]})
+        if path=='/api/contact-groups':
+            from .contact_groups import listing
+            return self._send_json(listing())
         if path=='/api/contacts':
             backend=self.engine.get_active_backend()
             if not isinstance(backend,LocalStoreBridge): raise RuntimeError('Contacts currently requires the local Outlook cache reader.')
@@ -149,7 +152,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             return self._send_json(data)
         if path.startswith('/api/'):
             return self._send_json({'error':'Unknown endpoint.'},404)
-        if path not in ('/','/index.html','/app.js','/tasks-ui.js','/review-bulk.js','/task-files.js','/workspace-ui.js','/organize-ui.js','/calendar-ui.js','/onboarding-ui.js','/rich-editor.js','/style.css','/app-icon.png'):
+        if path not in ('/','/index.html','/app.js','/tasks-ui.js','/review-bulk.js','/contact-groups.js','/task-files.js','/workspace-ui.js','/organize-ui.js','/calendar-ui.js','/onboarding-ui.js','/rich-editor.js','/style.css','/app-icon.png'):
             return self._send_json({'error':'Not found.'},404)
         return super().do_GET()
 
@@ -209,6 +212,9 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             from .task_communication import open_draft
             return self._send_json(open_draft(data))
         if path=='/api/task-review':return self._send_json(task_workflow.action(data))
+        if path=='/api/contact-groups':
+            from .contact_groups import save
+            return self._send_json(save(data))
         if path=='/api/contact-favorite':return self._send_json({'favorites':set_favorite(data.get('domain',''),data.get('starred'))})
         if path=='/api/contact-company':
             links=link_companies(data['domains'],data.get('company','')) if 'domains' in data else link_company(data.get('domain',''),data.get('company',''))
