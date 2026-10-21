@@ -70,9 +70,19 @@ function renderCalendar(){
  for(let hour=0;hour<24;hour++){const label=text('span',new Date(2026,0,1,hour).toLocaleTimeString(undefined,{hour:'numeric'}));label.style.top=(hour*64)+'px';hours.append(label);}timeline.append(hours);
  for(const day of days){const col=text('div','','calendar-time-day');col.setAttribute('aria-label',day.toLocaleDateString(undefined,{dateStyle:'full'}));for(const row of calendarTimedLayout(calendarEvents,day)){const button=calendarEventButton(row.event);button.style.top=(row.top/60*64)+'px';button.style.height=(Math.min(1440-row.top,row.bottom-row.top)/60*64)+'px';button.style.left=`calc(${row.column/row.columns*100}% + 2px)`;button.style.width=`calc(${100/row.columns}% - 4px)`;col.append(button);}if(calendarDateKey(day)===today){const now=new Date(),line=text('div','','calendar-now');line.style.top=((now.getHours()+now.getMinutes()/60)*64)+'px';line.setAttribute('aria-label','Current time');col.append(line);}timeline.append(col);}scroll.append(timeline);shell.append(scroll);root.append(shell);head.style.paddingRight=(scroll.offsetWidth-scroll.clientWidth)+'px';scroll.scrollTop=oldScroll??8*64;
 }
-window.loadCalendar=async(force=false)=>{
- const request=++calendarRequest,range=calendarRange(calendarAnchor,calendarMode);$('refreshCalendar').disabled=true;$('calendarStatus').textContent='Reading calendar…';calendarEvents=[];renderCalendar();
- try{const q=new URLSearchParams({from:range.start.toISOString(),to:range.end.toISOString()});if(force===true)q.set('refresh','1');const data=await api('/api/calendar?'+q);if(request!==calendarRequest)return;calendarEvents=data.events;calendarChecked=data.checked;renderCalendar();$('calendarStatus').textContent=data.events.length+' meetings cached · Last read '+date(new Date(data.checked*1000).toISOString(),true)+(data.skipped?' · Some records could not be read.':'')+(!data.events.length?' · No meetings cached for these dates.':'');}catch(e){if(request===calendarRequest)$('calendarStatus').textContent=e.message;}finally{if(request===calendarRequest)$('refreshCalendar').disabled=false;}
+let calendarPoll=null;
+window.loadCalendar=async(force=false,poll=false)=>{
+ clearTimeout(calendarPoll);
+ const request=++calendarRequest,range=calendarRange(calendarAnchor,calendarMode);$('refreshCalendar').disabled=true;
+ if(!poll){$('calendarStatus').textContent=calendarChecked?'Showing saved meetings · Checking for updates…':'Loading saved calendar…';renderCalendar();}
+ try{
+  const q=new URLSearchParams({from:range.start.toISOString(),to:range.end.toISOString()});if(force===true)q.set('refresh','1');
+  const data=await api('/api/calendar?'+q);if(request!==calendarRequest)return;
+  const changed=JSON.stringify(calendarEvents)!==JSON.stringify(data.events);calendarEvents=data.events;calendarChecked=data.checked;if(changed)renderCalendar();
+  $('calendarStatus').textContent=(data.checked?data.events.length+' meetings · Updated '+date(new Date(data.checked*1000).toISOString(),true):'No saved calendar yet')+(data.refreshing?' · Updating…':'')+(data.refresh_error?' · '+data.refresh_error:'')+(!data.refreshing&&!data.events.length&&data.checked?' · No saved meetings for these dates.':'');
+  if(data.refreshing)calendarPoll=setTimeout(()=>{if($('calendar').classList.contains('active')&&!document.hidden)window.loadCalendar(false,true);},2000);
+ }catch(e){if(request===calendarRequest)$('calendarStatus').textContent=(calendarChecked?'Showing saved meetings · ':'')+e.message;}
+ finally{if(request===calendarRequest)$('refreshCalendar').disabled=false;}
 };
 for(const button of document.querySelectorAll('[data-calendar-view]'))button.onclick=()=>{calendarMode=button.dataset.calendarView;saveCalendarMode();window.loadCalendar();};
 function shiftCalendar(direction){if(calendarMode==='month'){calendarAnchor.setDate(1);calendarAnchor.setMonth(calendarAnchor.getMonth()+direction);}else calendarAnchor=calendarAddDays(calendarAnchor,direction*(calendarMode==='week'?7:1));window.loadCalendar();}

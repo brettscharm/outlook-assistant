@@ -199,3 +199,5 @@ Under **Contacts & companies**, expand a company and choose **Add group**. Name 
 Calendar event details show cached invitees, their required/optional status and responses when available. **Create group** preselects invitees with email addresses (excluding rooms/resources) and lets you choose a company and adjust membership. **Copy emails** is also available directly in the event. Missing cached invitees are reported rather than inferred; the local cache cannot guarantee a complete invitation list.
 
 Use **Contacts & companies → Groups** for a searchable list of all saved groups. Add or edit groups and copy recipients directly from this view; large lists have pagination.
+
+The calendar shows its last saved snapshot immediately while Teams is read in the background. Its update timestamp stays visible, and failed refreshes retain the previous events. A private `.outlook_assistant_calendar_cache.json` beside the app’s other data survives restarts; it is replaced atomically after successful reads. Initial use needs one calendar read before a snapshot is available.

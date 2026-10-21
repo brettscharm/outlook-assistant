@@ -5,6 +5,60 @@ from datetime import datetime,timezone,timedelta
 from pathlib import Path
 _LOCK=threading.Lock()
 _CACHE={}
+from .config import DATA_DIR
+from .storage import _replace
+CACHE_FILE=DATA_DIR/'.outlook_assistant_calendar_cache.json'
+_REFRESH_LOCK=threading.Lock()
+_DISK_LOADED=False
+_LAST_ATTEMPT=0
+_LAST_ERROR=''
+
+
+def _hydrate():
+    global _DISK_LOADED
+    with _LOCK:
+        if _CACHE or _DISK_LOADED:return
+        _DISK_LOADED=True
+        try:
+            data=json.loads(CACHE_FILE.read_text())
+            if isinstance(data,dict) and isinstance(data.get('events'),list) and type(data.get('checked')) in (int,float) and 0<data['checked']<=time.time()+60:
+                _CACHE.update(data)
+        except (OSError,ValueError,TypeError):pass
+
+
+def _read_calendar():
+    helper=Path(__file__).parent/'bin/teams-calendar-darwin'
+    if not helper.exists():raise RuntimeError('Install the current desktop release to add the calendar reader.')
+    try:run=subprocess.run([str(helper)],capture_output=True,text=True,timeout=100)
+    except subprocess.TimeoutExpired:raise RuntimeError('Teams calendar took too long to read. Let Teams finish syncing and retry.') from None
+    if run.returncode:raise RuntimeError('Could not read the Teams calendar cache. Open Teams and its Calendar, then retry.')
+    try:data=json.loads(run.stdout)
+    except ValueError:raise RuntimeError('Calendar reader returned an unreadable result.') from None
+    if not isinstance(data,dict) or not isinstance(data.get('events'),list):raise RuntimeError('Calendar reader returned an unsupported format.')
+    return dict(data,checked=time.time())
+
+
+def _refresh(force=False,held=False):
+    global _LAST_ATTEMPT,_LAST_ERROR
+    if not held:_REFRESH_LOCK.acquire()
+    try:
+        with _LOCK:
+            if not force and time.time()-_CACHE.get('checked',0)<60:return
+            _LAST_ATTEMPT=time.time()
+        data=_read_calendar()
+        # A derived snapshot needs one private atomic copy, not daily history.
+        try:
+            CACHE_FILE.parent.mkdir(parents=True,exist_ok=True)
+            _replace(CACHE_FILE,json.dumps(data,allow_nan=False).encode())
+            error=''
+        except (OSError,ValueError):error='Calendar refreshed, but its offline copy could not be saved.'
+        with _LOCK:
+            _CACHE.clear();_CACHE.update(data);_LAST_ERROR=error
+    except Exception:
+        with _LOCK:_LAST_ERROR='Calendar refresh failed. Open Teams Calendar and try again. Saved meetings are still shown.'
+        if not held:raise
+    finally:_REFRESH_LOCK.release()
+
 
 def instant(value):
     if isinstance(value,dict):value=value.get('$date')
@@ -74,24 +128,26 @@ def normalize(rows,now,days):
           'all_day':row.get('isAllDayEvent') is True,'source':str(row.get('source') or 'Teams cache'),'response':str(row.get('responseType') or '')})
     return sorted(result,key=lambda row:row['start_time']),skipped
 
-def snapshot(days=30,force=False,start=None,end=None):
+def snapshot(days=30,force=False,start=None,end=None,background=False):
+    global _LAST_ATTEMPT
     if start is not None or end is not None:
         start,end=instant(start),instant(end)
         if not start or not end or not 0<(end-start).total_seconds()<=63*86400:raise ValueError('Choose a calendar range of up to 63 days with timezone offsets.')
+    _hydrate()
+    if background:
+        with _LOCK:
+            due=force or (time.time()-_CACHE.get('checked',0)>=60 and time.time()-_LAST_ATTEMPT>=60)
+            if due and _REFRESH_LOCK.acquire(blocking=False):
+                _LAST_ATTEMPT=time.time()
+                try:threading.Thread(target=_refresh,kwargs={'force':force,'held':True},daemon=True).start()
+                except Exception:_REFRESH_LOCK.release();raise
+    else:_refresh(force=force)
     with _LOCK:
-        if force or time.time()-_CACHE.get('checked',0)>60:
-            helper=Path(__file__).parent/'bin/teams-calendar-darwin'
-            if not helper.exists():raise RuntimeError('Install the current desktop release to add the calendar reader.')
-            try:run=subprocess.run([str(helper)],capture_output=True,text=True,timeout=100)
-            except subprocess.TimeoutExpired:raise RuntimeError('Teams calendar took too long to read. Let Teams finish syncing and retry.') from None
-            if run.returncode:raise RuntimeError('Could not read the Teams calendar cache. Open Teams and its Calendar, then retry.')
-            try:data=json.loads(run.stdout)
-            except ValueError:raise RuntimeError('Calendar reader returned an unreadable result.') from None
-            if not isinstance(data,dict) or not isinstance(data.get('events'),list):raise RuntimeError('Calendar reader returned an unsupported format.')
-            _CACHE.clear();_CACHE.update(data,checked=time.time())
-        events,skipped=normalize(_CACHE['events'],start or datetime.now(timezone.utc),(end-start).total_seconds()/86400 if start else days)
-        cached_dates=[instant(row.get('endTime')) for row in _CACHE['events'] if isinstance(row,dict)]
-        latest=max((d for d in cached_dates if d),default=None)
-        return {'events':events,'latest_cached_end':latest.isoformat() if latest else None,'checked':_CACHE['checked'],'sources':_CACHE.get('sources',0),'skipped':skipped+_CACHE.get('skipped',0),
-                'cached_records':len(_CACHE['events']),
-                'warning':'From the calendar saved by Teams. Open Teams Calendar to download changes.'}
+        data=dict(_CACHE);error=_LAST_ERROR
+    rows=data.get('events',[])
+    events,skipped=normalize(rows,start or datetime.now(timezone.utc),(end-start).total_seconds()/86400 if start else days)
+    cached_dates=[instant(row.get('endTime')) for row in rows if isinstance(row,dict)]
+    latest=max((d for d in cached_dates if d),default=None)
+    return {'events':events,'latest_cached_end':latest.isoformat() if latest else None,'checked':data.get('checked'),'sources':data.get('sources',0),'skipped':skipped+data.get('skipped',0),
+            'cached_records':len(rows),'refreshing':_REFRESH_LOCK.locked(),'refresh_error':error,'has_snapshot':'checked' in data,
+            'warning':'From the calendar saved by Teams. Open Teams Calendar to download changes.'}
