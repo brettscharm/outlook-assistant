@@ -211,6 +211,7 @@ function selectSettingsSection(name){
  document.querySelector('.settings-content').scrollTop=0;
 }
 document.querySelectorAll('[data-settings-section]').forEach(b=>b.onclick=()=>selectSettingsSection(b.dataset.settingsSection));
+$('mcpOpen').onclick=()=>{selectSettingsSection('mcp');$('settings').showModal();$('copyMcpConfig').focus();};
 
 // Wake timers may be suspended by macOS. Refresh immediately after a long gap,
 // or when returning to the app, while keeping background discovery preferences.
