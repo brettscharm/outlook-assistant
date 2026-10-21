@@ -28,3 +28,14 @@ class CalendarTests(unittest.TestCase):
   first,_=normalize([event],now,30)
   later,_=normalize([dict(event,startTime='2026-10-23T14:00:00Z',endTime='2026-10-23T15:00:00Z')],now,30)
   self.assertEqual(first[0]['meeting_id'],later[0]['meeting_id'])
+ def test_explicit_calendar_range_includes_past_events(self):
+  from unittest.mock import patch
+  import time
+  from outlook_plugin import calendar_cache as c
+  row=dict(account='a',objectId='past',startTime='2026-09-22T12:00:00Z',endTime='2026-09-22T13:00:00Z')
+  with patch.dict(c._CACHE,{'checked':time.time(),'events':[row]},clear=True):
+   data=c.snapshot(start='2026-09-01T00:00:00Z',end='2026-10-01T00:00:00Z')
+   self.assertEqual(len(data['events']),1)
+   self.assertEqual(c.snapshot(start='2026-10-01T00:00:00Z',end='2026-11-01T00:00:00Z')['events'],[])
+  for start,end in [('invalid','invalid'),('2026-01-01T00:00:00Z','2027-01-01T00:00:00Z'),('2026-10-01','2026-10-02')]:
+   with self.assertRaises(ValueError):c.snapshot(start=start,end=end)

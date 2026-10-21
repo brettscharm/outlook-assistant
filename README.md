@@ -120,3 +120,10 @@ local source availability and buttons to open Outlook and Teams. Both apps must 
 signed in and have downloaded their data. Supported desktop builds target macOS 13+
 on Apple Silicon and Intel. Cache formats and organization permissions can vary;
 installation alone does not guarantee readable or complete mail/calendar data.
+
+### Calendar views
+Calendar offers Month, Week, and Day views, with Today, previous/next, and date
+selection controls. Click a meeting for details and its join link. Week and Day
+place overlapping meetings side by side and keep all-day events above the hourly
+grid. Times use the Mac's current timezone. Navigation reads the selected date
+range from the local cache; it cannot download uncached dates from Microsoft.

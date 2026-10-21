@@ -133,13 +133,14 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             return self._send_json(item if item else {'error':'Message not found.'},200 if item else 404)
         if path=='/api/meeting-mail':return self._send_json(meeting_mail.discover(self.engine))
         if path=='/api/calendar':
-            data=calendar_cache.snapshot(force=q.get('refresh',[''])[0]=='1')
+            ranged='from' in q or 'to' in q
+            data=calendar_cache.snapshot(force=q.get('refresh',[''])[0]=='1',start=q.get('from',[None])[0],end=q.get('to',[None])[0])
             from .tasks import refresh_meeting_deadlines
-            refresh_meeting_deadlines(data['events'])
+            if not ranged:refresh_meeting_deadlines(data['events'])
             return self._send_json(data)
         if path.startswith('/api/'):
             return self._send_json({'error':'Unknown endpoint.'},404)
-        if path not in ('/','/index.html','/app.js','/tasks-ui.js','/task-files.js','/chat-ui.js','/workspace-ui.js','/organize-ui.js','/rich-editor.js','/style.css','/app-icon.png'):
+        if path not in ('/','/index.html','/app.js','/tasks-ui.js','/task-files.js','/chat-ui.js','/workspace-ui.js','/organize-ui.js','/calendar-ui.js','/rich-editor.js','/style.css','/app-icon.png'):
             return self._send_json({'error':'Not found.'},404)
         return super().do_GET()
 

@@ -31,14 +31,17 @@ def normalize(rows,now,days):
     result=[]
     for key,(_,row,start,end) in entries.items():
         if row.get('isCancelled') is True or row.get('isDraft') is True:continue
-        if end<now or start>now+timedelta(days=days):continue
+        if end<=now or start>=now+timedelta(days=days):continue
         result.append({'id':key,'meeting_id':hashlib.sha256(json.dumps([row.get('account'),row.get('objectId') or [identity,start.isoformat()]]).encode()).hexdigest(),'subject':str(row.get('subject') or 'Untitled meeting')[:2000],
           'start_time':start.isoformat(),'end_time':end.isoformat(),'organizer':str(row.get('organizerName') or '')[:500],
           'location':str(row.get('location') or '')[:2000],'join_url':str(row.get('skypeTeamsMeetingUrl') or '')[:8000],
           'all_day':row.get('isAllDayEvent') is True,'source':str(row.get('source') or 'Teams cache'),'response':str(row.get('responseType') or '')})
     return sorted(result,key=lambda row:row['start_time']),skipped
 
-def snapshot(days=30,force=False):
+def snapshot(days=30,force=False,start=None,end=None):
+    if start is not None or end is not None:
+        start,end=instant(start),instant(end)
+        if not start or not end or not 0<(end-start).total_seconds()<=63*86400:raise ValueError('Choose a calendar range of up to 63 days with timezone offsets.')
     with _LOCK:
         if force or time.time()-_CACHE.get('checked',0)>60:
             helper=Path(__file__).parent/'bin/teams-calendar-darwin'
@@ -50,7 +53,7 @@ def snapshot(days=30,force=False):
             except ValueError:raise RuntimeError('Calendar reader returned an unreadable result.') from None
             if not isinstance(data,dict) or not isinstance(data.get('events'),list):raise RuntimeError('Calendar reader returned an unsupported format.')
             _CACHE.clear();_CACHE.update(data,checked=time.time())
-        events,skipped=normalize(_CACHE['events'],datetime.now(timezone.utc),days)
+        events,skipped=normalize(_CACHE['events'],start or datetime.now(timezone.utc),(end-start).total_seconds()/86400 if start else days)
         cached_dates=[instant(row.get('endTime')) for row in _CACHE['events'] if isinstance(row,dict)]
         latest=max((d for d in cached_dates if d),default=None)
         return {'events':events,'latest_cached_end':latest.isoformat() if latest else None,'checked':_CACHE['checked'],'sources':_CACHE.get('sources',0),'skipped':skipped+_CACHE.get('skipped',0),
