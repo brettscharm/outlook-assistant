@@ -39,3 +39,10 @@ class CalendarTests(unittest.TestCase):
    self.assertEqual(c.snapshot(start='2026-10-01T00:00:00Z',end='2026-11-01T00:00:00Z')['events'],[])
   for start,end in [('invalid','invalid'),('2026-01-01T00:00:00Z','2027-01-01T00:00:00Z'),('2026-10-01','2026-10-02')]:
    with self.assertRaises(ValueError):c.snapshot(start=start,end=end)
+
+ def test_call_links_from_meeting_fields_and_location(self):
+  from outlook_plugin.calendar_cache import meeting_url
+  self.assertEqual(meeting_url({'skypeTeamsMeetingUrl':'https://teams.microsoft.com/l/meetup-join/example?context=x&y=z'}),'https://teams.microsoft.com/l/meetup-join/example?context=x&y=z')
+  self.assertEqual(meeting_url({'location':'Join: https://example.webex.com/meet/room'}),'https://example.webex.com/meet/room')
+  for value in ('javascript:alert(1)','https://user:pass@example.com/','https://example.com/[redacted]'):
+   self.assertEqual(meeting_url({'skypeTeamsMeetingUrl':value}),'')

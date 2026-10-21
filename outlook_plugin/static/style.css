@@ -176,3 +176,7 @@ main>header{height:auto;min-height:68px;gap:12px;flex-wrap:wrap;padding-top:12px
 .walkthrough-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #dfe3e8;padding-top:20px;margin-top:24px}
 #walkthroughError{color:#b42318}
 @media(max-width:600px){#walkthrough{padding:20px}.walkthrough-footer{flex-wrap:wrap}.walkthrough-footer span{order:3;width:100%;text-align:center}}
+.calendar-day-list{display:grid;gap:10px;margin:20px 0}.calendar-day-list .calendar-event{position:static;min-height:48px;width:100%;text-align:left;display:flex;gap:12px;align-items:center;white-space:normal}.calendar-day-list .calendar-event-title{white-space:normal;flex:1}
+.project-links-field{border:1px solid #dfe3e8;border-radius:12px;padding:16px;min-width:0}.project-link-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}.project-link-row input[data-link-url]{grid-column:1/-1}.project-link-row button{justify-self:start}.project-record-links{margin-top:12px}
+/* Reserve room for three meetings and the overflow button inside its own date. */
+.calendar-month-day{min-height:158px;height:auto;overflow:hidden}.calendar-month-day .calendar-event{height:23px;min-height:23px;padding:4px 6px}.calendar-more{display:block;min-height:24px}

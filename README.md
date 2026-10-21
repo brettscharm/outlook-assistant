@@ -175,3 +175,9 @@ Version 2.19 and later target Apple silicon only. Intel Macs should keep their l
 The first launch opens a six-step walkthrough covering setup, your profile, projects/tasks/subtasks, AI instructions, and usage. Progress saves on this Mac. Use **Settings → Setup → Setup walkthrough** to resume or replay it. Opening the walkthrough does not make AI requests.
 
 The footer opens aggregate Bobcoins and token usage for this app on this Mac: today, this month, and all time. Unreported usage remains marked unknown; these totals are not an account-wide balance. If Bob reports exhausted usage, the app offers **Open Bob** and explains how to request more allowance. After the allowance is restored, use **Settings → Bob connection → Test Bob connection**.
+
+### Opportunity-linked projects and calendar calls
+
+Projects can contain multiple named ISC opportunity, Gainsight renewal, and deployment links. Add these in the project editor; existing projects autosave changes. Links open the source record but do not synchronize its data. Dashboard imports and change alerts require a verified, accessible data source.
+
+Calendar overflow opens a list of all cached meetings for that date. Meeting details include **Join meeting** when a usable call URL is present in the cached meeting or location.

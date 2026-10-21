@@ -26,3 +26,14 @@ class LocalFeatures(unittest.TestCase):
   row=next(r for r in ai_profiles.activity() if r['id']==key)
   self.assertEqual(row['state'],'finished');self.assertNotIn('prompt',row)
   with self.assertRaises(ValueError):ai_profiles.save({'id':'unknown'})
+
+ def test_multiple_opportunity_links_persist_and_validate(self):
+  links=[{'kind':'isc','label':'Opportunity 123','url':'https://example.ibm.com/opportunity/123'},{'kind':'gainsight','label':'Renewal','url':'https://example.gainsightcloud.com/renewal/456'}]
+  p=projects.save({'name':'Customer renewal','links':links})[0]
+  projects.save({'id':p['id'],'name':'Updated renewal'})
+  self.assertEqual(projects.list_projects()[0]['links'],links)
+  for url in ('javascript:alert(1)','https://user:password@example.com','http://example.com'):
+   with self.assertRaises(ValueError):projects.save({'id':p['id'],'name':'Updated renewal','links':[dict(links[0],url=url)]})
+  self.assertEqual(projects.list_projects()[0]['links'],links)
+  projects.save({'id':p['id'],'name':'Updated renewal','links':[]})
+  self.assertEqual(projects.list_projects()[0]['links'],[])

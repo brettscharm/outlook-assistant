@@ -1,5 +1,6 @@
 """Read materialized Teams calendar entries. Never infer free/busy or expand series."""
-import hashlib,json,subprocess,threading,time
+import hashlib,json,subprocess,threading,time,re,html
+from urllib.parse import urlsplit
 from datetime import datetime,timezone,timedelta
 from pathlib import Path
 _LOCK=threading.Lock()
@@ -15,6 +16,18 @@ def instant(value):
             if parsed.tzinfo:return parsed.astimezone(timezone.utc)
     except (ValueError,OverflowError,OSError):pass
     return None
+
+def meeting_url(row):
+    candidates=[row.get('skypeTeamsMeetingUrl'),row.get('joinWebUrl')]
+    candidates += re.findall(r'https://[^\s<>"\']+',str(row.get('location') or ''))
+    for value in candidates:
+        if not isinstance(value,str):continue
+        value=html.unescape(value).strip().rstrip(').,;')
+        try:
+            url=urlsplit(value)
+            if url.scheme=='https' and url.hostname and not url.username and not url.password and '[redacted]' not in value and not any(c.isspace() for c in value):return value[:8000]
+        except ValueError:pass
+    return ''
 
 def normalize(rows,now,days):
     entries={};skipped=0
@@ -32,9 +45,9 @@ def normalize(rows,now,days):
     for key,(_,row,start,end) in entries.items():
         if row.get('isCancelled') is True or row.get('isDraft') is True:continue
         if end<=now or start>=now+timedelta(days=days):continue
-        result.append({'id':key,'meeting_id':hashlib.sha256(json.dumps([row.get('account'),row.get('objectId') or [identity,start.isoformat()]]).encode()).hexdigest(),'subject':str(row.get('subject') or 'Untitled meeting')[:2000],
+        result.append({'id':key,'meeting_id':hashlib.sha256(json.dumps([row.get('account'),row.get('objectId') or [row.get('iCalUID'),start.isoformat()]]).encode()).hexdigest(),'subject':str(row.get('subject') or 'Untitled meeting')[:2000],
           'start_time':start.isoformat(),'end_time':end.isoformat(),'organizer':str(row.get('organizerName') or '')[:500],
-          'location':str(row.get('location') or '')[:2000],'join_url':str(row.get('skypeTeamsMeetingUrl') or '')[:8000],
+          'location':str(row.get('location') or '')[:2000],'join_url':meeting_url(row),
           'all_day':row.get('isAllDayEvent') is True,'source':str(row.get('source') or 'Teams cache'),'response':str(row.get('responseType') or '')})
     return sorted(result,key=lambda row:row['start_time']),skipped
 
