@@ -92,3 +92,15 @@ Open a project to work on its board. New tasks inherit that project. Choose **Op
 **Settings → Startup & storage → Archive downloaded mail** saves EML files and available attachments, with size limits and missing-content counts. It cannot recover cloud-only content.
 
 The desktop app menu offers **Float Assistant Above Other Apps** (Cmd+J). This requires the new desktop bundle. Reply drafting now runs a bounded writer/reviewer/editor workflow and uses three Bob requests per draft.
+
+### Files on tasks and projects
+Open a saved task or edit a saved project, then choose **Attach files**. Word, Excel,
+PowerPoint, PDF, text, and image files are supported, up to 25 MB each. **Open** uses
+your Mac's default app for that document. The assistant keeps its own copy; edits
+made after opening that copy are retained. Removing an attachment deletes that
+copy only, leaving the original unchanged.
+
+Files live in `~/Library/Application Support/Outlook Assistant/attachments`, outside
+the application and update folders. They survive app updates and restarts. Include
+that folder in your Mac backup; downloadable JSON workspace backups and task
+exports do not include attachment files. Attachments are not sent to Bob.

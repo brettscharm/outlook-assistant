@@ -14,7 +14,7 @@ from .engine import OutlookEngine
 from .local_store import profiles, LocalStoreBridge
 from .contacts import group_contacts, link_company, link_companies, suggest_company
 from .tasks import board_lanes, save_board_lanes, move_task, load_tasks, add_task, toggle_task, delete_task, edit_task
-from . import meeting_mail, calendar_cache, mail_archive, task_progress, bob_install, projects, ai_profiles, assistant, task_workflow, email_chat, workspace, setup_check, drafts, storage, usage, bob_status, outlook_status
+from . import task_files, meeting_mail, calendar_cache, mail_archive, task_progress, bob_install, projects, ai_profiles, assistant, task_workflow, email_chat, workspace, setup_check, drafts, storage, usage, bob_status, outlook_status
 from .updater import check_and_apply_update
 
 PORT = 8484
@@ -78,6 +78,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             release=bob_install.release();installed=bob_compatibility().get('version','')
             available=bool(release['version'] and installed and tuple(map(int,release['version'].split('.')))>tuple(map(int,installed.split('.'))))
             return self._send_json({**release,'installed':installed,'update_available':available})
+        if path=='/api/task-files':return self._send_json(task_files.listing(q.get('kind',[''])[0],q.get('owner',[''])[0]))
         if path=='/api/projects':return self._send_json(projects.list_projects())
         if path=='/api/ai-profiles':return self._send_json({'profiles':ai_profiles.profiles(),'activity':ai_profiles.activity()})
         if path=='/api/drafts': return self._send_json(drafts.load())
@@ -134,7 +135,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             return self._send_json(calendar_cache.snapshot())
         if path.startswith('/api/'):
             return self._send_json({'error':'Unknown endpoint.'},404)
-        if path not in ('/','/index.html','/app.js','/tasks-ui.js','/chat-ui.js','/workspace-ui.js','/organize-ui.js','/rich-editor.js','/style.css','/app-icon.png'):
+        if path not in ('/','/index.html','/app.js','/tasks-ui.js','/task-files.js','/chat-ui.js','/workspace-ui.js','/organize-ui.js','/rich-editor.js','/style.css','/app-icon.png'):
             return self._send_json({'error':'Not found.'},404)
         return super().do_GET()
 
@@ -144,7 +145,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             if self.headers.get('Content-Type','').split(';')[0]!='application/json':
                 return self._send_json({'error':'JSON required.'},415)
             size=int(self.headers.get('Content-Length','0'))
-            limit=1500000 if urllib.parse.urlparse(self.path).path=='/api/drafts' else 100000
+            limit=36_000_000 if urllib.parse.urlparse(self.path).path=='/api/task-files' else 1500000 if urllib.parse.urlparse(self.path).path=='/api/drafts' else 100000
             if size<0 or size>limit: return self._send_json({'error':'Request too large.'},413)
             data=json.loads(self.rfile.read(size) or '{}')
             if not isinstance(data,dict): raise ValueError('Expected an object.')
@@ -155,6 +156,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json({'error':str(exc)},503)
 
     def _post(self,path,data):
+        if path=='/api/task-files':return self._send_json(task_files.change(data))
         if path=='/api/bob-install':return self._send_json(bob_install.start())
         if path=='/api/projects':return self._send_json(projects.save(data))
         if path=='/api/ai-profiles':return self._send_json(ai_profiles.save(data))

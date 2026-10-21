@@ -30,7 +30,7 @@ window.loadProjects=async()=>{
  $('boardProject').replaceChildren();for(const [value,label] of [['','All tasks'],['unassigned','No project'],...projectRows.map(p=>[p.id,p.name])]){const o=text('option',label);o.value=value;$('boardProject').append(o);}$('boardProject').value=selected;
  const saved=await api('/api/tasks');renderProjectCards([...saved.my_tasks,...saved.others_tasks]);boardFingerprint='';renderTaskBoard();
 };
-function openProjectEditor(p){editingProject=p?.id||null;$('projectName').value=p?.name||'';$('projectDescription').value=p?.description||'';$('projectStatus').textContent='';$('projectEditor').showModal();}
+function openProjectEditor(p){editingProject=p?.id||null;$('projectName').value=p?.name||'';$('projectDescription').value=p?.description||'';$('projectStatus').textContent='';$('projectEditor').showModal();window.mountTaskFiles($('projectEditor'),'project',editingProject);}
 $('newProject').onclick=()=>openProjectEditor();$('closeProject').onclick=()=>$('projectEditor').close();
 $('projectForm').onsubmit=e=>{e.preventDefault();busy(e.submitter,async()=>{try{await api('/api/projects',{id:editingProject,name:$('projectName').value,description:$('projectDescription').value});$('projectEditor').close();await loadProjects();}catch(error){$('projectStatus').textContent=error.message;throw error;}});};
 $('boardProject').onchange=()=>{try{localStorage.setItem('outlook-board-project',$('boardProject').value);}catch{}boardFingerprint='';renderTaskBoard();};
