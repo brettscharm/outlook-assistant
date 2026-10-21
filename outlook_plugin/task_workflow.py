@@ -117,6 +117,7 @@ def action(data):
             if due:date.fromisoformat(due)
             source={k:item.get(k,'') for k in ('email_id','email_subject','evidence','owner_evidence','due_evidence','due_note','company')}
             source['suggestion_id']=item['id']
+            source['source_keys']=item.get('source_keys',[])
             source['description']=str(data.get('description',item.get('description',''))).strip()[:4000]
             # Preserve idempotence even if an accepted suggestion is retried with an edited title.
             existing=load_tasks()
@@ -133,6 +134,62 @@ def key_for(message,opts):
     # Preserve checkpoints from before recipient/coverage metadata was added.
     content={k:message[k] for k in ('id','subject','sender','received_time','content')}
     return hashlib.sha256(json.dumps([content,opts['mode'],ctx],sort_keys=True).encode()).hexdigest()
+
+
+def source_keys(message):
+    """Stable identities survive Outlook row-ID changes without storing headers."""
+    keys=[]
+    provider=str(message.get('message_id') or '').strip()
+    if provider:keys.append('message:'+hashlib.sha256(provider.encode()).hexdigest())
+    return keys
+
+
+def normalized_action(value):
+    return ' '.join(re.findall(r"\w+",str(value or '').casefold()))
+
+
+def same_action(left,right):
+    if left.get('action_type','create')!=right.get('action_type','create'):return False
+    if left.get('action_type')=='complete' and left.get('task_id')!=right.get('task_id'):return False
+    a,b=set(left.get('source_keys',[])),set(right.get('source_keys',[]))
+    same_source=bool(a&b) if a and b else bool(left.get('email_id') and left.get('email_id')==right.get('email_id'))
+    if not same_source:return False
+    title_a,title_b=normalized_action(left.get('text')),normalized_action(right.get('text'))
+    if title_a and title_a==title_b:return True
+    quote_a,quote_b=normalized_action(left.get('evidence')),normalized_action(right.get('evidence'))
+    if not quote_a or not quote_b:return False
+    if quote_a==quote_b:return True
+    # Different quote boundaries are common. Require substantial overlap plus
+    # matching action words so distinct requests in one email remain separate.
+    words_a,words_b=set(title_a.split()),set(title_b.split())
+    overlap=len(words_a&words_b)/max(1,min(len(words_a),len(words_b)))
+    return (min(len(quote_a),len(quote_b))>=30 and min(len(quote_a),len(quote_b))/max(len(quote_a),len(quote_b))>=.65
+            and (quote_a in quote_b or quote_b in quote_a) and len(words_a&words_b)>=2 and overlap>=.6)
+
+
+def remembered_actions(data,saved,messages):
+    identities={m.get('source_id',m['id']):source_keys(m) for m in messages}
+    result=[]
+    for item in list(data['suggestions'].values())+saved:
+        row=dict(item)
+        if not row.get('source_keys'):row['source_keys']=identities.get(row.get('email_id'),[])
+        result.append(row)
+    return result
+
+
+def reviewed_context(history,batch):
+    sources={m.get('source_id',m['id']) for m in batch}
+    words=set(re.findall(r'\w+', ' '.join(m.get('subject','')+' '+m.get('content','') for m in batch).casefold()))
+    reviewed=[r for r in history if r.get('status') in ('dismissed','accepted') or 'completed' in r]
+    reviewed.sort(key=lambda r:(r.get('email_id') in sources,len(words&set(normalized_action(r.get('text')).split()))),reverse=True)
+    result=[];size=0
+    for row in reviewed[:200]:
+        entry={k:row.get(k,'') for k in ('id','text','email_id','evidence','status','completed','type','owner','assignee','action_type','task_id')}
+        for key in ('text','evidence'):entry[key]=str(entry[key])[:600]
+        size+=len(json.dumps(entry))
+        if size>40000:break
+        result.append(entry)
+    return result
 
 
 def candidate_messages(engine,opts,email_id=None):
@@ -265,8 +322,10 @@ def run(engine,opts,email_id=None):
         with _LOCK:JOB['message']=f'Reviewing email sections {offset+1}–{offset+len(batch)} of {len(pending)}…'
         current=load()
         feedback,feedback_summary=dismissal_context(current['suggestions'],batch)
-        active=[t for rows in load_tasks().values() for t in rows if not t.get('completed')][:200]
-        found=ai.extract_tasks(batch,mode=opts['mode'],feedback=feedback,active_tasks=active,feedback_summary=feedback_summary)+ai.last_completions
+        saved=[t for rows in load_tasks().values() for t in rows]
+        active=[t for t in saved if not t.get('completed')][:200]
+        history=remembered_actions(current,saved,messages)
+        found=ai.extract_tasks(batch,mode=opts['mode'],feedback=feedback,active_tasks=active,feedback_summary=feedback_summary,reviewed_actions=reviewed_context(history,batch))+ai.last_completions
         reported=ai.last_usage.get('session_costs',0)
         try:cost=max(0,float(reported))
         except (TypeError,ValueError):cost=0
@@ -277,11 +336,16 @@ def run(engine,opts,email_id=None):
         with _LOCK:
             data=load()
             existing=load_tasks()
+            historical=remembered_actions(data,[t for rows in existing.values() for t in rows],messages)
+            for old in historical:
+                if old.get('id') in data['suggestions'] and old.get('source_keys'):data['suggestions'][old['id']]['source_keys']=old['source_keys']
             known={(t.get('email_id'),' '.join(t['text'].lower().split())) for group in existing.values() for t in group}
             for item in found:
                 # Stable evidence identity suppresses rephrased suggestions and remembered dismissals.
                 source=sources[item['email_id']]
                 item['email_id']=source.get('source_id',source['id'])
+                item['source_keys']=source_keys(source)
+                if any(same_action(item,previous) for previous in historical):continue
                 normalized=' '.join(item['evidence'].casefold().split())
                 # Only deduplicate copies with a provider message ID and the
                 # same evidence; similar recurring requests must remain separate.
@@ -294,6 +358,7 @@ def run(engine,opts,email_id=None):
                 domain=parseaddr(source['sender'])[1].rsplit('@',1)[-1].lower()
                 item.update(created_at=datetime.now().astimezone().isoformat(),id=sid,status='accepted' if (item['email_id'],' '.join(item['text'].lower().split())) in known else 'review',reason='',company=links.get(domain,''))
                 data['suggestions'][sid]=item
+                historical.append(item)
             rejected=getattr(ai,'last_rejected_sources',set())
             for m in batch:
                 if m['id'] not in rejected:data['processed'][key_for(m,opts)]={'email_id':m.get('source_id',m['id']),'checked':datetime.now().isoformat()}

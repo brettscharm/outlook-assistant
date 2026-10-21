@@ -40,6 +40,44 @@ class WorkflowTests(unittest.TestCase):
   rows=[dict(message(i),message_id='copy' if i<3 else 'different') for i in range(1,4)]
   with patch.object(BobAIAgent,'extract_tasks',return_value=[item(i) for i in range(1,4)]):w.run(Engine(rows),self.opts)
   self.assertEqual(len(w.load()['suggestions']),2)
+ def test_review_decisions_survive_rephrasing_rescan_and_row_id_change(self):
+  for decision in ('dismiss','accept'):
+   with self.subTest(decision=decision):
+    w.save({'suggestions':{},'processed':{},'last_check':None})
+    tasks.TASKS_FILE.unlink(missing_ok=True)
+    original=dict(message(),message_id='stable-provider-id')
+    with patch.object(BobAIAgent,'extract_tasks',return_value=[item()]):w.run(Engine([original]),self.opts)
+    sid=next(iter(w.load()['suggestions']))
+    w.action({'action':decision,'id':sid,'reason':'quick'})
+    config.update_config({'user_context':{'full_name':'Brett','email_addresses':'brett@example.com','role':'Updated role'}})
+    changed=dict(original,id='99',body=original['body']+' More background.')
+    suggestion=dict(item(99),text='Send the requested proposal',evidence='Brett send the proposal')
+    with patch.object(BobAIAgent,'extract_tasks',return_value=[suggestion]) as extract:
+     w.run(Engine([changed]),self.opts)
+     self.assertTrue(extract.call_args.kwargs['reviewed_actions'])
+     self.assertEqual(extract.call_args.kwargs['feedback'],[])
+    self.assertEqual(len(w.load()['suggestions']),1)
+    self.assertEqual(w.load()['suggestions'][sid]['status'],'dismissed' if decision=='dismiss' else 'accepted')
+    self.assertEqual(sum(map(len,tasks.load_tasks().values())),0 if decision=='dismiss' else 1)
+ def test_saved_task_without_review_record_prevents_repeat(self):
+  tasks.add_task('my','Edited proposal title',source={'email_id':'1','evidence':'Brett, send the proposal'})
+  with patch.object(BobAIAgent,'extract_tasks',return_value=[item()]):w.run(Engine([message()]),self.opts)
+  self.assertEqual(w.load()['suggestions'],{})
+ def test_distinct_actions_and_recurring_requests_remain(self):
+  first=dict(item(),source_keys=w.source_keys(dict(message(),message_id='one')))
+  self.assertFalse(w.same_action(first,dict(first,text='Book workshop',evidence='Book a workshop next week')))
+  self.assertFalse(w.same_action(first,dict(first,email_id='2',source_keys=w.source_keys(dict(message(2),message_id='two')))))
+  self.assertTrue(w.same_action(first,dict(first,text='Send requested proposal',evidence='Brett send the proposal')))
+  self.assertFalse(w.same_action(first,dict(first,action_type='complete',task_id='t1')))
+ def test_quote_boundaries_and_separate_deliverables(self):
+  original=dict(item(),text='Send the final proposal',evidence='Please send the final proposal to Jane by Friday')
+  self.assertTrue(w.same_action(original,dict(original,text='Send final proposal to Jane',evidence='send the final proposal to Jane by Friday')))
+  self.assertFalse(w.same_action(original,dict(original,text='Book the workshop',evidence='Book the workshop by Friday')))
+ def test_review_context_is_bounded_without_deleting_history(self):
+  rows=[dict(item(i),status='dismissed',evidence='x'*6000) for i in range(300)]
+  context=w.reviewed_context(rows,[dict(message(),content=message()['body'])])
+  self.assertLessEqual(sum(len(json.dumps(r)) for r in context),40000)
+  self.assertEqual(len(rows),300)
  def test_bad_evidence_is_retriable_without_losing_valid_results(self):
   invalid=dict(item(2),evidence='invented action')
   with patch.object(BobAIAgent,'_call_llm',return_value=json.dumps({'tasks':[item(),invalid]})):
