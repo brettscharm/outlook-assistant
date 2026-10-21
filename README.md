@@ -32,7 +32,7 @@ Your name, role, account list, and writing preferences help personalize Bob’s 
 
 ## Automatic task discovery and sync
 
-After identity and Bob connection setup, a fresh configuration defaults to checking every **15 minutes**, initially looking back **seven days**. Existing saved scan settings are preserved. Change the date range or pause discovery in **Tasks to review → Task discovery settings**.
+After identity and Bob connection setup, a fresh configuration defaults to checking every **15 minutes**, initially looking back **seven days**. Existing saved scan settings are preserved. Change the date range or pause discovery in **Tasks to review → Email task options**.
 
 Checks run while the app’s local service is running and process unprocessed or changed cached messages in batches. Relevant message excerpts and saved context go to IBM Bob using your allowance. The app imposes no spending cap; IBM account limits still apply. Mail-only reads do not use Bob.
 

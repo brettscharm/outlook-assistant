@@ -34,7 +34,7 @@ You can use accessible cached mail and saved tasks without Bob. To enable the As
 
 Bob and Node are separate prerequisites: Outlook Assistant does **not** download, install, or update them automatically. The app checks supported versions before AI requests and in Setup; it does not check IBM for the latest available release. Use IBM’s installer instructions for upgrades. Corporate restrictions may require administrator assistance.
 
-After successful setup, a fresh configuration checks for tasks every 15 minutes, starting with the past seven days. This sends cached message excerpts and saved context to IBM Bob and uses your Bob allowance. Review the suggestions in **Tasks to review**. Pause or change the scan range under **Task discovery settings**. Existing users retain their saved settings.
+After successful setup, a fresh configuration checks for tasks every 15 minutes, starting with the past seven days. This sends cached message excerpts and saved context to IBM Bob and uses your Bob allowance. Review the suggestions in **Tasks to review**. Pause or change the scan range under **Email task options**. Existing users retain their saved settings.
 
 ## 4. Keep one copy and let it update
 
