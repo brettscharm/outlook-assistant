@@ -13,7 +13,7 @@ MESSAGES={
  'expired':('Bob key expired','IBM reported that the Bob credential expired. Add a new API key in Settings, then test the connection.'),
  'invalid':('Bob key rejected','IBM rejected authentication. The key may be invalid, expired, or revoked. Replace it in Settings and test again.'),
  'permission':('Bob access denied','IBM denied access. Check your team ID and the key’s permissions. This does not prove the key was revoked.'),
- 'quota':('Bob usage limit reached','IBM reported a budget or quota limit. Check your Bob allowance or ask your subscription administrator.'),
+ 'quota':('Bob usage limit reached','Open Bob and request more usage from your subscription administrator. After your allowance is restored, test the Bob connection in Settings. Saved tasks and mail remain available.'),
  'rate_limit':('Bob rate limited','Too many requests. Wait briefly and try again.'),
  'network':('Bob connection failed','Bob could not connect or timed out. Check your network and retry; the key has not been confirmed invalid.'),
  'error':('Bob request failed','Bob did not complete the request. Test the connection in Settings. The cause is not confirmed.')}
@@ -41,7 +41,7 @@ def classify(error):
     if re.search(r'(key|credential|token).{0,70}revoked|revoked.{0,70}(key|credential|token)',raw):return 'revoked'
     if re.search(r'(key|credential|token).{0,70}expired|expired.{0,70}(key|credential|token)',raw):return 'expired'
     if any(term in raw for term in ('invalid_api_key','invalid api key','unauthorized','authentication failed','authentication_error','invalid token')) or re.search(r'(status|code|http)[^\d]{0,15}401\b',raw):return 'invalid'
-    if any(term in raw for term in ('insufficient_quota','budget exceeded','budget_exceeded','quota exceeded','insufficient credits','cost limit reached')):return 'quota'
+    if any(term in raw for term in ('insufficient_quota','budget exceeded','budget_exceeded','quota exceeded','insufficient credits','cost limit reached','usage limit reached','quota exhausted','credits exhausted','no bobcoins remaining','insufficient bobcoins')):return 'quota'
     if 'rate limit' in raw or re.search(r'(status|code|http)[^\d]{0,15}429\b',raw):return 'rate_limit'
     if 'forbidden' in raw or 'permission denied' in raw or re.search(r'(status|code|http)[^\d]{0,15}403\b',raw):return 'permission'
     if any(term in raw for term in ('timeout','timed out','econnrefused','enotfound','econnreset','network error','fetch failed','unable to connect')):return 'network'

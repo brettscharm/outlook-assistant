@@ -165,3 +165,14 @@ body.native-assistant-panel .sidebar,body.native-assistant-panel main>header,bod
 
 .calendar-time-day>.calendar-event .calendar-event-title{flex-shrink:0;white-space:nowrap;min-height:1.3em}.calendar-time-day>.calendar-event .calendar-event-time{white-space:nowrap}.calendar-time-day>.calendar-event small{display:none}
 main>header{height:auto;min-height:68px;gap:12px;flex-wrap:wrap;padding-top:12px;padding-bottom:12px}.page-heading h1{white-space:nowrap}.sync-controls{margin-left:auto;flex-wrap:wrap}.sync-controls #syncTime{max-width:260px;line-height:1.4}
+
+/* First-run walkthrough shares the app's existing controls and typography. */
+#walkthrough{width:min(620px,calc(100vw - 32px));padding:28px;border-radius:20px}
+#walkthrough progress{display:block;width:100%;height:5px;margin:18px 0 26px;accent-color:var(--accent,#007aff)}
+#walkthrough h2{font-size:26px;letter-spacing:-.6px;margin-bottom:16px}
+#walkthroughContent p,#walkthroughContent li{line-height:1.6}
+#walkthroughContent ul{padding-left:22px;margin:20px 0}
+#walkthroughContent li{padding:5px 0}
+.walkthrough-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #dfe3e8;padding-top:20px;margin-top:24px}
+#walkthroughError{color:#b42318}
+@media(max-width:600px){#walkthrough{padding:20px}.walkthrough-footer{flex-wrap:wrap}.walkthrough-footer span{order:3;width:100%;text-align:center}}

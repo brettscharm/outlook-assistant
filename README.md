@@ -169,3 +169,9 @@ node --test tests/*.test.cjs
 Tests use synthetic data. The save tests cover overlapping edits, failed saves, retries, quit protection, interrupted writes, damaged-file recovery, and persistence across processes. A passing suite does not replace the clean-Mac and signed-release checks in the release checklist.
 
 Version 2.19 and later target Apple silicon only. Intel Macs should keep their last compatible release; do not install the Apple silicon package on Intel.
+
+### First-run walkthrough and Bob usage
+
+The first launch opens a six-step walkthrough covering setup, your profile, projects/tasks/subtasks, AI instructions, and usage. Progress saves on this Mac. Use **Settings → Setup → Setup walkthrough** to resume or replay it. Opening the walkthrough does not make AI requests.
+
+The footer opens aggregate Bobcoins and token usage for this app on this Mac: today, this month, and all time. Unreported usage remains marked unknown; these totals are not an account-wide balance. If Bob reports exhausted usage, the app offers **Open Bob** and explains how to request more allowance. After the allowance is restored, use **Settings → Bob connection → Test Bob connection**.

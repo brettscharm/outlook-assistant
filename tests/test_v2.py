@@ -41,7 +41,8 @@ class CoreTests(unittest.TestCase):
             self.assertEqual([m['id'] for m in b.get_emails(search_term='needle')],['3'])
             self.assertEqual(len(b.get_emails(unread_only=True)),3)
             self.assertNotIn('body',b.get_emails()[0]);self.assertEqual(b.get_email_details('3')['body'],'needle')
-    def test_http_secret_redaction_and_cross_origin_block(self):
+    @patch('outlook_plugin.app_server.profiles',return_value=[])
+    def test_http_secret_redaction_and_cross_origin_block(self,_profiles):
         config.update_config({'bob_api_key':'secret'})
         server=ThreadingHTTPServer(('127.0.0.1',0),AppRequestHandler)
         threading.Thread(target=server.serve_forever,daemon=True).start()
@@ -49,6 +50,10 @@ class CoreTests(unittest.TestCase):
         base=f'http://127.0.0.1:{server.server_port}'
         with urllib.request.urlopen(base+'/api/config') as r:
             self.assertNotIn('secret',r.read().decode());self.assertIsNone(r.headers.get('Access-Control-Allow-Origin'))
+        with urllib.request.urlopen(base+'/onboarding-ui.js',timeout=5) as r:
+            self.assertIn('walkthrough',r.read().decode())
+        with urllib.request.urlopen(base+'/api/onboarding',timeout=5) as r:
+            self.assertEqual(json.load(r)['step'],0)
         req=urllib.request.Request(base+'/api/config',headers={'Origin':'https://evil.example'})
         with self.assertRaises(urllib.error.HTTPError) as e:urllib.request.urlopen(req)
         self.assertEqual(e.exception.code,403)
