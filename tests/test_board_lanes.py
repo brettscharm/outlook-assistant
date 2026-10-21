@@ -27,3 +27,8 @@ class BoardTests(unittest.TestCase):
   self.assertEqual(tasks.task_lane({}),'todo')
   with self.assertRaises(ValueError):tasks.save_board_lanes([{'id':'todo','name':' '},{'id':'done','name':'Done'}])
   with self.assertRaises(ValueError):tasks.save_board_lanes([{'id':'todo','name':'A'},{'id':'todo','name':'B'}])
+
+ def test_new_task_owner_defaults_to_saved_user(self):
+  config.update_config({'user_context':{'full_name':'Test User'}})
+  self.assertEqual(tasks.add_task('my','Review proposal')['my_tasks'][0]['assignee'],'Test User')
+  self.assertEqual(tasks.add_task('my','Call customer','Pat')['my_tasks'][0]['assignee'],'Pat')

@@ -48,11 +48,13 @@ def add_task(
             if any(t.get("email_id")==source["email_id"] and " ".join(t["text"].lower().split())==" ".join(text.lower().split()) for t in items):
                 return tasks
 
+    from .config import read_config
+    default_owner=(read_config().get("user_context",{}).get("full_name","").strip() or "Me") if key=="my_tasks" else "Owner unclear"
     new_item = {
         "id": str(uuid.uuid4()),
         "text": text.strip(),
         "description": str(description).strip()[:4000],
-        "assignee": assignee.strip() if assignee else ("Me" if key == "my_tasks" else "Other"),
+        "assignee": assignee.strip() if assignee else default_owner,
         "completed": False,
         "due_date": due_date or "",
         "type": task_type,

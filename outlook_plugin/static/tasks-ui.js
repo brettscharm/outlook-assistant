@@ -30,7 +30,7 @@ function setTaskView(name){
  if(!$('task-review').classList.contains('active'))view('task-review');
  document.querySelectorAll('[data-task-view]').forEach(b=>b.classList.toggle('selected',b.dataset.taskView===name));taskFingerprint='';renderTaskList();
 }
-function editTask(item,origin){taskEditor={item,origin};$('taskEditorTitle').textContent=origin==='review'?'Review before adding':origin==='new'?'Add a task':'Edit task';$('editTaskText').value=item.text||'';$('editTaskDescription').value=item.description||'';$('editTaskType').value=item.type||'my';$('editTaskOwner').value=item.owner||item.assignee||'';$('editTaskDue').value=taskDeadline(item).due;$('editTaskEvidence').textContent=item.evidence||'';$('editTaskEvidence').hidden=!item.evidence;$('editTaskDateNote').textContent=[item.due_evidence?'Deadline in email: “'+item.due_evidence+'”':'',item.due_note||''].filter(Boolean).join(' · ');$('saveTaskEdit').textContent=origin==='saved'?'Save changes':'Add task';$('taskEditor').showModal();}
+function editTask(item,origin){taskEditor={item,origin};$('taskEditorTitle').textContent=origin==='review'?'Review before adding':origin==='new'?'Add a task':'Edit task';$('editTaskText').value=item.text||'';$('editTaskDescription').value=item.description||'';$('editTaskType').value=item.type||'my';$('editTaskOwner').value=item.owner||item.assignee||'';$('editTaskDue').value=taskDeadline(item).due;$('editTaskEvidence').textContent=item.evidence||'';$('editTaskEvidence').hidden=!item.evidence;$('editTaskDateNote').textContent=[item.due_evidence?'Deadline in email: “'+item.due_evidence+'”':'',item.due_note||''].filter(Boolean).join(' · ');$('saveTaskEdit').textContent=origin==='saved'?'Save changes':'Add task';$('ownerSuggestions').hidden=true;$('editTaskOwner').setCustomValidity('');$('taskEditor').showModal();loadOwnerContacts();}
 function dismissMenu(item){
  const details=document.createElement('details');details.className='dismiss-menu';
  details.append(text('summary','Dismiss…'));
@@ -75,7 +75,7 @@ $('findTasks').onclick=()=>busy($('findTasks'),async()=>{if(!$('scanForm').repor
 $('toggleTaskAuto').onclick=()=>busy($('toggleTaskAuto'),async()=>{clearTimeout(scanSaveTimer);const interval=taskReview.options.interval?0:15;$('scanInterval').value=interval;await api('/api/task-scan-settings',scanValues());window.taskFormDirty=false;}).finally(()=>loadTaskWorkspace());
 $('stopScan').onclick=()=>busy($('stopScan'),async()=>{await api('/api/task-scan-stop',{});await loadTaskWorkspace();});
 $('setIdentity').onclick=()=>{view('context');$('contextForm').elements.full_name.focus();};
-$('manualTask').onclick=()=>editTask({type:'my'},'new');
+$('manualTask').onclick=()=>editTask({type:'my',owner:currentOwnerName()},'new');
 $('closeTaskEditor').onclick=()=>$('taskEditor').close();
 $('taskEditorForm').onsubmit=e=>{e.preventDefault();busy(e.submitter,async()=>{
  const {item,origin}=taskEditor;
@@ -142,3 +142,27 @@ $('configureLanes').onclick=()=>{laneDraft=boardLanes.map(l=>({...l}));$('laneSa
 $('closeLanes').onclick=()=>$('laneEditor').close();
 $('addLane').onclick=()=>{if(laneDraft.length<12){laneDraft.push({id:'lane-'+crypto.randomUUID(),name:'New lane'});renderLaneEditor();}};
 $('laneForm').onsubmit=e=>{e.preventDefault();busy(e.submitter,async()=>{try{boardLanes=await api('/api/task-lanes',{lanes:laneDraft});$('laneEditor').close();boardFingerprint='';renderTaskBoard();notice('Lanes saved on this Mac.');}catch(error){$('laneSaveStatus').textContent=error.message;}});};
+
+let ownerContacts=[],ownerContactsLoading=false;
+function currentOwnerName(){return $('contextForm').elements.full_name.value.trim()||'Me';}
+function currentOwnerEmails(){return $('contextForm').elements.email_addresses.value.toLowerCase().split(/[,;\s]+/).filter(v=>v.includes('@'));}
+async function loadOwnerContacts(){
+ if(ownerContactsLoading)return;ownerContactsLoading=true;
+ try{const result=await api('/api/contacts');ownerContacts=result.groups.flatMap(g=>g.contacts);if($('taskEditor').open)renderOwnerSuggestions();}
+ catch{if($('editTaskOwner').value.startsWith('@')){$('ownerSuggestions').replaceChildren(text('p','Contacts unavailable. You can still type a name.','muted small'));$('ownerSuggestions').hidden=false;}}
+ finally{ownerContactsLoading=false;}
+}
+function renderOwnerSuggestions(){
+ const root=$('ownerSuggestions'),value=$('editTaskOwner').value;
+ $('editTaskOwner').setCustomValidity(value.startsWith('@')?'Choose a contact or remove @ to enter a name.':'');root.replaceChildren();root.hidden=!value.startsWith('@');if(root.hidden)return;
+ const query=value.slice(1).trim().toLowerCase();
+ const people=[{name:currentOwnerName(),email:currentOwnerEmails()[0]||'',self:true},...ownerContacts];
+ const seen=new Set();const matches=people.filter(p=>{const id=p.email||p.name;if(seen.has(id))return false;seen.add(id);return (p.name+' '+p.email).toLowerCase().includes(query);}).slice(0,8);
+ if(!matches.length){root.append(text('p',ownerContactsLoading?'Loading contacts…':'No matching contacts. Enter a name without @ to use it.','muted small'));return;}
+ for(const person of matches){const b=text('button','','owner-option');b.type='button';b.append(text('strong',person.name+(person.self?' (you)':'')),text('small',person.email));
+ b.onclick=()=>{$('editTaskOwner').value=person.self?currentOwnerName():person.name===person.email?person.email:person.name+' <'+person.email+'>';$('editTaskType').value=person.self||currentOwnerEmails().includes(person.email.toLowerCase())?'my':'others';root.hidden=true;$('editTaskOwner').dispatchEvent(new Event('input',{bubbles:true}));$('editTaskOwner').focus();};root.append(b);}
+}
+$('editTaskOwner').addEventListener('input',renderOwnerSuggestions);
+$('editTaskOwner').addEventListener('change',()=>{const value=$('editTaskOwner').value.trim();if(!value||value.startsWith('@'))return;const mine=value.toLowerCase()===currentOwnerName().toLowerCase()||value.toLowerCase()==='me'||currentOwnerEmails().includes((value.match(/<([^>]+)>/)?.[1]||value).toLowerCase());$('editTaskType').value=mine?'my':value==='Owner unclear'?'unclear':'others';$('editTaskType').dispatchEvent(new Event('input',{bubbles:true}));});
+$('editTaskOwner').addEventListener('keydown',e=>{if(e.key==='Escape'){$('ownerSuggestions').hidden=true;e.preventDefault();e.stopPropagation();}if(e.key==='ArrowDown'&&!$('ownerSuggestions').hidden){e.preventDefault();$('ownerSuggestions').querySelector('button')?.focus();}});
+$('ownerSuggestions').addEventListener('keydown',e=>{const buttons=[...$('ownerSuggestions').querySelectorAll('button')];const index=buttons.indexOf(document.activeElement);if(['ArrowDown','ArrowUp'].includes(e.key)){e.preventDefault();buttons[(index+(e.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length]?.focus();}if(e.key==='Escape'){$('ownerSuggestions').hidden=true;$('editTaskOwner').focus();e.preventDefault();e.stopPropagation();}});
