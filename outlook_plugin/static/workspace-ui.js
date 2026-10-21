@@ -42,7 +42,7 @@ $('contextForm').addEventListener('input',e=>{if(e.target.name)queueContextSave(
 $('writingExamples').oninput=()=>queueContextSave('writing_samples',$('writingExamples').value);
 try{contextPending=JSON.parse(localStorage.getItem('outlook-context-pending')||'{}');if(Object.keys(contextPending).length){window.contextDirty=true;flushContext();}}catch{}
 window.nativeBackupDone=ok=>{$('startupStatus').textContent=ok?'Backup saved. Your Bob API key is not included.':'Backup was not saved.';};
-window.flushWorkspace=async()=>{document.activeElement?.blur();clearTimeout(draftTimer);clearTimeout(contextTimer);const until=Date.now()+3000;while((draftSaving||contextSaving||window.settingsSaving)&&Date.now()<until)await new Promise(resolve=>setTimeout(resolve,50));await flushDrafts();await flushContext();};
+window.flushWorkspace=async()=>{document.activeElement?.blur();clearTimeout(draftTimer);clearTimeout(contextTimer);const until=Date.now()+3000;while((draftSaving||contextSaving||window.settingsSaving)&&Date.now()<until)await new Promise(resolve=>setTimeout(resolve,50));await flushDrafts();await flushContext();await window.flushTaskEdits?.();await window.flushTaskProgress?.();};
 
 for(const [id,key] of [['key','bob_api_key'],['keyName','bob_key_name'],['team','bob_team_id'],['profile','outlook_profile']])$(id).addEventListener('change',async()=>{if(id==='key'&&!$(id).value.trim())return;window.settingsSaving=(window.settingsSaving||0)+1;try{await api('/api/config',{[key]:$(id).value});if(id==='key')$(id).value='';$('settingsStatus').textContent='Settings saved on this Mac.';refreshBobStatus();refreshSetup();}catch(e){$('settingsStatus').textContent='Not saved: '+e.message;}finally{window.settingsSaving--;}});
 

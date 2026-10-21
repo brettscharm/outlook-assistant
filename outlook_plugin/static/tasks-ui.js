@@ -51,7 +51,7 @@ function setTaskView(name){
  if(!$('task-review').classList.contains('active'))view('task-review');
  document.querySelectorAll('[data-task-view]').forEach(b=>b.classList.toggle('selected',b.dataset.taskView===name));taskFingerprint='';renderTaskList();
 }
-function editTask(item,origin){taskEditor={item,origin};$('taskEditorTitle').textContent=origin==='review'?'Review before adding':origin==='new'?'Add a task':'Task';$('editTaskText').value=item.text||'';$('editTaskDescription').value=item.description||'';$('editTaskCoOwners').value=(item.co_owners||[]).join('\n');$('taskEmailPeopleStatus').textContent='';$('editTaskSource').value=item.source_type||(item.email_id?'email':'other');$('editTaskSourceUrl').value=item.source_url||'';$('editTaskType').value=item.type||'my';$('editTaskOwner').value=$('editTaskType').value==='my'?currentOwnerName():item.owner||item.assignee||'';$('editTaskDue').value=item.due_date||'';initializeTaskSchedule(item);$('editTaskPriority').value=item.priority||'none';window.fillProjectSelect?.($('editTaskProject'),item.project_id||'');refreshTaskProjectColor();$('editTaskEvidence').textContent=item.evidence||'';$('editTaskEvidence').hidden=!item.evidence;$('editTaskDateNote').textContent=[item.due_evidence?'Deadline in email: “'+item.due_evidence+'”':'',item.due_note||''].filter(Boolean).join(' · ');$('saveTaskEdit').textContent=item.action_type==='complete'?'Mark completed':origin==='saved'?'Save changes':'Add task';$('ownerSuggestions').hidden=true;$('editTaskOwner').setCustomValidity('');$('taskEditor').showModal();progressRoot.hidden=origin!=='saved';window.flushTaskProgress=null;if(origin==='saved')openTaskProgress(item);window.mountTaskFiles($('taskEditor'),'task',origin==='saved'?item.id:null);loadOwnerContacts();}
+function editTask(item,origin){taskEditor={item,origin};$('taskEditorTitle').textContent=origin==='review'?'Review before adding':origin==='new'?'Add a task':'Task';$('editTaskText').value=item.text||'';$('editTaskDescription').value=item.description||'';$('editTaskCoOwners').value=(item.co_owners||[]).join('\n');$('taskEmailPeopleStatus').textContent='';$('editTaskSource').value=item.source_type||(item.email_id?'email':'other');$('editTaskSourceUrl').value=item.source_url||'';$('editTaskType').value=item.type||'my';$('editTaskOwner').value=$('editTaskType').value==='my'?currentOwnerName():item.owner||item.assignee||'';$('editTaskDue').value=item.due_date||'';initializeTaskSchedule(item);$('editTaskPriority').value=item.priority||'none';window.fillProjectSelect?.($('editTaskProject'),item.project_id||'');refreshTaskProjectColor();$('editTaskEvidence').textContent=item.evidence||'';$('editTaskEvidence').hidden=!item.evidence;$('editTaskDateNote').textContent=[item.due_evidence?'Deadline in email: “'+item.due_evidence+'”':'',item.due_note||''].filter(Boolean).join(' · ');$('saveTaskEdit').textContent=item.action_type==='complete'?'Mark completed':'Add task';$('saveTaskEdit').hidden=origin==='saved';$('closeTaskEditor').textContent=origin==='saved'?'Done':'Close';$('retryTaskSave').hidden=true;$('taskSaveStatus').textContent=origin==='saved'?'All changes saved':'';$('ownerSuggestions').hidden=true;$('editTaskOwner').setCustomValidity('');$('taskEditor').showModal();progressRoot.hidden=origin!=='saved';window.flushTaskProgress=null;if(origin==='saved')openTaskProgress(item);window.mountTaskFiles($('taskEditor'),'task',origin==='saved'?item.id:null);loadOwnerContacts();taskLastSaved=JSON.stringify(taskEditValues());}
 function dismissMenu(item){
  const details=document.createElement('details');details.className='dismiss-menu';
  details.append(text('summary','Dismiss with feedback'));details.append(text('p','Helps guide future suggestions. Restore removes this feedback.','muted small'));
@@ -99,16 +99,13 @@ $('setIdentity').onclick=()=>{view('context');$('contextForm').elements.full_nam
 $('manualTask').onclick=()=>editTask({type:'my',owner:currentOwnerName(),project_id:projectRows.some(p=>p.id===$('boardProject').value)?$('boardProject').value:''},'new');
 async function closeTaskPanel(){
  if(window.flushTaskProgress&&await window.flushTaskProgress()===false)return;
- if(taskEditor?.origin==='saved'){
-  clearTimeout(taskEditTimer);
-  if(!$('taskEditorForm').reportValidity())return;
-  try{await api('/api/tasks',{action:'edit',id:taskEditor.item.id,text:$('editTaskText').value,description:$('editTaskDescription').value,source_type:$('editTaskSource').value,source_url:$('editTaskSourceUrl').value,type:$('editTaskType').value,owner:$('editTaskOwner').value,co_owners:$('editTaskCoOwners').value.split(/\n/).map(v=>v.trim()).filter(Boolean),project_id:$('editTaskProject').value,priority:$('editTaskPriority').value,due_date:$('editTaskDue').value,...taskScheduleValues()});await loadTaskWorkspace();}catch(e){notice(e.message,'error');return;}
- }
+ if(taskEditor?.origin==='saved'&&await window.flushTaskEdits()===false)return;
+ await loadTaskWorkspace();
  $('taskEditor').close();
 }
 $('closeTaskEditor').onclick=closeTaskPanel;
 $('taskEditor').oncancel=e=>{e.preventDefault();closeTaskPanel();};
-$('taskEditorForm').onsubmit=e=>{e.preventDefault();busy(e.submitter,async()=>{
+$('taskEditorForm').onsubmit=e=>{e.preventDefault();if(taskEditor?.origin==='saved'){closeTaskPanel();return;}busy(e.submitter,async()=>{
  const {item,origin}=taskEditor;
  const values={id:item.id,text:$('editTaskText').value,description:$('editTaskDescription').value,source_type:$('editTaskSource').value,source_url:$('editTaskSourceUrl').value,type:$('editTaskType').value,owner:$('editTaskOwner').value,co_owners:$('editTaskCoOwners').value.split(/\n/).map(v=>v.trim()).filter(Boolean),project_id:$('editTaskProject').value,priority:$('editTaskPriority').value,due_date:$('editTaskDue').value,...taskScheduleValues()};
  clearTimeout(taskEditTimer);
@@ -135,8 +132,32 @@ window.mountEmailTasks=function(id,root){const panel=text('section','','email-ta
 async function renderEmailSummary(id,panel){try{const review=await api('/api/task-review?'+new URLSearchParams({email_id:id}));if(state.selected!==id||!panel.isConnected)return;const items=review.suggestions.filter(t=>t.status!=='dismissed');const fingerprint=JSON.stringify([items,review.email_scanned,review.job.running]);if(panel.dataset.fingerprint===fingerprint)return;panel.dataset.fingerprint=fingerprint;panel.replaceChildren();const heading=text('div','','email-task-heading');heading.append(text('h3','Actions in this email'));const scan=text('button',review.job.running?'Scan in progress…':'Review this email');scan.disabled=review.job.running;scan.onclick=()=>busy(scan,async()=>{await api('/api/task-scan',{email_id:id,mode:'all'});await loadTaskWorkspace();});heading.append(scan);panel.append(heading);if(!items.length){panel.append(text('p',review.email_scanned?'No action items found.':'No tasks found yet.','muted small'));return;}const mine=items.filter(t=>t.type==='my');if(!mine.length)panel.append(text('p','No task clearly assigned to you.','muted small'));const groups=new Map();for(const item of items){const label=item.type==='my'?'YOUR TASKS':item.type==='unclear'?'OWNER UNCLEAR':(item.owner||'OTHER OWNER').toUpperCase()+"’S TASKS";if(!groups.has(label))groups.set(label,[]);groups.get(label).push(item);}for(const [label,tasks] of groups){panel.append(text('h4',label));for(const item of tasks){const row=text('div','','email-action');row.append(text('strong',item.text),text('span',taskDeadline(item).label,'muted small'));if(item.description)row.append(text('p',item.description,'task-description'));if(item.status==='review'){const add=text('button','Review & add');add.onclick=()=>editTask(item,'review');row.append(add);}else row.append(text('span',item.completed?'Completed':'Added to tasks','muted small'));panel.append(row);}}}catch(e){panel.textContent='Task summary unavailable: '+e.message;}}
 loadTaskWorkspace().catch(e=>notice(e.message));setInterval(()=>{if(!document.hidden&&!$('taskEditor').open&&!document.querySelector('.dismiss-menu[open]'))loadTaskWorkspace().catch(()=>{});},5000);
 
-let taskEditTimer;
-$('taskEditorForm').addEventListener('input',()=>{if(taskEditor?.origin!=='saved')return;clearTimeout(taskEditTimer);const id=taskEditor.item.id;taskEditTimer=setTimeout(async()=>{if(!taskEditor||taskEditor.item.id!==id||!$('taskEditorForm').checkValidity())return;try{await api('/api/tasks',{action:'edit',id,text:$('editTaskText').value,description:$('editTaskDescription').value,source_type:$('editTaskSource').value,source_url:$('editTaskSourceUrl').value,type:$('editTaskType').value,owner:$('editTaskOwner').value,co_owners:$('editTaskCoOwners').value.split(/\n/).map(v=>v.trim()).filter(Boolean),project_id:$('editTaskProject').value,priority:$('editTaskPriority').value,due_date:$('editTaskDue').value,...taskScheduleValues()});$('taskEditorTitle').textContent='Edit task · Saved';taskFingerprint='';}catch(e){$('taskEditorTitle').textContent='Edit task · Not saved';notice(e.message);}},650);});
+let taskEditTimer,taskEditPromise=null,taskLastSaved='';
+function taskEditValues(){return {action:'edit',id:taskEditor?.item.id,text:$('editTaskText').value,description:$('editTaskDescription').value,source_type:$('editTaskSource').value,source_url:$('editTaskSourceUrl').value,type:$('editTaskType').value,owner:$('editTaskOwner').value,co_owners:$('editTaskCoOwners').value.split(/\n/).map(v=>v.trim()).filter(Boolean),project_id:$('editTaskProject').value,priority:$('editTaskPriority').value,due_date:$('editTaskDue').value,...taskScheduleValues()};}
+window.flushTaskEdits=async()=>{
+ clearTimeout(taskEditTimer);
+ if(taskEditor?.origin!=='saved'||!$('taskEditor').open)return true;
+ if(taskEditPromise){const ok=await taskEditPromise;if(!ok)return false;return window.flushTaskEdits();}
+ if(JSON.stringify(taskEditValues())===taskLastSaved)return true;
+ if(!$('taskEditorForm').reportValidity()){$('taskSaveStatus').textContent='Check the highlighted field to save.';return false;}
+ const editor=taskEditor;state.pending++;
+ taskEditPromise=(async()=>{
+  try{
+   while(taskEditor===editor){
+    const values=taskEditValues(),snapshot=JSON.stringify(values);if(snapshot===taskLastSaved)break;
+    if(!$('taskEditorForm').checkValidity()){$('taskSaveStatus').textContent='Check the highlighted field to save.';return false;}
+    $('taskSaveStatus').textContent='Saving…';$('retryTaskSave').hidden=true;
+    await api('/api/tasks',values);taskLastSaved=snapshot;taskFingerprint='';boardFingerprint='';
+   }
+   $('taskSaveStatus').textContent='All changes saved';return true;
+  }catch(e){$('taskSaveStatus').textContent='Not saved · '+e.message;$('retryTaskSave').hidden=false;return false;}
+  finally{state.pending--;}
+ })();
+ try{return await taskEditPromise;}finally{taskEditPromise=null;}
+};
+function queueTaskEdit(){if(taskEditor?.origin!=='saved')return;clearTimeout(taskEditTimer);if(JSON.stringify(taskEditValues())===taskLastSaved)return;$('taskSaveStatus').textContent='Saving…';taskEditTimer=setTimeout(()=>window.flushTaskEdits(),650);}
+$('taskEditorForm').addEventListener('input',queueTaskEdit);$('taskEditorForm').addEventListener('change',queueTaskEdit);
+$('retryTaskSave').onclick=()=>window.flushTaskEdits();
 
 const boardLimits={my:20,others:20,done:20};
 let boardFingerprint='';
