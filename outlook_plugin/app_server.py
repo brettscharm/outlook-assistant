@@ -83,6 +83,9 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         if path=='/api/ai-profiles':return self._send_json({'profiles':ai_profiles.profiles(),'activity':ai_profiles.activity()})
         if path=='/api/drafts': return self._send_json(drafts.load())
         if path=='/api/bob-status': return self._send_json(bob_status.current(get_bob_api_key()))
+        if path=='/api/troubleshoot':
+            from .troubleshooting import run
+            return self._send_json(run(self.engine,self.ai,data))
         if path=='/api/feedback':
             from .task_communication import open_feedback
             return self._send_json(open_feedback(data.get('kind')))
@@ -167,6 +170,9 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json({'error':str(exc)},503)
 
     def _post(self,path,data):
+        if path=='/api/troubleshoot':
+            from .troubleshooting import run
+            return self._send_json(run(self.engine,self.ai,data))
         if path=='/api/feedback':
             from .task_communication import open_feedback
             return self._send_json(open_feedback(data.get('kind')))

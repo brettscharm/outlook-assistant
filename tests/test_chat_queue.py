@@ -49,3 +49,11 @@ class ChatQueueTests(unittest.TestCase):
             lock.acquire.assert_called_once_with(timeout=180)
             lock.release.assert_not_called()
             run.assert_not_called()
+
+    def test_troubleshooting_omits_saved_context(self):
+        result=Mock(returncode=0,stdout=json.dumps({'status':'success','last_message':'Check Outlook.'}),stderr='')
+        with patch.object(ai_agent,'read_config',return_value={'user_context':{'role':'PRIVATE-ROLE'},'domain_companies':{'private.example':'PRIVATE-COMPANY'}}), patch.object(ai_agent.subprocess,'run',return_value=result) as run:
+            ai_agent.BobAIAgent('synthetic')._call_llm('Diagnostic checks only',profile='troubleshooting')
+            prompt=run.call_args.kwargs['input']
+            self.assertNotIn('PRIVATE-',prompt)
+            self.assertIn('--disable-tool-groups',run.call_args.args[0])
