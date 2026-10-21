@@ -102,6 +102,10 @@ $('taskEditorForm').onsubmit=e=>{e.preventDefault();busy(e.submitter,async()=>{
  // Finish any earlier refresh before reading the newly committed task.
  if(taskLoading)await taskLoading;
  await loadTaskWorkspace();
+ if(origin==='review'){
+  notice('Added to Tasks.');
+  return;
+ }
  $('taskSearch').value='';$('boardSearch').value='';$('taskDueFilter').value='all';
  const target=origin==='review'?taskSaved.find(t=>t.suggestion_id===item.id):origin==='saved'?taskSaved.find(t=>t.id===item.id):taskSaved.find(t=>t.text===values.text.trim()&&t.type===values.type);
  revealSavedTask=t=>target?t.id===target.id:origin==='review'?t.suggestion_id===item.id:t.text===values.text.trim();
