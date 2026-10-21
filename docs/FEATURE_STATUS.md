@@ -54,4 +54,4 @@ True model fine-tuning is not implemented; Bob profile instructions/examples are
 
 ## External AI clients
 
-The general in-app chat is removed as of 2.18.0. Read-only local MCP tools expose mail, tasks, projects, contacts, and cached calendar data. Settings → Connect AI apps provides a configuration for desktop clients. No cloud endpoint or tunnel is enabled. Bob task discovery and reply drafting remain.
+The general in-app chat is removed as of 2.18.0. Local MCP tools expose mail, tasks, projects, contacts, and cached calendar data. Since 2.18.1, mutation tools create/edit tasks and projects and manage task progress and checklist steps with retry deduplication and stale-edit checks. Settings → Connect AI apps provides a configuration for desktop clients. No cloud endpoint or tunnel is enabled. Bob task discovery and reply drafting remain.

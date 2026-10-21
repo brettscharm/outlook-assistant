@@ -141,8 +141,16 @@ The general in-app chat has been removed. Task discovery and email drafting rema
 
 Open **Settings → Connect AI apps → Copy connection settings**. Add the `outlook-assistant` entry to your desktop AI client’s local MCP configuration (merge with existing servers rather than replacing them). Keep Outlook Assistant running. Claude Desktop supports local MCP configuration; restart it after adding the server. This uses a bundled universal Mac executable, so no separate Python, Node, or Bob installation is required for MCP.
 
-The connection exposes read-only tools for searching mail, reading an email, listing tasks and projects, contacts/companies, and cached Teams meetings. Results are paginated, mail exclusions are respected, and no API keys are returned. It does not send emails, change tasks, run Bob, or expose attachment contents. Your chosen AI client may send requested content to its provider under that client’s settings.
+The connection exposes tools for searching mail, reading an email, listing tasks and projects, contacts/companies, and cached Teams meetings. It also creates and edits tasks/projects, moves tasks between lanes, and manages progress notes, waiting-on/next-step fields, and checklist steps. Results are paginated, mail exclusions are respected, and no API keys are returned. Changes save directly to the same local workspace and appear in the app. It does not send emails, run Bob, or expose attachment contents. Your chosen AI client may send requested content to its provider under that client’s settings.
 
 This is a local stdio connection, not a public link. ChatGPT’s custom MCP setup requires a supported remote endpoint or Secure MCP Tunnel; a localhost URL pasted into chat does not grant access. This app does not publish your mailbox or configure a tunnel.
 
-For source installations, `python3 -m outlook_plugin.mcp_server` runs the same read-only tools over stdio. The bundled bridge forwards stdio to the running app’s local API; `/api/mcp` is an internal bridge endpoint, not a Streamable HTTP transport URL. If using a nondefault app port, set `OUTLOOK_ASSISTANT_PORT` in the MCP client’s server environment.
+For source installations, `python3 -m outlook_plugin.mcp_server` runs the same tools over stdio. The bundled bridge forwards stdio to the running app’s local API; `/api/mcp` is an internal bridge endpoint, not a Streamable HTTP transport URL. If using a nondefault app port, set `OUTLOOK_ASSISTANT_PORT` in the MCP client’s server environment.
+
+### MCP write tools
+
+- Tasks: `get_task`, `create_task`, `edit_task`, `list_task_lanes`, `move_task`. Fields include owner/co-owners, priority, dates or meeting deadlines, color, source links, and project assignment.
+- Projects: `get_project`, `create_project`, `edit_project`.
+- Progress: `add_task_update`, `add_subtask`, `set_subtask_completed`, `set_task_next_step`.
+
+Write tools are marked as mutations for the AI client. Creation/append calls require a stable `request_id` to prevent duplicates on retry. Partial task/project edits require the latest `revision` from `get_task`/`get_project` as `expected_revision`; stale edits return an error instead of overwriting newer data. Reconnect or refresh tools in your AI client after updating.

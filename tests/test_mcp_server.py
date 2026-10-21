@@ -8,7 +8,9 @@ class MCPTests(unittest.TestCase):
   result=self.request('initialize',{'protocolVersion':'2025-06-18'})['result']
   self.assertEqual(result['protocolVersion'],'2025-06-18')
   self.assertIsNone(m.dispatch({'jsonrpc':'2.0','method':'notifications/initialized'},self.engine))
-  self.assertTrue(all(t['annotations']['readOnlyHint'] for t in self.request('tools/list')['result']['tools']))
+  tools=self.request('tools/list')['result']['tools']
+  self.assertFalse(next(t for t in tools if t['name']=='create_task')['annotations']['readOnlyHint'])
+  self.assertTrue(next(t for t in tools if t['name']=='search_mail')['annotations']['readOnlyHint'])
  def test_limits_unknown_tools_and_parameters(self):
   for args in [{'limit':0},{'limit':101},{'limit':True},{'offset':-1},{'query':[]},{'secret':True}]:
    self.assertTrue(self.request('tools/call',{'name':'search_mail','arguments':args})['result']['isError'])
