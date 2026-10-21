@@ -51,7 +51,7 @@ function setTaskView(name){
  if(!$('task-review').classList.contains('active'))view('task-review');
  document.querySelectorAll('[data-task-view]').forEach(b=>b.classList.toggle('selected',b.dataset.taskView===name));taskFingerprint='';renderTaskList();
 }
-function editTask(item,origin){taskEditor={item,origin};$('taskEditorTitle').textContent=origin==='review'?'Review before adding':origin==='new'?'Add a task':'Task';$('editTaskText').value=item.text||'';$('editTaskDescription').value=item.description||'';$('editTaskCoOwners').value=(item.co_owners||[]).join('\n');$('taskEmailPeopleStatus').textContent='';$('editTaskSource').value=item.source_type||(item.email_id?'email':'other');$('editTaskSourceUrl').value=item.source_url||'';$('editTaskType').value=item.type||'my';$('editTaskOwner').value=$('editTaskType').value==='my'?currentOwnerName():item.owner||item.assignee||'';$('editTaskDue').value=item.due_date||'';initializeTaskSchedule(item);$('editTaskPriority').value=item.priority||'none';window.fillProjectSelect?.($('editTaskProject'),item.project_id||'');refreshTaskProjectColor();$('editTaskEvidence').textContent=item.evidence||'';$('editTaskEvidence').hidden=!item.evidence;$('editTaskDateNote').textContent=[item.due_evidence?'Deadline in email: “'+item.due_evidence+'”':'',item.due_note||''].filter(Boolean).join(' · ');$('saveTaskEdit').textContent=item.action_type==='complete'?'Mark completed':'Add task';$('saveTaskEdit').hidden=origin==='saved';$('closeTaskEditor').textContent=origin==='saved'?'Done':'Close';$('retryTaskSave').hidden=true;$('taskSaveStatus').textContent=origin==='saved'?'All changes saved':'';$('ownerSuggestions').hidden=true;$('editTaskOwner').setCustomValidity('');$('taskEditor').showModal();progressRoot.hidden=origin!=='saved';window.flushTaskProgress=null;if(origin==='saved')openTaskProgress(item);window.mountTaskFiles($('taskEditor'),'task',origin==='saved'?item.id:null);loadOwnerContacts();taskLastSaved=JSON.stringify(taskEditValues());}
+function editTask(item,origin){taskEditor={item,origin};$('taskEditorTitle').textContent=origin==='review'?'Review before adding':origin==='new'?'Add a task':'Task';$('editTaskText').value=item.text||'';$('editTaskDescription').value=item.description||'';$('editTaskCoOwners').value=(item.co_owners||[]).join('\n');$('editTaskCoOwners').setCustomValidity('');$('coOwnerSuggestions').hidden=true;$('editTaskCoOwners').setAttribute('aria-expanded','false');$('taskEmailPeopleStatus').textContent='';$('editTaskSource').value=item.source_type||(item.email_id?'email':'other');$('editTaskSourceUrl').value=item.source_url||'';$('editTaskType').value=item.type||'my';$('editTaskOwner').value=$('editTaskType').value==='my'?currentOwnerName():item.owner||item.assignee||'';$('editTaskDue').value=item.due_date||'';initializeTaskSchedule(item);$('editTaskPriority').value=item.priority||'none';window.fillProjectSelect?.($('editTaskProject'),item.project_id||'');refreshTaskProjectColor();$('editTaskEvidence').textContent=item.evidence||'';$('editTaskEvidence').hidden=!item.evidence;$('editTaskDateNote').textContent=[item.due_evidence?'Deadline in email: “'+item.due_evidence+'”':'',item.due_note||''].filter(Boolean).join(' · ');$('saveTaskEdit').textContent=item.action_type==='complete'?'Mark completed':'Add task';$('saveTaskEdit').hidden=origin==='saved';$('closeTaskEditor').textContent=origin==='saved'?'Done':'Close';$('retryTaskSave').hidden=true;$('taskSaveStatus').textContent=origin==='saved'?'All changes saved':'';$('ownerSuggestions').hidden=true;$('editTaskOwner').setCustomValidity('');$('taskEditor').showModal();progressRoot.hidden=origin!=='saved';window.flushTaskProgress=null;if(origin==='saved')openTaskProgress(item);window.mountTaskFiles($('taskEditor'),'task',origin==='saved'?item.id:null);loadOwnerContacts();taskLastSaved=JSON.stringify(taskEditValues());}
 function dismissMenu(item){
  const details=document.createElement('details');details.className='dismiss-menu';
  details.append(text('summary','Dismiss with feedback'));details.append(text('p','Helps guide future suggestions. Restore removes this feedback.','muted small'));
@@ -219,9 +219,9 @@ function currentOwnerName(){return $('contextForm').elements.full_name.value.tri
 function currentOwnerEmails(){return $('contextForm').elements.email_addresses.value.toLowerCase().split(/[,;\s]+/).filter(v=>v.includes('@'));}
 async function loadOwnerContacts(){
  if(ownerContactsLoading)return;ownerContactsLoading=true;
- try{const result=await api('/api/contacts');ownerContacts=result.groups.flatMap(g=>g.contacts);if($('taskEditor').open)renderOwnerSuggestions();}
+ try{const result=await api('/api/contacts');ownerContacts=result.groups.flatMap(g=>g.contacts);if($('taskEditor').open){renderOwnerSuggestions();renderCoOwnerSuggestions();}}
  catch{if($('editTaskOwner').value.startsWith('@')){$('ownerSuggestions').replaceChildren(text('p','Contacts unavailable. You can still type a name.','muted small'));$('ownerSuggestions').hidden=false;}}
- finally{ownerContactsLoading=false;}
+ finally{ownerContactsLoading=false;if($('taskEditor').open)renderCoOwnerSuggestions();}
 }
 function renderOwnerSuggestions(){
  const root=$('ownerSuggestions'),value=$('editTaskOwner').value;
@@ -376,3 +376,33 @@ document.addEventListener('click',event=>{if(!$('boardOptions').contains(event.t
 $('boardOptionsContent').addEventListener('click',event=>{if(event.target.closest('button'))$('boardOptions').open=false;});
 $('boardOptionsContent').addEventListener('change',()=>{$('boardOptions').open=false;});
 $('boardOptions').addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();$('boardOptions').open=false;$('boardOptions').querySelector('summary').focus();}});
+
+function coOwnerMention(value,caret){
+ const start=caret===0?0:value.lastIndexOf('\n',caret-1)+1;
+ const next=value.indexOf('\n',caret),end=next<0?value.length:next;
+ const line=value.slice(start,end).trimStart();
+ return line.startsWith('@')?{start,end,query:line.slice(1).trim().toLowerCase()}:null;
+}
+function closeCoOwnerSuggestions(){ $('coOwnerSuggestions').hidden=true;$('editTaskCoOwners').setAttribute('aria-expanded','false'); }
+function renderCoOwnerSuggestions(){
+ const field=$('editTaskCoOwners'),root=$('coOwnerSuggestions');
+ field.setCustomValidity(field.value.split('\n').some(line=>line.trimStart().startsWith('@'))?'Choose a contact or remove @ to enter a name.':'');
+ const mention=coOwnerMention(field.value,field.selectionStart);root.replaceChildren();if(!mention){closeCoOwnerSuggestions();return;}
+ root.hidden=false;field.setAttribute('aria-expanded','true');
+ const existing=new Set(field.value.split('\n').filter(line=>!line.trimStart().startsWith('@')).map(line=>(line.match(/<([^>]+)>/)?.[1]||line).trim().toLowerCase()));
+ const seen=new Set();const matches=ownerContacts.filter(person=>{const key=(person.email||person.name||'').toLowerCase();if(!key||seen.has(key)||existing.has(key))return false;seen.add(key);return ((person.name||'')+' '+(person.email||'')).toLowerCase().includes(mention.query);}).slice(0,8);
+ if(!matches.length){root.append(text('p',ownerContactsLoading?'Loading contacts…':'No matches. Enter a name without @.','muted small'));return;}
+ for(const person of matches){const button=text('button','','owner-option');button.type='button';button.append(text('strong',person.name||person.email),text('small',person.email||''));button.onclick=()=>{
+ const value=person.email&&person.name&&person.name!==person.email?person.name+' <'+person.email+'>':person.email||person.name;
+ const before=field.value.slice(0,mention.start),after=field.value.slice(mention.end);field.value=before+value+(after||'\n');const caret=before.length+value.length+1;
+ field.focus();field.setSelectionRange(caret,caret);field.dispatchEvent(new Event('input',{bubbles:true}));closeCoOwnerSuggestions();};root.append(button);}
+}
+$('editTaskCoOwners').addEventListener('input',renderCoOwnerSuggestions);
+$('editTaskCoOwners').addEventListener('click',renderCoOwnerSuggestions);
+$('editTaskCoOwners').addEventListener('keydown',event=>{
+ if(event.key==='Escape'&&!$('coOwnerSuggestions').hidden){event.preventDefault();event.stopPropagation();closeCoOwnerSuggestions();}
+ else if(event.key==='ArrowDown'&&!$('coOwnerSuggestions').hidden){event.preventDefault();$('coOwnerSuggestions').querySelector('button')?.focus();}
+ else if(event.key==='Enter'&&!$('coOwnerSuggestions').hidden&&$('coOwnerSuggestions').querySelector('button')){event.preventDefault();$('coOwnerSuggestions').querySelector('button').click();}
+});
+$('coOwnerSuggestions').addEventListener('keydown',event=>{const buttons=[...$('coOwnerSuggestions').querySelectorAll('button')];const index=buttons.indexOf(document.activeElement);if(['ArrowDown','ArrowUp'].includes(event.key)){event.preventDefault();buttons[(index+(event.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length]?.focus();}if(event.key==='Escape'){event.preventDefault();event.stopPropagation();closeCoOwnerSuggestions();$('editTaskCoOwners').focus();}});
+document.addEventListener('click',event=>{if(event.target!==$('editTaskCoOwners')&&!$('coOwnerSuggestions').contains(event.target))closeCoOwnerSuggestions();});

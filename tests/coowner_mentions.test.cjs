@@ -1,0 +1,5 @@
+const {test}=require('node:test');const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const source=fs.readFileSync('outlook_plugin/static/tasks-ui.js','utf8'),ctx=vm.createContext({});vm.runInContext(source.slice(source.indexOf('function coOwnerMention('),source.indexOf('function closeCoOwnerSuggestions')),ctx);
+test('co-owner mention targets only the active line',()=>{const value='Alex\n@pa\nSam';const hit=ctx.coOwnerMention(value,8);assert.equal(hit.start,5);assert.equal(hit.end,8);assert.equal(hit.query,'pa');assert.equal(value.slice(0,hit.start)+'Pat <pat@example.com>'+value.slice(hit.end),'Alex\nPat <pat@example.com>\nSam');});
+test('email addresses and ordinary names are not mention searches',()=>{for(const value of ['pat@example.com','Alex Example','Pat <pat@example.com>'])assert.equal(ctx.coOwnerMention(value,value.length),null);});
+test('empty and first-line mention queries are supported',()=>{assert.equal(ctx.coOwnerMention('@',1).query,'');assert.equal(ctx.coOwnerMention('@PAT',4).query,'pat');assert.equal(ctx.coOwnerMention('\n@pa',0),null);});
