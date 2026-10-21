@@ -13,3 +13,15 @@ class CommunicationTests(unittest.TestCase):
  def test_bad_recipient_rejected(self):
   for recipients in [[],['pat@example.com\nbcc:someone@example.com'],'pat@example.com']:
    with self.assertRaises(ValueError):c.draft_url({'recipients':recipients})
+
+ def test_feedback_targets_outlook_and_fixed_recipient(self):
+  for kind in ('feature','problem'):
+   with patch.object(c.subprocess,'run') as run:
+    self.assertEqual(c.open_feedback(kind),{'opened':True})
+    args=run.call_args.args[0]
+    self.assertEqual(args[:3],['/usr/bin/open','-a','Microsoft Outlook'])
+    url=urlparse(args[3]);self.assertEqual(url.path,'brett.scharmett@ibm.com')
+    fields=parse_qs(url.query)
+    self.assertIn('App version:',fields['body'][0])
+    self.assertIn('Outlook Assistant',fields['subject'][0])
+  with self.assertRaises(ValueError):c.open_feedback('other')

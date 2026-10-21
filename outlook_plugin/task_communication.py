@@ -20,3 +20,23 @@ def open_draft(data):
     try:subprocess.run(['/usr/bin/open',url],check=True,capture_output=True,timeout=15)
     except (OSError,subprocess.SubprocessError):raise ValueError('Could not open your email app. Check your default mail app in macOS.') from None
     return {'opened':True}
+
+
+def open_feedback(kind):
+    from . import __version__
+    templates = {
+        'feature': ('Feature suggestion', 'What would you like to add or improve?\n\n'),
+        'problem': ('Problem report', 'What happened?\n\nWhat did you expect?\n\nSteps to reproduce:\n\n'),
+    }
+    if kind not in templates:
+        raise ValueError('Choose a feature suggestion or problem report.')
+    subject, body = templates[kind]
+    url = draft_url({'recipients': ['brett.scharmett@ibm.com'],
+                     'subject': 'Outlook Assistant — ' + subject,
+                     'body': body + 'App version: ' + __version__})
+    try:
+        subprocess.run(['/usr/bin/open', '-a', 'Microsoft Outlook', url],
+                       check=True, capture_output=True, timeout=15)
+    except (OSError, subprocess.SubprocessError):
+        raise ValueError('Could not open Outlook. Open Microsoft Outlook and try again, or email brett.scharmett@ibm.com.') from None
+    return {'opened': True}
