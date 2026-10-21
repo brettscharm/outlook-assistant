@@ -37,3 +37,14 @@ class LocalFeatures(unittest.TestCase):
   self.assertEqual(projects.list_projects()[0]['links'],links)
   projects.save({'id':p['id'],'name':'Updated renewal','links':[]})
   self.assertEqual(projects.list_projects()[0]['links'],[])
+
+ def test_project_meetings_persist_and_validate(self):
+  meeting={'id':'meeting1','title':'Discovery','occurred_at':'2026-10-20T10:00:00-04:00','notes':'Next steps','recording_url':'https://example.sharepoint.com/recording'}
+  p=projects.save({'name':'Customer meetings','meetings':[meeting]})[0]
+  projects.save({'id':p['id'],'name':'Customer meetings','description':'Updated'})
+  self.assertEqual(projects.list_projects()[0]['meetings'][0]['recording_url'],meeting['recording_url'])
+  for bad in [dict(meeting,title=''),dict(meeting,recording_url='javascript:alert(1)'),dict(meeting,occurred_at='2026-10-20T10:00')]:
+   with self.assertRaises(ValueError):projects.save({'id':p['id'],'name':p['name'],'meetings':[bad]})
+  self.assertEqual(len(projects.list_projects()[0]['meetings']),1)
+  projects.save({'id':p['id'],'name':p['name'],'meetings':[]})
+  self.assertEqual(projects.list_projects()[0]['meetings'],[])

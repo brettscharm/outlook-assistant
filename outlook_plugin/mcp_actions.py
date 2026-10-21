@@ -22,6 +22,8 @@ FIELDS={
 
 LINKS={'type':'array','maxItems':20,'items':{'type':'object','properties':{'kind':{'type':'string','enum':['isc','gainsight','deployment','other']},'label':S(200),'url':S(4000)},'required':['url'],'additionalProperties':False}}
 
+MEETINGS={'type':'array','maxItems':200,'items':{'type':'object','properties':{k:S(n) for k,n in [('id',100),('title',300),('notes',4000),('occurred_at',50),('calendar_id',300),('meeting_url',4000),('recording_url',4000)]},'required':['title'],'additionalProperties':False}}
+
 def definitions(tool):
  return [
   tool('get_task','Read a task and its revision before editing.',{'task_id':ID},['task_id']),
@@ -30,8 +32,8 @@ def definitions(tool):
   tool('create_task','Create a saved task. Defaults to the current user. Reuse request_id on retries.',dict(FIELDS,request_id=REQUEST,email_id=ID,evidence=S(1200)),['text','request_id'],write=True),
   tool('edit_task','Edit only supplied fields; omitted fields stay unchanged. Get the latest revision first.',dict(FIELDS,task_id=ID,expected_revision=REV),['task_id','expected_revision'],write=True),
   tool('move_task','Move a task to a lane. The done lane completes it; other lanes reopen it.',{'task_id':ID,'lane_id':ID,'expected_revision':REV},['task_id','lane_id'],write=True),
-  tool('create_project','Create a project. Reuse request_id on retries.',{'name':dict(S(100),minLength=1),'description':S(4000),'color':{'type':'string','enum':list(projects.COLORS)},'links':LINKS,'request_id':REQUEST},['name','request_id'],write=True),
-  tool('edit_project','Edit project name/description; omitted fields stay unchanged.',{'project_id':ID,'name':dict(S(100),minLength=1),'description':S(4000),'color':{'type':'string','enum':list(projects.COLORS)},'links':LINKS,'expected_revision':REV},['project_id','expected_revision'],write=True),
+  tool('create_project','Create a project. Reuse request_id on retries.',{'name':dict(S(100),minLength=1),'description':S(4000),'color':{'type':'string','enum':list(projects.COLORS)},'links':LINKS,'meetings':MEETINGS,'request_id':REQUEST},['name','request_id'],write=True),
+  tool('edit_project','Edit project name/description; omitted fields stay unchanged.',{'project_id':ID,'name':dict(S(100),minLength=1),'description':S(4000),'color':{'type':'string','enum':list(projects.COLORS)},'links':LINKS,'meetings':MEETINGS,'expected_revision':REV},['project_id','expected_revision'],write=True),
   tool('add_task_update','Append a dated progress note. Reuse request_id on retries.',{'task_id':ID,'text':dict(S(4000),minLength=1),'request_id':REQUEST},['task_id','text','request_id'],write=True),
   tool('add_subtask','Add a checklist step. Reuse request_id on retries.',{'task_id':ID,'text':dict(S(500),minLength=1),'request_id':REQUEST},['task_id','text','request_id'],write=True),
   tool('set_subtask_completed','Complete or reopen one checklist step.',{'task_id':ID,'subtask_id':ID,'completed':{'type':'boolean'},'expected_revision':REV},['task_id','subtask_id','completed'],write=True),
@@ -62,11 +64,11 @@ def handle(engine,name,args):
   if name=='get_project':return result(project_by_id(args['project_id']),'project')
   if name in ('create_project','edit_project'):
    if name=='create_project':
-    rows=projects.save({'name':args['name'],'description':args.get('description',''),**{k:args[k] for k in ('color','links') if k in args}},request_id='mcp-'+args['request_id'])
+    rows=projects.save({'name':args['name'],'description':args.get('description',''),**{k:args[k] for k in ('color','links','meetings') if k in args}},request_id='mcp-'+args['request_id'])
     item=next(p for p in rows if p.get('request_id')=='mcp-'+args['request_id'])
    else:
     current=project_by_id(args['project_id']);check_revision(current,args)
-    projects.save({'id':current['id'],'name':args.get('name',current['name']),'description':args.get('description',current.get('description','')),'color':args.get('color',current['color']),'links':args.get('links',current.get('links',[]))})
+    projects.save({'id':current['id'],'name':args.get('name',current['name']),'description':args.get('description',current.get('description','')),'color':args.get('color',current['color']),'links':args.get('links',current.get('links',[])),'meetings':args.get('meetings',current.get('meetings',[]))})
     item=project_by_id(current['id'])
    return result(item,'project')
   if name=='create_task':

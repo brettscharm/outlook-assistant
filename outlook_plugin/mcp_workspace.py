@@ -41,7 +41,7 @@ def definitions(tool):
  ('delete_project','Delete an empty project. Move its tasks first. Attachment copies are retained.',{'project_id':ID,'expected_revision':REV},['project_id','expected_revision'],True),
  ('edit_task_entry','Edit or remove a progress note or subtask without replacing other task fields.',{'task_id':ID,'entry_id':ID,'kind':{'type':'string','enum':['updates','subtasks']},'text':S(4000),'remove':BOOL,'expected_revision':REV},['task_id','entry_id','kind','expected_revision'],True),
  ('list_attachments','List document copies attached to a task or project.',OWNER,list(OWNER),False),
- ('read_attachment','Read an attachment as a bounded base64 chunk. Use next_offset until null.',dict(OWNER,file_id=ID,offset={'type':'integer','minimum':0,'maximum':26214400},length={'type':'integer','minimum':1,'maximum':32768}),[*OWNER,'file_id'],False),
+ ('read_attachment','Read an attachment as a bounded base64 chunk. Use next_offset until null.',dict(OWNER,file_id=ID,offset={'type':'integer','minimum':0,'maximum':2147483648},length={'type':'integer','minimum':1,'maximum':32768}),[*OWNER,'file_id'],False),
  ('add_attachment','Attach a base64 document copy, up to 48 KiB per MCP upload. Larger files can be attached in the app.',dict(OWNER,name=S(200),content=S(65536)),[*OWNER,'name','content'],True),
  ('remove_attachment','Permanently remove an attached copy by ID, leaving the original file untouched.',dict(OWNER,file_id=ID),[*OWNER,'file_id'],True),
  ('get_calendar_range','Read cached meetings in an explicit timezone-aware ISO date/time range, up to 63 days, with call links.',dict(PAGE,start=S(50),end=S(50)),['start','end'],False),
@@ -149,7 +149,7 @@ def handle(engine,name,args):
    item=next((r for r in rows if r['id']==args['file_id']),None)
    if item is None:raise ValueError('Attachment not found.')
    if name=='remove_attachment':return task_files.change(dict(args,id=item['id'],action='remove'))
-   path=task_files.directory(args['kind'],args['owner'])/(item['id']+item['suffix'])
+   path=task_files.file_path(task_files.directory(args['kind'],args['owner']),item)
    offset=args.get('offset',0);length=args.get('length',32768)
    with path.open('rb') as f:f.seek(offset);data=f.read(length)
    end=offset+len(data)

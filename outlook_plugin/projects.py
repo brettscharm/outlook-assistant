@@ -1,5 +1,6 @@
 """Local project metadata; task membership is stored on each task."""
 import uuid
+from datetime import datetime
 from urllib.parse import urlsplit
 from .config import read_config, update_config, _LOCK
 
@@ -26,6 +27,31 @@ def validate_links(links):
         result.append({'kind':link['kind'],'label':label.strip(),'url':url})
     return result
 
+def validate_meetings(meetings):
+    if not isinstance(meetings,list) or len(meetings)>200:raise ValueError('Add up to 200 meetings per project.')
+    result=[];seen=set()
+    for meeting in meetings:
+        if not isinstance(meeting,dict):raise ValueError('Invalid meeting.')
+        row={}
+        for key,limit in [('id',100),('title',300),('notes',4000),('occurred_at',50),('calendar_id',300),('meeting_url',4000),('recording_url',4000)]:
+            value=meeting.get(key,'')
+            if not isinstance(value,str) or len(value)>limit:raise ValueError('Invalid meeting '+key+'.')
+            row[key]=value.strip()
+        if not row['title']:raise ValueError('Enter a meeting name.')
+        row['id']=row['id'] or uuid.uuid4().hex
+        if row['id'] in seen:raise ValueError('Duplicate meeting ID.')
+        seen.add(row['id'])
+        if row['occurred_at']:
+            try:
+                instant=datetime.fromisoformat(row['occurred_at'].replace('Z','+00:00'))
+                if instant.tzinfo is None:raise ValueError()
+            except ValueError:raise ValueError('Choose a valid meeting date and timezone.') from None
+        for key in ('meeting_url','recording_url'):
+            if row[key]:validate_links([{'kind':'other','url':row[key]}])
+        result.append(row)
+    return result
+
+
 def save(data,request_id=None):
     name=data.get('name','')
     if not isinstance(name,str) or not 1<=len(name.strip())<=100:raise ValueError('Enter a project name of up to 100 characters.')
@@ -33,6 +59,7 @@ def save(data,request_id=None):
     if not isinstance(description,str) or len(description)>4000:raise ValueError('Keep project details under 4,000 characters.')
     if 'color' in data and data['color'] not in COLORS:raise ValueError('Choose a supported project color.')
     links=validate_links(data['links']) if 'links' in data else None
+    meetings=validate_meetings(data['meetings']) if 'meetings' in data else None
     with _LOCK:
         rows=list_projects()
         if request_id:
@@ -46,5 +73,6 @@ def save(data,request_id=None):
             if request_id:existing['request_id']=request_id
         existing.update(name=name.strip(),description=description.strip(),color=data.get('color',existing.get('color',COLORS[(len(rows)-1)%len(COLORS)])))
         if links is not None:existing['links']=links
+        if meetings is not None:existing['meetings']=meetings
         update_config({'projects':rows})
         return rows

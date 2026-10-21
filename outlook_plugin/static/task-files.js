@@ -1,12 +1,12 @@
 'use strict';
 window.mountTaskFiles=function(parent,kind,owner){
  parent.querySelector('.attached-files')?.remove();
- const section=text('section','','attached-files');section.append(text('h3','Files'));parent.append(section);
+ const section=text('section','','attached-files');section.append(text('h3','Files & recordings'));parent.append(section);
  if(!owner){section.append(text('p','Save this '+kind+' first to attach files.','muted small'));return;}
  const list=text('div','','file-list'),status=text('p','','muted small');status.setAttribute('role','status');
  const drop=text('div','','file-drop-zone');drop.setAttribute('role','group');drop.setAttribute('aria-label','Attach files to '+kind);drop.append(text('strong','Drop files here'),text('span','or choose files below','muted small'));
- const label=text('label','Attach files','file-picker');const input=document.createElement('input');input.type='file';input.multiple=true;input.accept='.doc,.docx,.xls,.xlsx,.ppt,.pptx,.pdf,.txt,.csv,.rtf,.png,.jpg,.jpeg';input.setAttribute('aria-label','Attach files to '+kind);label.append(input);
- drop.append(label);section.append(drop,text('p','Saved on this Mac · Up to 25 MB per file','muted small'),list,status);
+ const label=text('label','Attach files','file-picker');const input=document.createElement('input');input.type='file';input.multiple=true;input.accept='.doc,.docx,.xls,.xlsx,.ppt,.pptx,.pdf,.txt,.csv,.rtf,.png,.jpg,.jpeg,.mp4,.mov,.m4v,.webm,.mp3,.m4a,.wav';input.setAttribute('aria-label','Attach files to '+kind);label.append(input);
+ drop.append(label);section.append(drop,text('p','Saved on this Mac · Up to 2 GB per file','muted small'),list,status);
  if(window.webkit?.messageHandlers?.saveBackup&&!window.nativeFilePickerReady){label.hidden=true;const update=text('a','Update the Mac app to attach files','feedback-link');update.href='https://github.com/brettscharm/outlook-assistant/releases/tag/v2.17.0';update.target='_blank';update.rel='noopener noreferrer';section.prepend(update);}
  async function render(){
   const rows=await api('/api/task-files?'+new URLSearchParams({kind,owner}));list.replaceChildren();
@@ -27,9 +27,17 @@ window.mountTaskFiles=function(parent,kind,owner){
   try{
    for(const file of files){
     try{
-     if(!/\.(docx?|xlsx?|pptx?|pdf|txt|csv|rtf|png|jpe?g)$/i.test(file.name))throw Error(file.name+': unsupported file type.');
-     if(file.size>25*1024*1024)throw Error(file.name+' is larger than 25 MB.');
+     if(!/\.(docx?|xlsx?|pptx?|pdf|txt|csv|rtf|png|jpe?g|mp4|mov|m4v|webm|mp3|m4a|wav)$/i.test(file.name))throw Error(file.name+': unsupported file type.');
+     if(file.size>2*1024*1024*1024)throw Error(file.name+' is larger than 2 GB.');
      status.textContent='Saving '+file.name+'…';
+     if(file.size>25*1024*1024||/\.(mp4|mov|m4v|webm|mp3|m4a|wav)$/i.test(file.name)){
+      await new Promise((resolve,reject)=>{
+       const request=new XMLHttpRequest();request.open('POST','/api/file-upload?'+new URLSearchParams({kind,owner,name:file.name}));request.setRequestHeader('Content-Type','application/octet-stream');
+       request.upload.onprogress=e=>{if(e.lengthComputable)status.textContent='Saving '+file.name+' · '+Math.round(e.loaded/e.total*100)+'%';};
+       request.onload=()=>{try{const result=JSON.parse(request.responseText);if(request.status<200||request.status>=300)throw Error(result.error||'Upload failed.');resolve(result);}catch(e){reject(e);}};
+       request.onerror=()=>reject(Error('Upload interrupted. Please attach '+file.name+' again.'));request.send(file);
+      });saved++;continue;
+     }
      const content=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=()=>reject(Error('Could not read '+file.name));reader.readAsDataURL(file);});
      await api('/api/task-files',{kind,owner,action:'add',name:file.name,content});saved++;
     }catch(e){errors.push(e.message);}

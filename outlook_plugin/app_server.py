@@ -161,10 +161,14 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
     def do_POST(self):
         if not self._allowed(): return
         try:
+            if urllib.parse.urlparse(self.path).path=='/api/file-upload':
+                if self.headers.get('Content-Type','').split(';')[0]!='application/octet-stream':return self._send_json({'error':'File data required.'},415)
+                q=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                return self._send_json(task_files.upload(q.get('kind',[''])[0],q.get('owner',[''])[0],q.get('name',[''])[0],self.rfile,int(self.headers.get('Content-Length','0'))))
             if self.headers.get('Content-Type','').split(';')[0]!='application/json':
                 return self._send_json({'error':'JSON required.'},415)
             size=int(self.headers.get('Content-Length','0'))
-            limit=36_000_000 if urllib.parse.urlparse(self.path).path=='/api/task-files' else 1500000 if urllib.parse.urlparse(self.path).path in ('/api/drafts','/api/mcp','/api/polish-reply') else 100000
+            limit=36_000_000 if urllib.parse.urlparse(self.path).path=='/api/task-files' else 1500000 if urllib.parse.urlparse(self.path).path in ('/api/drafts','/api/mcp','/api/polish-reply','/api/projects') else 100000
             if size<0 or size>limit: return self._send_json({'error':'Request too large.'},413)
             data=json.loads(self.rfile.read(size) or '{}')
             if not isinstance(data,dict): raise ValueError('Expected an object.')

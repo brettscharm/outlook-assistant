@@ -96,7 +96,7 @@ The desktop app menu offers **Float Assistant Above Other Apps** (Cmd+J). This r
 
 ### Files on tasks and projects
 Open a saved task or edit a saved project, then choose **Attach files**. Word, Excel,
-PowerPoint, PDF, text, and image files are supported, up to 25 MB each. **Open** uses
+PowerPoint, PDF, text, images, video, and audio recordings are supported, up to 2 GB each. **Open** uses
 your Mac's default app for that document. The assistant keeps its own copy; edits
 made after opening that copy are retained. Removing an attachment deletes that
 copy only, leaving the original unchanged.
@@ -135,7 +135,7 @@ Tasks have an owner and optional co-owners (one name or email per line). These a
 
 Use **×** to dismiss a suggestion without providing feedback, or **Dismiss with feedback** to give a reason that guides later task checks. This is prompt context, not model training. Restore a dismissed suggestion to withdraw that feedback. Under **Email task options**, exclude sender domains from future task checks while keeping those messages in Mail. Existing tasks and suggestions are kept.
 
-Drag files from Finder into the **Files** drop area on a saved task or project, or use the file picker. Multiple files are supported, up to 25 MB each. Supported types: Word, Excel, PowerPoint, PDF, text/CSV/RTF, PNG and JPEG. Unsupported files are reported without preventing other valid files from being saved.
+Drag files from Finder into the **Files** drop area on a saved task or project, or use the file picker. Multiple files are supported, up to 2 GB each. Supported types: Word, Excel, PowerPoint, PDF, text/CSV/RTF, PNG, JPEG, MP4, MOV, M4V, WebM, MP3, M4A, and WAV. Unsupported files are reported without preventing other valid files from being saved.
 
 ## Connect another AI app with MCP
 
@@ -207,3 +207,12 @@ The calendar shows its last saved snapshot immediately while Teams is read in th
 In Mail, type directly into the larger, resizable reply editor and choose **Polish draft** to improve your wording without changing its meaning. Tone defaults to Friendly; Professional, Direct, Firm, and Casual are available. **Draft for me** generates a reply from the email and optional instructions. Changes autosave, **Undo change** restores the previous version, and edits made during a Bob request are preserved for review alongside the suggestion. Review all generated wording before sending.
 
 Task discovery considers all active dismissal feedback when selecting examples. Each scan receives full-history reason counts plus up to 100 relevant, deduplicated examples within a 24,000-character budget, prioritizing the same email and related wording before recency. Quick dismissals are excluded; restoring a suggestion withdraws its feedback. This supplies context to Bob, rather than training its underlying model.
+
+
+### Project meetings and recordings
+
+Choose **Projects → Meetings** to add past calls, notes, Teams meeting links, and recording links. **From calendar** offers cached meetings from the past 60 days through the next two days; use **Add meeting** for older or uncached calls. Dates display in the Mac's current timezone. Existing projects autosave edits.
+
+Paste a recording's HTTPS link to keep it online, or download a recording you can access and attach it in **Files & recordings**. Links open in your browser and retain the source service's access requirements. The app does not automatically fetch recordings from Teams. Uploaded files are copied locally and do not consume Bob usage.
+
+Uploads support up to **2 GB per file**, show progress, and stream large files directly to disk. Recording copies live under `~/Library/Application Support/Outlook Assistant/attachments/project/<project-id>/recordings/`. They survive restarts and updates; removing a copy does not remove your original. Include the attachments folder in your Mac backup: JSON exports contain project meeting metadata and links, but not video/audio files. Larger recordings can be linked instead of copied.

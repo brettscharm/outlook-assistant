@@ -30,3 +30,31 @@ class FileTests(unittest.TestCase):
  def test_same_names_have_separate_copies(self):
   self.upload('project','project1','Plan.pdf');rows=self.upload('project','project1','Plan.pdf')
   self.assertEqual(len(rows),2);self.assertNotEqual(rows[0]['id'],rows[1]['id'])
+
+ def test_streams_large_recording_and_keeps_private_copy(self):
+  import io
+  payload=b'x'*(26*1024*1024)
+  class Bounded(io.BytesIO):
+   def read(self,n=-1):
+    self.assertBound(n);return super().read(n)
+   def assertBound(self,n):
+    if n<0 or n>1024*1024:raise AssertionError('Unbounded read')
+  row=f.upload('project','project1','Call.mp4',Bounded(payload),len(payload))[0]
+  path=f.file_path(f.directory('project','project1'),row)
+  self.assertEqual(path.parent.name,'recordings');self.assertEqual(path.stat().st_size,len(payload));self.assertEqual(path.stat().st_mode&0o777,0o600)
+  with patch.object(f.subprocess,'run') as run:
+   f.change(dict(kind='project',owner='project1',id=row['id'],action='open'))
+   self.assertEqual(run.call_args.args[0][-1],str(path))
+  f.change(dict(kind='project',owner='project1',id=row['id'],action='remove'));self.assertFalse(path.exists())
+ def test_interrupted_stream_is_not_published(self):
+  import io
+  with self.assertRaisesRegex(ValueError,'interrupted'):f.upload('project','project1','Call.mp4',io.BytesIO(b'short'),100)
+  self.assertEqual(f.listing('project','project1'),[])
+  self.assertFalse(list(f.ROOT.rglob('.upload-*')))
+ def test_stream_validation_and_index_failure_cleanup(self):
+  import io
+  for name,size in [('../bad.mp4',1),('bad.app',1),('call.mp4',f.MAX_UPLOAD_BYTES+1)]:
+   with self.assertRaises(ValueError):f.upload('project','project1',name,io.BytesIO(b'x'),size)
+  with patch.object(f,'write_json',side_effect=OSError('disk full')):
+   with self.assertRaises(OSError):f.upload('project','project1','Call.mp4',io.BytesIO(b'x'),1)
+  self.assertFalse(list(f.ROOT.rglob('*.mp4')))
