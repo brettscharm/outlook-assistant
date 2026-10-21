@@ -9,7 +9,7 @@ class Engine:
  def get_emails(self,**kw):return self.rows
  def get_email_details(self,id):return next((r for r in self.rows if r['id']==id),None)
 def message(i=1):return dict(id=str(i),subject='Proposal',sender='Jane <jane@example.com>',received_time='2026-10-20T12:00:00Z',body='Brett, send the proposal by October 30, 2026.')
-def item(i=1):return dict(text='Send proposal',type='my',owner='Brett',email_id=str(i),email_subject='Proposal',evidence='Brett, send the proposal',owner_evidence='Brett, send the proposal',due_date='2026-10-30',due_evidence='by October 30, 2026',due_note='')
+def item(i=1):return dict(text='Send proposal',description='Send the proposal requested by Brett.',type='my',owner='Brett',email_id=str(i),email_subject='Proposal',evidence='Brett, send the proposal',owner_evidence='Brett, send the proposal',due_date='2026-10-30',due_evidence='by October 30, 2026',due_note='')
 class WorkflowTests(unittest.TestCase):
  def setUp(self):
   self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
@@ -29,7 +29,7 @@ class WorkflowTests(unittest.TestCase):
  def test_accept_is_idempotent_with_dates_owner_source(self):
   with patch.object(BobAIAgent,'extract_tasks',return_value=[item()]):w.run(Engine([message()]),self.opts)
   sid=w.snapshot()['suggestions'][0]['id'];w.action({'action':'accept','id':sid});w.action({'action':'accept','id':sid,'text':'Edited duplicate'})
-  rows=tasks.load_tasks()['my_tasks'];self.assertEqual(len(rows),1);self.assertEqual(rows[0]['due_date'],'2026-10-30');self.assertEqual(rows[0]['assignee'],'Brett');self.assertEqual(rows[0]['email_id'],'1')
+  rows=tasks.load_tasks()['my_tasks'];self.assertEqual(len(rows),1);self.assertEqual(rows[0]['description'],'Send the proposal requested by Brett.');self.assertEqual(rows[0]['due_date'],'2026-10-30');self.assertEqual(rows[0]['assignee'],'Brett');self.assertEqual(rows[0]['email_id'],'1')
   tasks.edit_task(rows[0]['id'],'Changed task','Jane','others','2026-11-01')
   summary=w.snapshot('1')['suggestions'][0]
   self.assertEqual(summary['due_date'],'2026-11-01');self.assertEqual(summary['owner'],'Jane')
@@ -45,7 +45,7 @@ class WorkflowTests(unittest.TestCase):
   model=BobAIAgent('fake')
   with patch.object(model,'_call_llm',return_value=json.dumps({'tasks':[item(),invalid]})):
    result=model.extract_tasks([dict(message(),content=message()['body'])])
-  self.assertEqual(result[0]['type'],'my');self.assertEqual(result[0]['due_date'],'2026-10-30');self.assertEqual(result[1]['type'],'unclear');self.assertEqual(result[1]['due_date'],'')
+  self.assertEqual(result[0]['description'],'Send the proposal requested by Brett.');self.assertEqual(result[0]['type'],'my');self.assertEqual(result[0]['due_date'],'2026-10-30');self.assertEqual(result[1]['type'],'unclear');self.assertEqual(result[1]['due_date'],'')
  def test_automatic_default_waits_for_setup(self):
   self.assertEqual(w.options()['interval'],15)
   config.update_config({'user_context':{}})

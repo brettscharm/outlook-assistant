@@ -74,7 +74,7 @@ def snapshot(email_id=None):
     for item in items:
         if item['status']=='accepted' and item['id'] in linked:
             task=linked[item['id']]
-            item.update(text=task['text'],owner=task.get('assignee','Owner unclear'),type=task.get('type',item['type']),due_date=task.get('due_date',''),completed=task.get('completed',False))
+            item.update(text=task['text'],description=task.get('description',''),owner=task.get('assignee','Owner unclear'),type=task.get('type',item['type']),due_date=task.get('due_date',''),completed=task.get('completed',False))
     if email_id:items=[t for t in items if t['email_id']==email_id]
     return {'suggestions':items,'job':job,'options':options(),'last_check':data.get('last_check'),
             'identity_ready':identity_ready(),'automatic_state':automatic_state(),'reasons':REASONS,
@@ -100,11 +100,12 @@ def action(data):
             if due:date.fromisoformat(due)
             source={k:item.get(k,'') for k in ('email_id','email_subject','evidence','owner_evidence','due_evidence','due_note','company')}
             source['suggestion_id']=item['id']
+            source['description']=str(data.get('description',item.get('description',''))).strip()[:4000]
             # Preserve idempotence even if an accepted suggestion is retried with an edited title.
             existing=load_tasks()
             if not any(t.get('suggestion_id')==item['id'] for group in existing.values() for t in group):
                 add_task(kind,title,owner,due,source)
-            item.update(status='accepted',text=title,owner=owner,type=kind,due_date=due)
+            item.update(status='accepted',description=source['description'],text=title,owner=owner,type=kind,due_date=due)
         else:raise ValueError('Unknown review action.')
         save(store)
     return snapshot()

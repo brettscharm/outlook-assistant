@@ -37,6 +37,7 @@ def add_task(
     assignee: Optional[str] = None,
     due_date: Optional[str] = None,
     source: Optional[Dict[str, Any]] = None,
+    description: str = "",
 ) -> Dict[str, List[Dict[str, Any]]]:
     """Add a new task and return all updated tasks."""
     tasks = load_tasks()
@@ -50,6 +51,7 @@ def add_task(
     new_item = {
         "id": str(uuid.uuid4()),
         "text": text.strip(),
+        "description": str(description).strip()[:4000],
         "assignee": assignee.strip() if assignee else ("Me" if key == "my_tasks" else "Other"),
         "completed": False,
         "due_date": due_date or "",
@@ -97,7 +99,7 @@ delete_task = _serialized(delete_task)
 
 
 @_serialized
-def edit_task(task_id, text, owner, kind, due_date):
+def edit_task(task_id, text, owner, kind, due_date, description=None):
     from datetime import date
     if not text.strip(): raise ValueError('Enter a task.')
     if kind not in ('my','others','unclear'): raise ValueError('Choose an owner group.')
@@ -107,6 +109,7 @@ def edit_task(task_id, text, owner, kind, due_date):
         for item in data[group]:
             if item['id']==task_id:
                 item.update(text=text.strip()[:2000],assignee=owner.strip()[:200] or 'Owner unclear',type=kind,due_date=due_date)
+                if description is not None:item['description']=str(description).strip()[:4000]
                 data[group].remove(item)
                 data['my_tasks' if kind=='my' else 'others_tasks'].insert(0,item)
                 save_tasks(data);return data
