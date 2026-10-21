@@ -14,7 +14,7 @@ from .engine import OutlookEngine
 from .local_store import profiles, LocalStoreBridge
 from .contacts import group_contacts, link_company, link_companies, suggest_company
 from .tasks import board_lanes, save_board_lanes, move_task, load_tasks, add_task, toggle_task, delete_task, edit_task
-from . import assistant, task_workflow, email_chat, workspace, setup_check, drafts, storage, usage, bob_status, outlook_status
+from . import bob_install, projects, ai_profiles, assistant, task_workflow, email_chat, workspace, setup_check, drafts, storage, usage, bob_status, outlook_status
 from .updater import check_and_apply_update
 
 PORT = 8484
@@ -72,6 +72,14 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
         q = urllib.parse.parse_qs(parsed.query)
+        if path=='/api/bob-install':return self._send_json(bob_install.snapshot())
+        if path=='/api/bob-release':
+            from .ai_agent import bob_compatibility
+            release=bob_install.release();installed=bob_compatibility().get('version','')
+            available=bool(release['version'] and installed and tuple(map(int,release['version'].split('.')))>tuple(map(int,installed.split('.'))))
+            return self._send_json({**release,'installed':installed,'update_available':available})
+        if path=='/api/projects':return self._send_json(projects.list_projects())
+        if path=='/api/ai-profiles':return self._send_json({'profiles':ai_profiles.profiles(),'activity':ai_profiles.activity()})
         if path=='/api/drafts': return self._send_json(drafts.load())
         if path=='/api/bob-status': return self._send_json(bob_status.current(get_bob_api_key()))
         if path=='/api/usage': return self._send_json(usage.snapshot())
@@ -124,7 +132,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             return self._send_json(self.engine.get_upcoming_events(days_ahead=7,limit=50))
         if path.startswith('/api/'):
             return self._send_json({'error':'Unknown endpoint.'},404)
-        if path not in ('/','/index.html','/app.js','/tasks-ui.js','/chat-ui.js','/workspace-ui.js','/rich-editor.js','/style.css','/app-icon.png'):
+        if path not in ('/','/index.html','/app.js','/tasks-ui.js','/chat-ui.js','/workspace-ui.js','/organize-ui.js','/rich-editor.js','/style.css','/app-icon.png'):
             return self._send_json({'error':'Not found.'},404)
         return super().do_GET()
 
@@ -145,6 +153,13 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json({'error':str(exc)},503)
 
     def _post(self,path,data):
+        if path=='/api/bob-install':return self._send_json(bob_install.start())
+        if path=='/api/projects':return self._send_json(projects.save(data))
+        if path=='/api/ai-profiles':return self._send_json(ai_profiles.save(data))
+        if path=='/api/ai-profile-test':
+            key=data.get('id');sample=data.get('sample','')
+            if key not in ai_profiles.DEFAULTS or not isinstance(sample,str) or not 1<=len(sample.strip())<=6000:raise ValueError('Choose an assistant and enter sample text (up to 6,000 characters).')
+            return self._send_json({'answer':self.ai._call_llm('Demonstrate this assistant on the user-provided sample below. Return a readable example only; do not execute changes or invent source facts.\n'+sample,profile=key)})
         if path=='/api/context-autosave':
             fields=data.get('fields',{})
             if not isinstance(fields,dict) or any(k not in ('full_name','email_addresses','role','accounts','priorities','writing_style','writing_samples') or not isinstance(v,str) or len(v)>(24000 if k=='writing_samples' else 12000) for k,v in fields.items()): raise ValueError('Invalid context fields.')
@@ -242,8 +257,8 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
                 if due:
                     from datetime import date
                     date.fromisoformat(due)
-                tasks=add_task(data.get('type','my'),text,str(data.get('owner',''))[:200],due,source=source,description=str(data.get('description','')),source_type=data.get('source_type'),source_url=data.get('source_url',''),priority=data.get('priority','none'))
-            elif action=='edit':tasks=edit_task(str(data.get('id','')),str(data.get('text','')),str(data.get('owner','')),data.get('type','my'),str(data.get('due_date','')),description=data.get('description'),source_type=data.get('source_type'),source_url=data.get('source_url'),priority=data.get('priority'))
+                tasks=add_task(data.get('type','my'),text,str(data.get('owner',''))[:200],due,source=source,description=str(data.get('description','')),source_type=data.get('source_type'),source_url=data.get('source_url',''),priority=data.get('priority','none'),project_id=data.get('project_id',''))
+            elif action=='edit':tasks=edit_task(str(data.get('id','')),str(data.get('text','')),str(data.get('owner','')),data.get('type','my'),str(data.get('due_date','')),description=data.get('description'),source_type=data.get('source_type'),source_url=data.get('source_url'),priority=data.get('priority'),project_id=data.get('project_id'))
             elif action=='move':tasks=move_task(str(data.get('id','')),str(data.get('lane_id','')))
             elif action=='toggle': tasks=toggle_task(data.get('id'))
             elif action=='delete': tasks=delete_task(data.get('id'))

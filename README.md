@@ -8,25 +8,27 @@ A desktop workspace for mail cached by Outlook, tasks, contacts, and an IBM Bob-
 2. Unzip it and move **Outlook Assistant.app** into **Applications**. Keep one installed copy.
 3. Open **Microsoft Outlook**, sign in, and let your mail finish downloading.
 4. Open **Outlook Assistant**. Use **Settings → Setup** to see any missing requirements.
-5. For AI features, install **[IBM Bob Shell](https://bob.ibm.com/docs/shell/getting-started/install-and-setup)**, then add your Bob API key in **Settings → Bob connection** and test the connection. Add your name and email in **More → My context**.
+5. For AI features, install **[IBM Bob Shell](https://bob.ibm.com/docs/shell/getting-started/install-and-setup)**, then add your Bob API key in **Settings → Bob connection** and test the connection. Add your name and email in **Settings → Profile & writing → My profile**.
 
 **[Step-by-step installation and troubleshooting →](docs/INSTALL.md)**
 
-The Mac app includes Python and the mail reader. You do not need Git, Xcode, Python, or Homebrew to open it. AI features additionally require **Bob Shell 2.x and Node.js 24+**; these are not automatically installed or updated by this app. Use IBM’s official setup instructions.
+The Mac app includes Python and the mail reader. You do not need Git, Xcode, Python, or Homebrew to open it. AI features additionally require **Bob Shell 2.x and Node.js 24+**; Node is a separate prerequisite. Once Node 24+ and npm are installed, Settings → Setup → Install or update Bob can run IBM’s installer into an app-private folder. Installation requires a click; it is not automatic.
 
 **Requirements:** macOS 13 or later, Apple silicon or Intel, and New Outlook with a supported local cache. Compatibility with every Mac, Outlook version, and company-managed device is not guaranteed. The current downloadable app is ad-hoc signed, **not Developer ID signed or notarized**. macOS or company policy may block it; do not disable security controls.
 
-**Download versus app version:** the latest packaged desktop release is currently **2.10.0**. Newer application features are delivered by the in-app updater. Keep the app open and connected to the internet; installation waits for a safe idle period and for active Bob work to finish. The displayed version changes after the update restarts the service. A package update does not replace the bundled runtime or Finder/Dock icon; those require a newer desktop download.
+**Download versus app version:** the latest packaged desktop release is currently **2.15.0**. Newer application features are delivered by the in-app updater. See the [feature status](docs/FEATURE_STATUS.md) for implemented features and remaining integrations. Keep the app open and connected to the internet; installation waits for a safe idle period and for active Bob work to finish. The displayed version changes after the update restarts the service. A package update does not replace the bundled runtime or Finder/Dock icon; those require a newer desktop download.
 
 ## Everyday use
 
 - **Tasks:** create and edit tasks, customize lanes, and drag cards between them. Optional priorities and due dates support sorting. Upcoming deadlines stand out; completed cards turn gray and can be hidden without deleting them.
-- **Tasks to review:** review suggested actions before adding them. Accepting one keeps you on the review page. Unclear suggestions default to you; choosing My task uses your saved name. You can assign a different owner or dismiss a suggestion with a reason.
+- **Tasks to review:** review suggested actions before adding them. Accepting one keeps you on the review page. Unclear suggestions default to you; choosing My task uses your saved name. You can assign a different owner or dismiss a suggestion with a reason and undo it. New-mail checks can also suggest completing existing tasks with a supporting quote; acceptance is required.
 - **Mail:** browse cached mail and folders, search, preview source emails, and draft replies. Outlook must download new mail before this app can read it.
 - **Drafts:** drafts save locally. Copy a draft into Outlook, review it, and send it there. The app does not send mail or insert Reply All drafts into Outlook.
 - **Contacts:** browse cached senders by domain and link multiple domains to one company. This is not an Outlook address-book sync.
 - **Assistant:** open it from the bottom left, or expand it. Ask about mail, tasks, and contacts. Supported changes appear as proposals for you to review and apply.
-- **More:** My context, Writing style, Usage, Briefing, and Calendar. Calendar is not connected; Briefing summarizes a limited email snapshot, not your complete day.
+- **Projects:** group related tasks, filter the board, and see completion counts.
+- **Settings → AI assistants:** edit instructions and examples, restore defaults, and test sample content. **AI activity** shows real request status.
+- **Settings → Profile & writing:** your identity, role, writing style, and usage details. Calendar remains unconnected.
 
 Your name, role, account list, and writing preferences help personalize Bob’s results. Writing style uses examples and instructions; it does not train a new model. Usage reports this app’s recorded Bobcoins and available token counts, not an account-wide balance or dollar bill.
 

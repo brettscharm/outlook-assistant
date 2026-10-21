@@ -8,7 +8,7 @@
 4. Move **Outlook Assistant.app** into **Applications**. If you do not have permission to use the shared Applications folder, use your own `~/Applications` folder if your organization permits it.
 5. Open the app from Applications. You should get a dedicated Mac window; no Terminal or browser window is needed for normal use.
 
-The current packaged download is **Outlook-Assistant-2.10.0-Desktop-Mac.zip**. It installs the desktop shell; newer app code arrives through the automatic updater. Leave the app open with internet access. Updates wait while Bob is busy or the interface has unsaved work. The version is shown near the bottom of the sidebar. Some controls described below appear after that update.
+The current packaged download is **Outlook-Assistant-2.15.0-Desktop-Mac.zip**. It installs the desktop shell; newer app code arrives through the automatic updater. Leave the app open with internet access. Updates wait while Bob is busy or the interface has unsaved work. The version is shown near the bottom of the sidebar. Some controls described below appear after that update.
 
 The download supports macOS 13+ and contains Apple silicon and Intel code. Physical Intel hardware, all macOS releases, and clean installations have not all been tested. The app is not yet Developer ID signed or notarized. If macOS or your organization blocks it, follow your organization’s approved software process; do not disable Gatekeeper or remove quarantine to bypass the block.
 
@@ -30,9 +30,9 @@ You can use accessible cached mail and saved tasks without Bob. To enable the As
 2. Return to **Settings → Setup → Check setup again**. This app currently supports **Bob Shell 2.x**.
 3. Create your own Bob API key through IBM’s Bob portal. Prefer an **Inference** key; a general key also needs your team ID.
 4. In **Settings → Bob connection**, give the key a recognizable name, enter it, and choose **Test Bob connection**. Never put your key in a GitHub issue or screenshot.
-5. Open **More → My context** and add your full name and email addresses or aliases. Add your role and account list to improve relevance.
+5. Open **Settings → Profile & writing → My profile** and add your full name and email addresses or aliases. Add your role and account list to improve relevance.
 
-Bob and Node are separate prerequisites: Outlook Assistant does **not** download, install, or update them automatically. The app checks supported versions before AI requests and in Setup; it does not check IBM for the latest available release. Use IBM’s installer instructions for upgrades. Corporate restrictions may require administrator assistance.
+Node.js 24+ with npm remains a separate prerequisite. Once it is installed, **Settings → Setup → Install or update Bob** can run IBM’s installer in the background into an app-private folder. Click **Install / update Bob** to start; nothing is installed automatically. The app checks compatibility before AI requests and checks IBM’s supported release daily while open. Corporate restrictions may still block installation. This installer flow has been tested with mocked processes, not a clean Mac.
 
 After successful setup, a fresh configuration checks for tasks every 15 minutes, starting with the past seven days. This sends cached message excerpts and saved context to IBM Bob and uses your Bob allowance. Review the suggestions in **Tasks to review**. Pause or change the scan range under **Email task options**. Existing users retain their saved settings.
 

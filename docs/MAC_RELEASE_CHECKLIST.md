@@ -6,7 +6,7 @@ Current status: development release. No Developer ID identity is available on th
 
 - App supports macOS 13+, Apple silicon and Intel; bundles Python and the mail reader.
 - Bob Shell must be version 2.x; Node must be 24+. Setup and every inference request validate Bob's version. Unknown, broken, timed-out and unsupported versions fail with actionable messages. Version probes send no prompts or API keys.
-- Use IBM's supported installer: https://bob.ibm.com/docs/shell/getting-started/install-and-setup . Bob and Node are not silently downloaded or redistributed. Corporate installation policy still applies.
+- Use IBM's supported installer: https://bob.ibm.com/docs/shell/getting-started/install-and-setup . Bob can be installed through a user-triggered in-app invocation of IBM’s installer; Node remains a separate prerequisite. Neither is silently installed. Corporate installation policy still applies.
 - Mail and saved tasks must remain usable without Bob. A supported Outlook cache is required for mail. New mail depends on Outlook downloading it.
 - A future Outlook cache change cannot be guaranteed compatible. Missing, inaccessible and unreadable caches must show an error, never erase saved tasks.
 

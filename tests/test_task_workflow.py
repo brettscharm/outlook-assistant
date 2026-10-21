@@ -143,3 +143,23 @@ class SyncTests(unittest.TestCase):
   self.assertEqual(suggestion['type'],'my');self.assertEqual(suggestion['owner'],'Brett Scharmett')
   w.action({'action':'accept','id':'qa'})
   self.assertEqual(tasks.load_tasks()['my_tasks'][0]['assignee'],'Brett Scharmett')
+ def test_completion_requires_evidence_and_review(self):
+  task=tasks.add_task('my','Send proposal')['my_tasks'][0]
+  mail=dict(message(),content='The proposal has been sent to Acme.')
+  model=BobAIAgent('fake')
+  payload={'tasks':[],'completed':[{'task_id':task['id'],'email_id':'1','evidence':'The proposal has been sent to Acme.'},{'task_id':task['id'],'email_id':'1','evidence':'invented'}]}
+  with patch.object(model,'_call_llm',return_value=json.dumps(payload)):model.extract_tasks([mail],active_tasks=[task])
+  self.assertEqual(len(model.last_completions),1)
+  suggestion=dict(model.last_completions[0],id='complete-one',status='review',reason='')
+  w.save({'suggestions':{'complete-one':suggestion},'processed':{}})
+  self.assertFalse(tasks.load_tasks()['my_tasks'][0]['completed'])
+  w.action({'action':'accept','id':'complete-one'})
+  self.assertTrue(tasks.load_tasks()['my_tasks'][0]['completed'])
+ def test_stale_completion_is_rejected(self):
+  import hashlib
+  task=tasks.add_task('my','Send proposal')['my_tasks'][0]
+  expected=hashlib.sha256(json.dumps(task,sort_keys=True).encode()).hexdigest()
+  w.save({'suggestions':{'c':dict(item(),id='c',action_type='complete',task_id=task['id'],expected=expected,status='review')},'processed':{}})
+  tasks.edit_task(task['id'],'Send revised proposal','Me','my','')
+  with self.assertRaisesRegex(ValueError,'changed'):w.action({'action':'accept','id':'c'})
+  self.assertFalse(tasks.load_tasks()['my_tasks'][0]['completed'])

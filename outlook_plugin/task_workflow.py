@@ -76,7 +76,7 @@ def snapshot(email_id=None):
             item.update(type='my',owner=current_user_name())
         if item['status']=='accepted' and item['id'] in linked:
             task=linked[item['id']]
-            item.update(priority=task.get('priority','none'),text=task['text'],description=task.get('description',''),source_type=task.get('source_type','email'),source_url=task.get('source_url',''),owner=task.get('assignee','Owner unclear'),type=task.get('type',item['type']),due_date=task.get('due_date',''),completed=task.get('completed',False))
+            item.update(project_id=task.get('project_id',''),priority=task.get('priority','none'),text=task['text'],description=task.get('description',''),source_type=task.get('source_type','email'),source_url=task.get('source_url',''),owner=task.get('assignee','Owner unclear'),type=task.get('type',item['type']),due_date=task.get('due_date',''),completed=task.get('completed',False))
     if email_id:items=[t for t in items if t['email_id']==email_id]
     return {'suggestions':items,'job':job,'options':options(),'last_check':data.get('last_check'),
             'identity_ready':identity_ready(),'automatic_state':automatic_state(),'reasons':REASONS,
@@ -93,6 +93,15 @@ def action(data):
             if reason not in REASONS:raise ValueError('Choose a dismissal reason.')
             item.update(status='dismissed',reason=reason)
         elif act=='restore':item.update(status='review',reason='')
+        elif act=='accept' and item.get('action_type')=='complete':
+            from . import tasks
+            with tasks._LOCK:
+                task=next((t for rows in tasks.load_tasks().values() for t in rows if t['id']==item['task_id']),None)
+                if task is None:raise ValueError('This task no longer exists.')
+                if not task.get('completed'):
+                    if hashlib.sha256(json.dumps(task,sort_keys=True).encode()).hexdigest()!=item['expected']:raise ValueError('This task changed. Review it on your board before marking it done.')
+                    tasks.move_task(task['id'],'done')
+                item.update(status='accepted',completed=True)
         elif act=='accept':
             title=str(data.get('text',item['text'])).strip()[:2000]
             owner=str(data.get('owner',item['owner'])).strip()[:200]
@@ -107,7 +116,7 @@ def action(data):
             # Preserve idempotence even if an accepted suggestion is retried with an edited title.
             existing=load_tasks()
             if not any(t.get('suggestion_id')==item['id'] for group in existing.values() for t in group):
-                add_task(kind,title,owner,due,source,source_type=data.get('source_type','email'),source_url=data.get('source_url',''),priority=data.get('priority','none'))
+                add_task(kind,title,owner,due,source,source_type=data.get('source_type','email'),source_url=data.get('source_url',''),priority=data.get('priority','none'),project_id=data.get('project_id',''))
             item.update(status='accepted',description=source['description'],text=title,owner=owner,type=kind,due_date=due)
         else:raise ValueError('Unknown review action.')
         save(store)
@@ -207,7 +216,8 @@ def run(engine,opts,email_id=None):
         with _LOCK:JOB['message']=f'Reviewing emails {offset+1}–{offset+len(batch)} of {len(pending)}…'
         current=load()
         feedback=[dict(text=t['text'],reason=REASONS.get(t.get('reason'),'Dismissed')) for t in current['suggestions'].values() if t['status']=='dismissed'][-20:]
-        found=ai.extract_tasks(batch,mode=opts['mode'],feedback=feedback)
+        active=[t for rows in load_tasks().values() for t in rows if not t.get('completed')][:200]
+        found=ai.extract_tasks(batch,mode=opts['mode'],feedback=feedback,active_tasks=active)+ai.last_completions
         reported=ai.last_usage.get('session_costs',0)
         try:cost=max(0,float(reported))
         except (TypeError,ValueError):cost=0
@@ -222,7 +232,7 @@ def run(engine,opts,email_id=None):
             for item in found:
                 # Stable evidence identity suppresses rephrased suggestions and remembered dismissals.
                 normalized=' '.join(item['evidence'].casefold().split())
-                sid=hashlib.sha256((item['email_id']+'\n'+normalized).encode()).hexdigest()[:24]
+                sid=hashlib.sha256((item['email_id']+'\n'+normalized+('\ncomplete:'+item['task_id'] if item.get('action_type')=='complete' else '')).encode()).hexdigest()[:24]
                 if sid in data['suggestions']:continue
                 domain=parseaddr(sources[item['email_id']]['sender'])[1].rsplit('@',1)[-1].lower()
                 item.update(id=sid,status='accepted' if (item['email_id'],' '.join(item['text'].lower().split())) in known else 'review',reason='',company=links.get(domain,''))
