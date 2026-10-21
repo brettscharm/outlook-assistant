@@ -130,7 +130,9 @@ def action(data):
 
 def key_for(message,opts):
     ctx=read_config().get('user_context',{})
-    return hashlib.sha256(json.dumps([message,opts['mode'],ctx],sort_keys=True).encode()).hexdigest()
+    # Preserve checkpoints from before recipient/coverage metadata was added.
+    content={k:message[k] for k in ('id','subject','sender','received_time','content')}
+    return hashlib.sha256(json.dumps([content,opts['mode'],ctx],sort_keys=True).encode()).hexdigest()
 
 
 def candidate_messages(engine,opts,email_id=None):
@@ -139,7 +141,8 @@ def candidate_messages(engine,opts,email_id=None):
         rows=[engine.get_email_details(email_id)]
     else:
         from .local_store import LocalStoreBridge
-        rows=backend.get_emails(folder='all',limit=None if isinstance(backend,LocalStoreBridge) else 100000)
+        # Read bodies in one pass rather than searching the entire cache per email.
+        rows=backend.get_cached_messages() if isinstance(backend,LocalStoreBridge) else backend.get_emails(folder='all',limit=100000)
     result=[]
     for row in rows:
         if not row:continue
@@ -151,8 +154,19 @@ def candidate_messages(engine,opts,email_id=None):
         if not message:continue
         domain=parseaddr(message.get('sender',''))[1].rsplit('@',1)[-1].lower().rstrip('.')
         if any(domain==rule or domain.endswith('.'+rule) for rule in opts.get('excluded_domains',[])):continue
-        result.append(dict(id=str(message['id']),subject=message.get('subject',''),sender=message.get('sender',''),
-            received_time=received,content=(message.get('body') or message.get('preview') or '')[:6000]))
+        content=message.get('body') or message.get('preview') or ''
+        # Overlap protects requests/deadlines split across boundaries. The first
+        # segment keeps its old key; newly accessible tails are scanned once.
+        starts=range(0,max(1,len(content)-1200),4800)
+        for part,start in enumerate(starts):
+            source_id=str(message['id'])
+            result.append(dict(id=source_id if not part else f'{source_id}::part:{part}',
+                source_id=source_id,subject=message.get('subject',''),sender=message.get('sender',''),
+                received_time=received,content=content[start:start+6000],
+                opening_context=content[:1200] if part else '',
+                to=message.get('to',[]),cc=message.get('cc',[]),
+                message_id=message.get('message_id',''),
+                coverage='body' if message.get('body') else 'preview',part=part+1))
     return sorted(result,key=lambda m:m['received_time'],reverse=True)
 
 
@@ -241,14 +255,14 @@ def run(engine,opts,email_id=None):
                 checkpoint['initial_since']=opts['since'];save(checkpoint)
     messages=candidate_messages(engine,opts,email_id)
     data=load();pending=[m for m in messages if key_for(m,opts) not in data['processed']]
-    with _LOCK:JOB.update(total=len(pending),message=f'{len(pending)} new or changed cached emails to review.')
+    with _LOCK:JOB.update(total=len(pending),message=f'{len(pending)} new or changed email sections to review.')
     spent=0;ai=BobAIAgent()
     for offset in range(0,len(pending),10):
         if _STOP.is_set():
             with _LOCK:JOB.update(status='stopped',message='Stopped. Start another scan to resume remaining messages.')
             return
         batch=pending[offset:offset+10]
-        with _LOCK:JOB['message']=f'Reviewing emails {offset+1}–{offset+len(batch)} of {len(pending)}…'
+        with _LOCK:JOB['message']=f'Reviewing email sections {offset+1}–{offset+len(batch)} of {len(pending)}…'
         current=load()
         feedback,feedback_summary=dismissal_context(current['suggestions'],batch)
         active=[t for rows in load_tasks().values() for t in rows if not t.get('completed')][:200]
@@ -266,15 +280,27 @@ def run(engine,opts,email_id=None):
             known={(t.get('email_id'),' '.join(t['text'].lower().split())) for group in existing.values() for t in group}
             for item in found:
                 # Stable evidence identity suppresses rephrased suggestions and remembered dismissals.
+                source=sources[item['email_id']]
+                item['email_id']=source.get('source_id',source['id'])
                 normalized=' '.join(item['evidence'].casefold().split())
+                # Only deduplicate copies with a provider message ID and the
+                # same evidence; similar recurring requests must remain separate.
+                provider_id=source.get('message_id')
+                duplicate_key=hashlib.sha256((str(provider_id)+'\n'+normalized+'\n'+item.get('task_id','')).encode()).hexdigest() if provider_id else ''
+                if duplicate_key and any(s.get('duplicate_key')==duplicate_key and s.get('action_type')==item.get('action_type') for s in data['suggestions'].values()):continue
+                if duplicate_key:item['duplicate_key']=duplicate_key
                 sid=hashlib.sha256((item['email_id']+'\n'+normalized+('\ncomplete:'+item['task_id'] if item.get('action_type')=='complete' else '')).encode()).hexdigest()[:24]
                 if sid in data['suggestions']:continue
-                domain=parseaddr(sources[item['email_id']]['sender'])[1].rsplit('@',1)[-1].lower()
+                domain=parseaddr(source['sender'])[1].rsplit('@',1)[-1].lower()
                 item.update(created_at=datetime.now().astimezone().isoformat(),id=sid,status='accepted' if (item['email_id'],' '.join(item['text'].lower().split())) in known else 'review',reason='',company=links.get(domain,''))
                 data['suggestions'][sid]=item
-            for m in batch:data['processed'][key_for(m,opts)]={'email_id':m['id'],'checked':datetime.now().isoformat()}
+            rejected=getattr(ai,'last_rejected_sources',set())
+            for m in batch:
+                if m['id'] not in rejected:data['processed'][key_for(m,opts)]={'email_id':m.get('source_id',m['id']),'checked':datetime.now().isoformat()}
             data['last_check']=datetime.now().isoformat();save(data)
             JOB.update(scanned=offset+len(batch),usage=round(spent,6))
+        if rejected:
+            raise RuntimeError('Some task suggestions could not be verified against their emails. Valid suggestions were saved; unverified emails will be retried on the next scan.')
     with _LOCK:
         data=load();data['last_check']=datetime.now().isoformat();save(data)
         JOB.update(status='complete',message='Scan complete. Review new suggestions below.' if pending else 'No new or changed cached messages in this range.')

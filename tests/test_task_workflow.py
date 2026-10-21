@@ -18,6 +18,45 @@ class WorkflowTests(unittest.TestCase):
   config.update_config({'user_context':{'full_name':'Brett Scharmett','email_addresses':'brett@example.com'}})
   w._STOP.clear();w.JOB.update(running=False,scanned=0,total=0,usage=0)
   self.opts={'since':'2026-10-01','mode':'mine','interval':0,'budget':1}
+ def test_long_mail_preserves_tail_recipients_and_old_checkpoint(self):
+  row=dict(message(),body='x'*5900+' Brett, send the proposal by October 30, 2026.'+'y'*6000,to=[{'address':'brett@example.com'}])
+  candidates=w.candidate_messages(Engine([row]),self.opts)
+  self.assertGreater(len(candidates),1)
+  self.assertTrue(any('Brett, send the proposal by October 30, 2026.' in m['content'] for m in candidates))
+  self.assertTrue(candidates[-1]['content'].endswith('y'*100))
+  self.assertTrue(all(m['to']==row['to'] for m in candidates))
+  old={k:candidates[0][k] for k in ('id','subject','sender','received_time','content')}
+  self.assertEqual(w.key_for(old,self.opts),w.key_for(candidates[0],self.opts))
+ def test_tail_suggestion_links_original_and_resumes(self):
+  row=dict(message(),body='Background. '*600+message()['body'])
+  def extract(batch,**kwargs):
+   return [dict(item(),email_id=m['id']) for m in batch if item()['evidence'] in m['content']]
+  with patch.object(BobAIAgent,'extract_tasks',side_effect=extract) as call:
+   w.run(Engine([row]),self.opts)
+   self.assertEqual(len(w.load()['suggestions']),1)
+   self.assertEqual(next(iter(w.load()['suggestions'].values()))['email_id'],'1')
+   count=call.call_count;w.run(Engine([row]),self.opts);self.assertEqual(call.call_count,count)
+ def test_provider_copies_deduplicate_but_distinct_messages_remain(self):
+  rows=[dict(message(i),message_id='copy' if i<3 else 'different') for i in range(1,4)]
+  with patch.object(BobAIAgent,'extract_tasks',return_value=[item(i) for i in range(1,4)]):w.run(Engine(rows),self.opts)
+  self.assertEqual(len(w.load()['suggestions']),2)
+ def test_bad_evidence_is_retriable_without_losing_valid_results(self):
+  invalid=dict(item(2),evidence='invented action')
+  with patch.object(BobAIAgent,'_call_llm',return_value=json.dumps({'tasks':[item(),invalid]})):
+   with self.assertRaisesRegex(RuntimeError,'could not be verified'):w.run(Engine([message(),message(2)]),self.opts)
+  self.assertEqual(len(w.load()['suggestions']),1)
+  self.assertEqual({p['email_id'] for p in w.load()['processed'].values()},{'1'})
+  with patch.object(BobAIAgent,'extract_tasks',return_value=[item(2)]) as call:
+   w.run(Engine([message(),message(2)]),self.opts)
+   self.assertEqual([m['id'] for m in call.call_args.args[0]],['2'])
+ def test_local_cache_bodies_read_once(self):
+  from outlook_plugin.local_store import LocalStoreBridge
+  from unittest.mock import Mock
+  backend=Mock(spec=LocalStoreBridge)
+  backend.get_cached_messages.return_value=[message(1),message(2)]
+  engine=Mock();engine.get_active_backend.return_value=backend
+  self.assertEqual(len(w.candidate_messages(engine,self.opts)),2)
+  backend.get_cached_messages.assert_called_once();engine.get_email_details.assert_not_called()
  def test_co_owners_saved_and_retained(self):
   tasks.add_task('my','Prepare proposal',co_owners=['Pat <pat@example.com>','Pat <pat@example.com>'])
   task=tasks.load_tasks()['my_tasks'][0]

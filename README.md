@@ -33,6 +33,8 @@ Your name, role, account list, and writing preferences help personalize Bob’s 
 
 ## Automatic task discovery and sync
 
+Long emails are checked in overlapping sections, so requests after the first 6,000 characters are included. Each suggestion links to its original email. Scans resume from saved checkpoints, and invalid evidence is retried instead of silently counted as finished. Only mail actually available in Outlook’s local cache can be checked; previews may omit work. See [the core workflow audit](docs/core-workflow-audit.md) for test results and remaining limits.
+
 After identity and Bob connection setup, a fresh configuration defaults to checking every **15 minutes**, initially looking back **seven days**. Existing saved scan settings are preserved. Change the date range or pause discovery in **Tasks to review → Email task options**.
 
 Checks run while the app’s local service is running and process unprocessed or changed cached messages in batches. Relevant message excerpts and saved context go to IBM Bob using your allowance. The app imposes no spending cap; IBM account limits still apply. Mail-only reads do not use Bob.
