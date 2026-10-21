@@ -16,7 +16,7 @@ window.renderBoardContext=rows=>{
 };
 window.renderProjectCards=tasks=>{
  const root=$('projectList');root.replaceChildren();
- if(!projectRows.length)root.append(text('p','Projects group related tasks. You can also keep tasks without a project.','muted'));
+ if(!projectRows.length)root.append(text('p','No projects yet.','muted'));
  for(const p of projectRows){
   const rows=tasks.filter(t=>t.project_id===p.id),done=rows.filter(t=>t.completed).length,waiting=rows.filter(t=>!t.completed&&t.waiting_on).length;
   const card=text('article','','workspace-card project-card');card.dataset.color=p.color;const title=text('button',p.name,'project-title');title.onclick=()=>openProject(p.id);card.append(title);if(p.description)card.append(text('p',p.description,'muted small'));
