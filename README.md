@@ -201,3 +201,5 @@ Calendar event details show cached invitees, their required/optional status and 
 Use **Contacts & companies → Groups** for a searchable list of all saved groups. Add or edit groups and copy recipients directly from this view; large lists have pagination.
 
 The calendar shows its last saved snapshot immediately while Teams is read in the background. Its update timestamp stays visible, and failed refreshes retain the previous events. A private `.outlook_assistant_calendar_cache.json` beside the app’s other data survives restarts; it is replaced atomically after successful reads. Initial use needs one calendar read before a snapshot is available.
+
+In Mail, type directly into the larger, resizable reply editor and choose **Polish draft** to improve your wording without changing its meaning. Tone defaults to Friendly; Professional, Direct, Firm, and Casual are available. **Draft for me** generates a reply from the email and optional instructions. Changes autosave, **Undo change** restores the previous version, and edits made during a Bob request are preserved for review alongside the suggestion. Review all generated wording before sending.

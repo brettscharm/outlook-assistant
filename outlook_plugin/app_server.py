@@ -154,7 +154,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             return self._send_json(data)
         if path.startswith('/api/'):
             return self._send_json({'error':'Unknown endpoint.'},404)
-        if path not in ('/','/index.html','/app.js','/tasks-ui.js','/review-bulk.js','/contact-groups.js','/task-files.js','/workspace-ui.js','/organize-ui.js','/calendar-ui.js','/onboarding-ui.js','/rich-editor.js','/style.css','/app-icon.png'):
+        if path not in ('/','/index.html','/app.js','/tasks-ui.js','/review-bulk.js','/contact-groups.js','/task-files.js','/workspace-ui.js','/organize-ui.js','/calendar-ui.js','/onboarding-ui.js','/rich-editor.js','/reply-composer.js','/style.css','/app-icon.png'):
             return self._send_json({'error':'Not found.'},404)
         return super().do_GET()
 
@@ -164,7 +164,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             if self.headers.get('Content-Type','').split(';')[0]!='application/json':
                 return self._send_json({'error':'JSON required.'},415)
             size=int(self.headers.get('Content-Length','0'))
-            limit=36_000_000 if urllib.parse.urlparse(self.path).path=='/api/task-files' else 1500000 if urllib.parse.urlparse(self.path).path in ('/api/drafts','/api/mcp') else 100000
+            limit=36_000_000 if urllib.parse.urlparse(self.path).path=='/api/task-files' else 1500000 if urllib.parse.urlparse(self.path).path in ('/api/drafts','/api/mcp','/api/polish-reply') else 100000
             if size<0 or size>limit: return self._send_json({'error':'Request too large.'},413)
             data=json.loads(self.rfile.read(size) or '{}')
             if not isinstance(data,dict): raise ValueError('Expected an object.')
@@ -260,10 +260,15 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             briefing=self.ai.generate_ai_briefing([],emails)
             briefing['usage']=self.ai.last_usage
             return self._send_json(briefing)
+        if path=='/api/polish-reply':
+            from .reply_writing import polish
+            email=self.engine.get_email_details(str(data.get('email_id',''))) or {}
+            reply=polish(self.ai,email,data)
+            return self._send_json({'reply':reply,'usage':self.ai.last_usage})
         if path=='/api/smart-reply':
             email=self.engine.get_email_details(str(data.get('email_id','')))
             if not email: return self._send_json({'error':'Message not found.'},404)
-            reply=self.ai.draft_smart_reply(email,[],intent=str(data.get('intent','Draft a helpful reply without making commitments.'))[:3000])
+            reply=self.ai.draft_smart_reply(email,[],intent=str(data.get('intent','Draft a helpful reply without making commitments.'))[:3000],tone=data.get('tone','friendly'))
             return self._send_json({'reply':reply,'usage':self.ai.last_usage})
         if path=='/api/extract-tasks':
             rows=self.engine.get_emails(folder=str(data.get('folder','inbox')),limit=30,

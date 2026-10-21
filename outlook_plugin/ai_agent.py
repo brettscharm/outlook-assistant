@@ -230,10 +230,13 @@ class BobAIAgent:
         email: Dict[str, Any],
         calendar_events: List[Dict[str, Any]],
         intent: str = "agree",
+        tone: str = "friendly",
     ) -> str:
         """
         Draft an intelligent email response that is fully aware of your calendar availability.
         """
+        from .reply_writing import tone_instruction
+        intent = intent + "\n" + tone_instruction(tone)
         sender_name = email.get("sender", "").split("<")[0].strip() or "there"
         subject = email.get("subject", "")
 
@@ -256,7 +259,7 @@ My Current Calendar Schedule:
 
 Instructions:
 - Follow the saved writing_style guide for voice and structure. Use only facts from this email and the user's current intent, never facts from style examples.
-- Keep it concise, friendly, and professional unless the saved guide requests otherwise.
+- Apply the requested tone while preserving the saved writing style. Keep the wording natural.
 - If they asked to meet, treat the supplied calendar as a limited snapshot. Do not assert free time or agree to a meeting without confirmed availability.
 - Directly address their questions.
 - Return only an HTML email body fragment, without markdown fences, a subject header, or commentary. Use p, br, strong, em, ul, ol, li and a for readable formatting. Use inline font-family, font-size, color, background-color, or text-decoration only when requested. Never include scripts, images, remote resources, or tracking. Keep default formatting restrained.
