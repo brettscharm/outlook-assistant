@@ -6,7 +6,23 @@ window.taskFormDirty=false;
 window.taskScanRunning=false;
 const localToday=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
 function taskDeadline(t){const due=/^\d{4}-\d{2}-\d{2}$/.test(t.due_date||'')?t.due_date:'';return {due,label:due?new Date(due+'T12:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}):'No deadline stated',overdue:!!due&&due<localToday()&&!t.completed};}
-function taskSource(t){const b=text('button',t.email_subject||'Open source email','source-email');b.onclick=()=>{view('mail');selectEmail(t.email_id).catch(e=>notice(e.message));};return b;}
+const openEmailPreviews=new Set();
+function taskSource(t){
+ const root=text('div','','task-email-source');
+ const open=text('button',t.email_subject||'Open source email','source-email');open.type='button';open.onclick=()=>{view('mail');selectEmail(t.email_id).catch(e=>notice(e.message));};
+ const details=document.createElement('details');details.className='task-email-preview';
+ const key=t.id||t.email_id;const summary=text('summary','Preview email');const content=text('div','','task-email-content');details.append(summary,content);
+ let loaded=false,loading=false;
+ async function load(){
+  if(loading||loaded)return;loading=true;content.setAttribute('aria-busy','true');content.replaceChildren(text('p','Loading email…','muted small'));
+  try{const m=await api('/api/email?'+new URLSearchParams({id:t.email_id}));
+   content.replaceChildren(text('strong',m.subject||'(No subject)'),text('p',m.sender||m.from?.address||'Sender unavailable','muted small'),text('p',date(m.received_time,true),'muted small'),text('p',m.body_complete?'Cached email':'Preview only · Full email is not available in the cache','muted small'),text('div',m.body||m.preview||'No readable content cached.','task-email-body'));loaded=true;
+  }catch(e){content.replaceChildren(text('p','Email preview unavailable: '+e.message,'muted small'));const retry=text('button','Try again');retry.type='button';retry.onclick=load;content.append(retry);}
+  finally{loading=false;content.removeAttribute('aria-busy');}
+ }
+ details.ontoggle=()=>{summary.textContent=details.open?'Hide email':'Preview email';if(details.open){openEmailPreviews.add(key);load();}else openEmailPreviews.delete(key);};
+ details.open=openEmailPreviews.has(key);root.append(open,details);return root;
+}
 function setTaskView(name){
  taskViewChosen=true;taskPage=1;
  if(!['review','dismissed'].includes(name)){view('tasks');renderTaskBoard();return;}
@@ -101,7 +117,7 @@ function renderTaskBoard(){
  if(!rows.length)lane.append(text('p',query?'No matching tasks.':key==='done'?'Completed tasks appear here.':'Drag tasks here or choose this lane on a card.','lane-empty'));
  for(const task of rows.slice(0,boardLimits[key])){
  const card=taskCard(task,'saved');card.draggable=true;card.dataset.taskId=task.id;
- card.ondragstart=e=>{draggedTask=task.id;e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',task.id);};
+ card.ondragstart=e=>{if(e.target.closest('button,input,select,textarea,details')){e.preventDefault();return;}draggedTask=task.id;e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',task.id);};
  card.ondragend=()=>{draggedTask=null;document.querySelectorAll('.drop-target').forEach(el=>el.classList.remove('drop-target'));};
  const label=text('label','Move to','lane-move');const select=document.createElement('select');select.setAttribute('aria-label','Move '+task.text+' to lane');
  for(const option of boardLanes){const el=text('option',option.name);el.value=option.id;el.selected=option.id===key;select.append(el);}
