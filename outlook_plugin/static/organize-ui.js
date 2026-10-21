@@ -8,7 +8,7 @@ window.renderBoardContext=rows=>{
  const p=projectRows.find(p=>p.id===$('boardProject').value);const root=$('boardContext');root.replaceChildren();
  const top=text('div','','project-board-heading');const copy=text('div');
  const title=p?p.name:$('boardProject').value==='unassigned'?'Tasks without a project':'All tasks';
- copy.append(text('h2',title));if(p?.description)copy.append(text('p',p.description,'muted small'));
+ if(p||$('boardProject').value==='unassigned')copy.append(text('h2',title));if(p?.description)copy.append(text('p',p.description,'muted small'));
  const done=rows.filter(t=>t.completed).length,waiting=rows.filter(t=>!t.completed&&t.waiting_on).length;
  copy.append(text('p',rows.length+(rows.length===1?' task · ':' tasks · ')+done+' completed'+(waiting?' · '+waiting+' waiting':''),'muted small'));top.append(copy);
  if(p){const back=text('button','All projects');back.onclick=()=>view('projects');const all=text('button','All tasks');all.onclick=()=>openProject('');top.append(back,all);}
@@ -62,7 +62,7 @@ $('agentForm').oninput=()=>{agentDirty=true;window.agentDirty=true;$('agentChoic
 $('agentForm').onsubmit=e=>{e.preventDefault();clearTimeout(agentTimer);busy(e.submitter,async()=>{await saveAgent();$('agentChoice').disabled=agentDirty;});};
 $('resetAgent').onclick=()=>busy($('resetAgent'),async()=>{clearTimeout(agentTimer);if(agentSaving)return;agentRows=await api('/api/ai-profiles',{id:$('agentChoice').value,reset:true});agentDirty=false;window.agentDirty=false;$('agentChoice').disabled=false;showAgent();});
 $('testAgent').onclick=()=>busy($('testAgent'),async()=>{if(!await saveAgent())return;$('agentTestResult').textContent='Working…';try{$('agentTestResult').textContent=(await api('/api/ai-profile-test',{id:$('agentChoice').value,sample:$('agentSample').value})).answer;}catch(e){$('agentTestResult').textContent=e.message;throw e;}});
-$('agentActivityQuick').onclick=async()=>{await $('settingsOpen').onclick();selectSettingsSection('agents');await refreshAgents();};
+$('agentActivityQuick').onclick=async()=>{if(!$('settings').open)await $('settingsOpen').onclick();selectSettingsSection('agents');await refreshAgents();};
 loadProjects().catch(e=>notice(e.message));refreshAgents().catch(()=>{});setInterval(()=>{if(!document.hidden)refreshAgents().catch(()=>{});},3000);
 
 async function refreshBobInstall(){const data=await api('/api/bob-install');$('bobInstallStatus').textContent=data.message;$('installBob').disabled=data.state==='working';}

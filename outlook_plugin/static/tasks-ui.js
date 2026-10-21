@@ -321,7 +321,7 @@ function openTaskProgress(task){
  const share=text('button','Export task');share.type='button';share.onclick=()=>busy(share,()=>exportTaskHandoff(task));progressRoot.append(share);
 }
 const handoffInput=document.createElement('input');handoffInput.type='file';handoffInput.accept='.json,application/json';handoffInput.hidden=true;document.body.append(handoffInput);
-const importTaskButton=text('button','Import task');importTaskButton.type='button';document.querySelector('.board-toolbar').append(importTaskButton);importTaskButton.onclick=()=>handoffInput.click();
+const importTaskButton=text('button','Import task');importTaskButton.type='button';$('boardOptionsContent').append(importTaskButton);importTaskButton.onclick=()=>handoffInput.click();
 handoffInput.onchange=async()=>{const file=handoffInput.files[0];if(!file)return;try{if(file.size>250000)throw Error('Choose a task handoff file smaller than 250 KB.');const handoff=JSON.parse(await file.text());if(!confirm('Add this task to your board?\n\n'+String(handoff.task?.text||'Untitled').slice(0,500)))return;await api('/api/task-import',{handoff});await loadTaskWorkspace();}catch(e){notice(e.message,'error');}finally{handoffInput.value='';}};
 async function exportTaskHandoff(task){const payload=await api('/api/task-handoff',{id:task.id});const body=JSON.stringify(payload,null,2);if(window.webkit?.messageHandlers?.saveBackup){window.webkit.messageHandlers.saveBackup.postMessage(body);return;}const url=URL.createObjectURL(new Blob([body],{type:'application/json'}));const a=text('a');a.href=url;a.download='Task-handoff.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 
@@ -370,3 +370,9 @@ $('taskEmailPeople').onclick=()=>busy($('taskEmailPeople'),async()=>{
 
 function refreshTaskProjectColor(){const project=window.projectRows?.find(p=>p.id===$('editTaskProject').value);$('taskColor').disabled=!!project;$('taskColor').value=project?.color||$('taskColor').dataset.personalColor||'none';$('taskColorHelp').textContent=project?'Matches '+project.name+'. Change this color in the project.':'Choose a color for this task.';}
 $('editTaskProject').addEventListener('change',refreshTaskProjectColor);$('taskColor').addEventListener('change',()=>{if(!$('taskColor').disabled)$('taskColor').dataset.personalColor=$('taskColor').value;});
+
+// Keep the compact board menu predictable for pointer and keyboard users.
+document.addEventListener('click',event=>{if(!$('boardOptions').contains(event.target))$('boardOptions').open=false;});
+$('boardOptionsContent').addEventListener('click',event=>{if(event.target.closest('button'))$('boardOptions').open=false;});
+$('boardOptionsContent').addEventListener('change',()=>{$('boardOptions').open=false;});
+$('boardOptions').addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();$('boardOptions').open=false;$('boardOptions').querySelector('summary').focus();}});
