@@ -59,7 +59,7 @@ $('openOutlook').onclick=()=>busy($('openOutlook'),async()=>{await api('/api/ope
 async function status(){const s=await api('/api/status');renderOutlookStatus(s.outlook_running);refreshBobStatus();$('version').textContent='Version '+s.version;for(const [id,template] of [['suggestFeature','feature.yml'],['reportProblem','bug.yml']])$(id).href='https://github.com/brettscharm/outlook-assistant/issues/new?'+new URLSearchParams({template,version:s.version});$('freshness').textContent=`Local Outlook cache · ${s.message_count??0} messages · ${s.full_body_count??0} cached bodies · ${s.preview_count??0} previews${s.excluded_count?' · '+s.excluded_count+' excluded':''} · Checked ${new Date().toLocaleTimeString()}`;if(s.partial)notice('Some cache records could not be read. Available messages are shown; coverage is incomplete.');return s;}
 let lastSuccessfulSync=null;
 function syncTimeLabel(){return lastSuccessfulSync?'Last synced '+lastSuccessfulSync.toLocaleTimeString([],{hour:'numeric',minute:'2-digit',second:'2-digit'}):'Not synced yet';}
-async function sync(force=false){if(state.busy)return;state.busy=true;$('sync').disabled=true;$('sync').textContent='Syncing…';$('sync').setAttribute('aria-busy','true');try{if(force)await api('/api/sync',{});const s=await status();if(s.mail_error)throw new Error(s.mail_error);await Promise.all([folders(),loadEmails(false,true)]);lastSuccessfulSync=Number.isFinite(s.checked)&&s.checked>0?new Date(s.checked*1000):new Date();$('syncTime').textContent=syncTimeLabel();$('syncTime').title='Last successful read of the local Outlook cache: '+lastSuccessfulSync.toLocaleString()+'. Outlook handles downloading new mail.';}catch(e){notice(e.message,'error');$('freshness').textContent='Local cache unavailable · '+e.message;$('syncTime').textContent='Sync failed · '+syncTimeLabel();}finally{state.busy=false;$('sync').disabled=false;$('sync').textContent='Sync now';$('sync').removeAttribute('aria-busy');}}
+async function sync(force=false,automatic=false){if(state.busy)return;state.busy=true;$('sync').disabled=true;$('sync').textContent='Syncing…';$('sync').setAttribute('aria-busy','true');try{const result=force?await api('/api/sync',{automatic}):null;const s=await status();if(s.mail_error)throw new Error(s.mail_error);await Promise.all([folders(),loadEmails(false,true)]);lastSuccessfulSync=Number.isFinite(s.checked)&&s.checked>0?new Date(s.checked*1000):new Date();$('syncTime').textContent=syncTimeLabel();$('syncTime').title='Last successful read of the local Outlook cache: '+lastSuccessfulSync.toLocaleString()+'. Outlook handles downloading new mail.';await window.loadTaskWorkspace?.();if(result?.tasks){$('syncTime').textContent=syncTimeLabel()+' · '+(result.tasks.state==='running'?'Checking tasks…':result.tasks.state==='busy'?'Bob busy':result.tasks.state==='paused'?'Tasks paused':'Task setup needed');if(!automatic)notice(result.tasks.message,result.tasks.state==='setup'?'error':'');}}catch(e){notice(e.message,'error');$('freshness').textContent='Local cache unavailable · '+e.message;$('syncTime').textContent='Sync failed · '+syncTimeLabel();}finally{state.busy=false;$('sync').disabled=false;$('sync').textContent='Sync now';$('sync').removeAttribute('aria-busy');}}
 
 async function context(){const c=await api('/api/config');for(const key of ['full_name','email_addresses','role','accounts','priorities','writing_style'])$('contextForm').elements[key].value=c.user_context[key]||'';try{const pending=JSON.parse(localStorage.getItem('outlook-context-pending')||'{}');for(const [k,v] of Object.entries(pending)){if($('contextForm').elements[k])$('contextForm').elements[k].value=v;}}catch{}accountListCount();}
 async function tasks(){if(window.loadTaskWorkspace)return window.loadTaskWorkspace();}
@@ -198,3 +198,14 @@ function selectSettingsSection(name){
  document.querySelector('.settings-content').scrollTop=0;
 }
 document.querySelectorAll('[data-settings-section]').forEach(b=>b.onclick=()=>selectSettingsSection(b.dataset.settingsSection));
+
+// Wake timers may be suspended by macOS. Refresh immediately after a long gap,
+// or when returning to the app, while keeping background discovery preferences.
+let lastWakeTick=Date.now(),lastResumeSync=0;
+function resumeWorkspace(){
+ if(document.hidden||state.busy||Date.now()-lastResumeSync<30000)return;
+ lastResumeSync=Date.now();sync(true,true);
+}
+setInterval(()=>{const now=Date.now();if(now-lastWakeTick>45000)resumeWorkspace();lastWakeTick=now;},15000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)resumeWorkspace();});
+window.addEventListener('focus',resumeWorkspace);

@@ -113,3 +113,20 @@ class WorkflowTests(unittest.TestCase):
   with patch.object(w,'automatic_state',return_value='ready'),patch.object(w,'start') as start:
    shutdown=Mock();shutdown.wait.side_effect=[False,True]
    w.scheduler(Engine([]),shutdown);start.assert_not_called()
+
+class SyncTests(unittest.TestCase):
+ def test_manual_sync_starts_without_changing_paused_preference(self):
+  from unittest.mock import Mock
+  engine=Mock()
+  with patch.object(w,'identity_ready',return_value=True),patch.object(w,'get_bob_api_key',return_value='fake'),patch.object(w,'_RUN') as running,patch.object(w,'_BOB_LOCK') as bob,patch.object(w,'start') as start:
+   running.locked.return_value=False;bob.locked.return_value=False
+   self.assertEqual(w.sync_tasks(engine)['state'],'running');start.assert_called_once_with(engine)
+ def test_wake_respects_pause(self):
+  with patch.object(w,'options',return_value={'interval':0}),patch.object(w,'start') as start:
+   self.assertEqual(w.sync_tasks(None,automatic=True)['state'],'paused');start.assert_not_called()
+ def test_sync_does_not_duplicate_scan_or_interrupt_chat(self):
+  with patch.object(w,'identity_ready',return_value=True),patch.object(w,'get_bob_api_key',return_value='fake'),patch.object(w,'_RUN') as running,patch.object(w,'_BOB_LOCK') as bob,patch.object(w,'start') as start:
+   running.locked.return_value=True
+   self.assertEqual(w.sync_tasks(None)['state'],'running');start.assert_not_called()
+   running.locked.return_value=False;bob.locked.return_value=True
+   self.assertEqual(w.sync_tasks(None)['state'],'busy');start.assert_not_called()

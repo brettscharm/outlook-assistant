@@ -136,6 +136,28 @@ def candidate_messages(engine,opts,email_id=None):
     return sorted(result,key=lambda m:m['received_time'],reverse=True)
 
 
+def sync_tasks(engine, automatic=False):
+    """Refresh discovery without duplicating an active scan or changing preferences."""
+    if automatic and not options()['interval']:
+        return {'state':'paused','message':'Automatic task discovery is paused.'}
+    if not identity_ready():
+        return {'state':'setup','message':'Add your name and email in My context to check tasks.'}
+    if not get_bob_api_key():
+        return {'state':'setup','message':'Add your Bob API key in Settings to check tasks.'}
+    if _RUN.locked():
+        return {'state':'running','message':'Task check is already running.'}
+    if _BOB_LOCK.locked():
+        return {'state':'busy','message':'Mail synced. Bob is busy; try Sync now again when it finishes.'}
+    if automatic and automatic_state()!='ready':
+        return {'state':'setup','message':'Test your Bob connection in Settings to resume task discovery.'}
+    try:
+        start(engine)
+    except ValueError:
+        if _RUN.locked():return {'state':'running','message':'Task check is already running.'}
+        raise
+    return {'state':'running','message':'Mail synced. Checking new and changed emails for tasks…'}
+
+
 def start(engine,settings_override=None,email_id=None):
     opts=validate_options(settings_override or {})
     if not identity_ready():raise ValueError('First save your name and email addresses in My context so Bob can identify your tasks.')

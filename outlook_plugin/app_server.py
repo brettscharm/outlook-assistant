@@ -194,7 +194,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         if path=='/api/sync':
             backend=self.engine.get_active_backend()
             if isinstance(backend,LocalStoreBridge): backend._load(force=True)
-            return self._send_json({'status':'synced'})
+            return self._send_json({'status':'synced','tasks':task_workflow.sync_tasks(self.engine,automatic=data.get('automatic') is True)})
         if path=='/api/briefing':
             emails=self.engine.get_emails(folder='inbox',limit=40,unread_only=True)
             briefing=self.ai.generate_ai_briefing([],emails)
