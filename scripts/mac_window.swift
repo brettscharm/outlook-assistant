@@ -49,9 +49,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     func applicationShouldTerminate(_ sender:NSApplication)->NSApplication.TerminateReply {
         if !loaded {return .terminateNow}
         var answered=false
-        let finish={ if !answered {answered=true;sender.reply(toApplicationShouldTerminate:true)} }
-        web.callAsyncJavaScript("await window.flushWorkspace?.();",arguments:[:],in:nil,in:.page) { _ in finish() }
-        DispatchQueue.main.asyncAfter(deadline:.now()+4) {finish()}
+        let finish: (Bool, String?) -> Void = { saved, message in
+            guard !answered else { return }; answered=true
+            sender.reply(toApplicationShouldTerminate:saved)
+            if !saved {
+                self.showWindow()
+                let alert=NSAlert();alert.messageText="Your changes haven't finished saving"
+                alert.informativeText=message ?? "Keep the app open, check the save status, and try quitting again."
+                alert.addButton(withTitle:"Keep app open");alert.beginSheetModal(for:self.window)
+            }
+        }
+        web.callAsyncJavaScript("return await window.flushWorkspace?.();",arguments:[:],in:nil,in:.page) { result in
+            switch result {
+            case .success(let saved): finish((saved as? Bool) == true,nil)
+            case .failure: finish(false,"Check the save status in the app. Your window will stay open so you can retry.")
+            }
+        }
+        DispatchQueue.main.asyncAfter(deadline:.now()+15) {finish(false,"Saving is taking longer than expected. Try again after it finishes.")}
         return .terminateLater
     }
     func userContentController(_ userContentController:WKUserContentController,didReceive message:WKScriptMessage) {

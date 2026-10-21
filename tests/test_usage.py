@@ -31,3 +31,13 @@ class UsageTests(unittest.TestCase):
             self.assertEqual(data['input_tokens_reports'],1)
             self.assertEqual(data['cache_read_tokens_reports'],1)
             self.assertEqual(data['cache_write_tokens_reports'],0)
+
+    def test_storage_includes_attached_files_and_mail_archive(self):
+        from outlook_plugin import task_files,mail_archive
+        with tempfile.TemporaryDirectory() as tmp,patch.object(usage,'USAGE_FILE',Path(tmp)/'usage.json'),patch.object(task_files,'ROOT',Path(tmp)/'attachments'),patch.object(mail_archive,'ROOT',Path(tmp)/'archive'):
+            task_files.ROOT.mkdir();mail_archive.ROOT.mkdir()
+            (task_files.ROOT/'example.pdf').write_bytes(b'pdf')
+            (mail_archive.ROOT/'mail.eml').write_bytes(b'mail data')
+            rows={r['name']:r['bytes'] for r in usage.snapshot()['storage']['items']}
+            self.assertEqual(rows['Task and project files'],3)
+            self.assertEqual(rows['Mail archive'],9)

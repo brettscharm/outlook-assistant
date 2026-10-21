@@ -3,14 +3,14 @@
 ## 1. Download and open the desktop app
 
 1. Go to **[Latest release](https://github.com/brettscharm/outlook-assistant/releases/latest)**.
-2. Under **Assets**, download the ZIP whose name ends in **Desktop-Mac.zip**. GitHub’s source-code downloads are for developers.
+2. Under **Assets**, download the ZIP whose name ends in **Apple-Silicon-Mac.zip**. GitHub’s source-code downloads are for developers.
 3. Double-click the ZIP in Finder.
 4. Move **Outlook Assistant.app** into **Applications**. If you do not have permission to use the shared Applications folder, use your own `~/Applications` folder if your organization permits it.
 5. Open the app from Applications. You should get a dedicated Mac window; no Terminal or browser window is needed for normal use.
 
-The current packaged download is **Outlook-Assistant-2.16.0-Desktop-Mac.zip**. It installs the desktop shell; newer app code arrives through the automatic updater. Leave the app open with internet access. Updates wait while Bob is busy or the interface has unsaved work. The version is shown near the bottom of the sidebar. Some controls described below appear after that update.
+The current packaged download is **Outlook-Assistant-2.16.0-Apple-Silicon-Mac.zip**. It installs the desktop shell; newer app code arrives through the automatic updater. Leave the app open with internet access. Updates wait while Bob is busy or the interface has unsaved work. The version is shown near the bottom of the sidebar. Some controls described below appear after that update.
 
-The download supports macOS 13+ and contains Apple silicon and Intel code. Physical Intel hardware, all macOS releases, and clean installations have not all been tested. The app is not yet Developer ID signed or notarized. If macOS or your organization blocks it, follow your organization’s approved software process; do not disable Gatekeeper or remove quarantine to bypass the block.
+The download supports macOS 13+ and supports Apple silicon (M1 or later) only. All supported macOS releases and clean installations have not yet been tested. The app is not yet Developer ID signed or notarized. If macOS or your organization blocks it, follow your organization’s approved software process; do not disable Gatekeeper or remove quarantine to bypass the block.
 
 ## 2. Let Outlook download your mail
 
@@ -72,4 +72,4 @@ When Node is missing, **Install / update Bob** now downloads a private Node 24 r
 
 ## Connect a desktop AI client
 
-Open Settings → Connect AI apps and copy the connection settings. Merge the server entry into the local MCP configuration of a compatible desktop client, then restart that client. Keep Outlook Assistant running. The bundled bridge requires macOS 13+ and supports Apple silicon and Intel; it needs no Bob or separate language runtime. It can read mail/calendar and create or edit local tasks/projects, including checklist steps and progress notes. ChatGPT cloud connections require a supported remote endpoint or Secure MCP Tunnel and are not automatically configured by this app.
+Open Settings → Connect AI apps and copy the connection settings. Merge the server entry into the local MCP configuration of a compatible desktop client, then restart that client. Keep Outlook Assistant running. The bundled bridge requires macOS 13+ and supports Apple silicon; it needs no Bob or separate language runtime. It can read mail/calendar and create or edit local tasks/projects, including checklist steps and progress notes. ChatGPT cloud connections require a supported remote endpoint or Secure MCP Tunnel and are not automatically configured by this app.

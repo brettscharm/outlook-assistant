@@ -43,3 +43,8 @@ class SetupTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError,'Unsupported Bob'):
                 a.BobAIAgent('test-key')._call_llm('private message')
             run.assert_not_called()
+
+    def test_intel_is_not_advertised_as_supported(self):
+        with patch.object(setup_check.platform,'system',return_value='Darwin'),patch.object(setup_check.platform,'mac_ver',return_value=('15.0','','')),patch.object(setup_check.platform,'machine',return_value='x86_64'),patch.object(setup_check.local_store,'profiles',return_value=[]),patch.object(setup_check,'read_config',return_value={}),patch.object(setup_check,'get_bob_api_key',return_value=''),patch.object(setup_check,'bob_executable',return_value=None):
+            rows={r['id']:r for r in setup_check.check()['checks']}
+            self.assertFalse(rows['mac']['ready']);self.assertIn('Apple silicon',rows['mac']['detail'])

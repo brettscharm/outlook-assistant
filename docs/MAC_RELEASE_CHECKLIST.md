@@ -4,7 +4,7 @@ Current status: development release. No Developer ID identity is available on th
 
 ## Dependencies and setup
 
-- App supports macOS 13+, Apple silicon and Intel; bundles Python and the mail reader.
+- App supports macOS 13+, Apple silicon (M1 or later); bundles Python and the mail reader.
 - Bob Shell must be version 2.x; Node must be 24+. Setup and every inference request validate Bob's version. Unknown, broken, timed-out and unsupported versions fail with actionable messages. Version probes send no prompts or API keys.
 - Use IBM's supported installer: https://bob.ibm.com/docs/shell/getting-started/install-and-setup . Bob can be installed through a user-triggered in-app invocation of IBM’s installer; Node remains a separate prerequisite. Neither is silently installed. Corporate installation policy still applies.
 - Mail and saved tasks must remain usable without Bob. A supported Outlook cache is required for mail. New mail depends on Outlook downloading it.
@@ -13,14 +13,14 @@ Current status: development release. No Developer ID identity is available on th
 ## Signed release
 
 1. Obtain an Apple Developer ID Application certificate with its private key on the build Mac. Store notarization credentials in a named `notarytool` Keychain profile. Never commit credentials.
-2. Run `scripts/build_mac.sh` with universal Python and the packaging dependencies.
+2. Run `scripts/build_mac.sh` with Apple silicon Python and the packaging dependencies.
 3. Set `SIGNING_IDENTITY` to the Developer ID Application identity and `NOTARY_PROFILE` to the stored profile. Run `bash scripts/notarize_mac.sh`.
-4. The release script checks both architectures, signs nested code with hardened runtime and timestamps, submits to Apple, staples the ticket, validates Gatekeeper and creates the final ZIP only after success.
+4. The release script checks all bundled components are arm64, signs nested code with hardened runtime and timestamps, submits to Apple, staples the ticket, validates Gatekeeper and creates the final ZIP only after success.
 5. Test the ZIP downloaded through a browser on clean machines before publishing. Do not remove quarantine or bypass Gatekeeper to pass the test.
 
 ## Acceptance matrix — not yet completed
 
-Test a fresh macOS user on Apple silicon and physical Intel, minimum supported macOS and current supported macOS. Record OS, architecture, Outlook version, Bob version and result without mail contents.
+Test a fresh macOS user on Apple silicon, minimum supported macOS and current supported macOS. Record OS, architecture, Outlook version, Bob version and result without mail contents.
 
 - No Python, Git, Homebrew, Node or Bob: native window opens; setup explains missing prerequisites; manual tasks save/reopen.
 - Install Bob using IBM's installer, reopen app: discovers runtime without terminal PATH setup. Invalid/old/future Bob versions and Node 22 show setup errors; supported Bob 2.x and Node 24+ pass.

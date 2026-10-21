@@ -32,5 +32,5 @@ xcrun stapler staple "$APP"
 xcrun stapler validate "$APP"
 spctl --assess --type execute --verbose=2 "$APP"
 # Publish only the stapled artifact; a failed check above produces no release ZIP.
-ditto -c -k --keepParent "$APP" "$STAGING/Outlook-Assistant-Universal-Mac.zip"
-mv "$STAGING/Outlook-Assistant-Universal-Mac.zip" "$(dirname "$APP")/Outlook-Assistant-Universal-Mac.zip"
+ditto -c -k --keepParent "$APP" "$STAGING/Outlook-Assistant-Apple-Silicon-Mac.zip"
+mv "$STAGING/Outlook-Assistant-Apple-Silicon-Mac.zip" "$(dirname "$APP")/Outlook-Assistant-Apple-Silicon-Mac.zip"

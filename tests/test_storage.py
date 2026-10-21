@@ -12,7 +12,7 @@ class StorageTests(unittest.TestCase):
     def tearDown(self):self.tmp.cleanup()
     def test_recovers_previous_save_and_preserves_damaged_original(self):
         storage.write_json(self.path,{'value':1});storage.write_json(self.path,{'value':2});self.path.write_text('{broken')
-        self.assertEqual(storage.read_json(self.path,{}),{'value':1})
+        self.assertEqual(storage.read_json(self.path,{}),{'value':2})
         damaged=list(storage.backups(self.path)[0].parent.glob('*.damaged-*'));self.assertEqual(len(damaged),1);self.assertEqual(damaged[0].read_text(),'{broken')
         self.assertEqual(self.path.stat().st_mode&0o777,0o600);self.assertEqual(damaged[0].parent.stat().st_mode&0o777,0o700)
     def test_failed_replacement_keeps_existing_data(self):
@@ -42,3 +42,21 @@ class StorageTests(unittest.TestCase):
             self.assertEqual(saved['legacy']['html'],'')
             with self.assertRaises(ValueError):drafts.save_changes({'changes':[{'id':'rich','revision':1,'html':'a'*150001}]})
             self.assertEqual(drafts.load()['entries']['rich']['html'],html)
+
+    def test_corrupt_latest_mirror_falls_back_to_history(self):
+        storage.write_json(self.path,{'value':1});storage.write_json(self.path,{'value':2})
+        self.path.write_text('broken')
+        (storage.backups(self.path)[0].parent/(self.path.name+'.current')).write_text('broken mirror')
+        self.assertEqual(storage.read_json(self.path,{}),{'value':1})
+    def test_invalid_object_cannot_replace_saved_data(self):
+        storage.write_json(self.path,{'value':1})
+        for invalid in ([],None,{'value':float('nan')}):
+            with self.assertRaises(ValueError):storage.write_json(self.path,invalid)
+        self.assertEqual(storage.read_json(self.path,{}),{'value':1})
+    def test_no_valid_recovery_never_silently_resets_data(self):
+        self.path.write_text('damaged')
+        with self.assertRaises(RuntimeError):storage.read_json(self.path,{})
+        self.assertEqual(self.path.read_text(),'damaged')
+    def test_latest_mirror_survives_missing_primary(self):
+        storage.write_json(self.path,{'value':1});storage.write_json(self.path,{'value':2});self.path.unlink()
+        self.assertEqual(storage.read_json(self.path,{}),{'value':2})

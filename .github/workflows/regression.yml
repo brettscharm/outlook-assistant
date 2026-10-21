@@ -1,0 +1,26 @@
+name: Regression checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Python workflows and persistence
+        run: python -m unittest discover -s tests -v
+      - name: UI regressions
+        run: node --test tests/*.test.cjs
+      - name: Syntax and whitespace
+        run: |
+          for file in outlook_plugin/static/*.js; do node --check "$file"; done
+          bash -n scripts/build_mac.sh scripts/build_mcp.sh scripts/build_readers.sh scripts/notarize_mac.sh
+          git diff --check
+      - name: Verify bundled Apple silicon helpers
+        run: python scripts/check_mac_architectures.py outlook_plugin/bin

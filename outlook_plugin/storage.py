@@ -27,7 +27,8 @@ def _replace(path,raw):
 
 def write_json(path,data):
     path=Path(path)
-    raw=json.dumps(data,ensure_ascii=False).encode('utf-8')
+    if not isinstance(data,dict):raise ValueError('Saved data must be an object.')
+    raw=json.dumps(data,ensure_ascii=False,allow_nan=False).encode('utf-8')
     with _LOCK:
         copies=backups(path)
         copies[0].parent.mkdir(parents=True,exist_ok=True,mode=0o700)
@@ -45,6 +46,7 @@ def write_json(path,data):
                 if older.exists():_replace(newer,older.read_bytes())
             _replace(copies[0],previous)
         _replace(path,raw)
+        _replace(copies[0].parent/(path.name+'.current'),raw)
         if previous is None and not copies[0].exists():_replace(copies[0],raw)
 
 def read_json(path,default):
@@ -55,7 +57,7 @@ def read_json(path,default):
             if not isinstance(result,dict):raise ValueError('Expected saved object')
             return result
         except (FileNotFoundError,ValueError,UnicodeError) as error:
-            for backup in backups(path)+sorted((path.parent/'.outlook_assistant_backups').glob(path.name+'.daily-*'),reverse=True):
+            for backup in [path.parent/'.outlook_assistant_backups'/(path.name+'.current')]+backups(path)+sorted((path.parent/'.outlook_assistant_backups').glob(path.name+'.daily-*'),reverse=True):
                 try:
                     result=json.loads(backup.read_text())
                     if not isinstance(result,dict):continue
@@ -75,8 +77,9 @@ def ensure_backup(path):
     with _LOCK:
         if not path.exists():return
         copy=backups(path)[0]
-        if copy.exists():return
         raw=path.read_bytes();value=json.loads(raw)
         if not isinstance(value,dict):raise ValueError('Invalid saved data')
         copy.parent.mkdir(parents=True,exist_ok=True,mode=0o700);os.chmod(copy.parent,0o700)
-        _replace(copy,raw)
+        if not copy.exists():_replace(copy,raw)
+        current=copy.parent/(path.name+'.current')
+        if not current.exists():_replace(current,raw)

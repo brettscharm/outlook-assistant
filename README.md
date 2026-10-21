@@ -4,7 +4,7 @@ A desktop workspace for mail cached by Outlook, tasks, contacts, projects, and o
 
 ## Install on a Mac
 
-1. **[Open the latest release](https://github.com/brettscharm/outlook-assistant/releases/latest)** and download the **Desktop-Mac.zip** file under **Assets**. Do not choose GitHub’s “Source code” ZIP.
+1. **[Open the latest release](https://github.com/brettscharm/outlook-assistant/releases/tag/v2.19.0)** and download the **Apple-Silicon-Mac.zip** file under **Assets**. Do not choose GitHub’s “Source code” ZIP.
 2. Unzip it and move **Outlook Assistant.app** into **Applications**. Keep one installed copy.
 3. Open **Microsoft Outlook**, sign in, and let your mail finish downloading.
 4. Open **Outlook Assistant**. Use **Settings → Setup** to see any missing requirements.
@@ -14,9 +14,9 @@ A desktop workspace for mail cached by Outlook, tasks, contacts, projects, and o
 
 The Mac app includes Python and the mail reader. You do not need Git, Xcode, Python, or Homebrew to open it. AI features additionally require **Bob Shell 2.x and Node.js 24+**; Settings → Setup → Install or update Bob installs a private Node 24 runtime if needed, then runs IBM’s installer. Installation starts with an explicit click.
 
-**Requirements:** macOS 13 or later, Apple silicon or Intel, and New Outlook with a supported local cache. Compatibility with every Mac, Outlook version, and company-managed device is not guaranteed. The current downloadable app is ad-hoc signed, **not Developer ID signed or notarized**. macOS or company policy may block it; do not disable security controls.
+**Requirements:** macOS 13 or later, Apple silicon (M1 or later), and New Outlook with a supported local cache. Compatibility with every Mac, Outlook version, and company-managed device is not guaranteed. The current downloadable app is ad-hoc signed, **not Developer ID signed or notarized**. macOS or company policy may block it; do not disable security controls.
 
-**Download versus app version:** the latest packaged desktop release is currently **2.18.0**. Newer application features are delivered by the in-app updater. See the [feature status](docs/FEATURE_STATUS.md) for implemented features and remaining integrations. Keep the app open and connected to the internet; installation waits for a safe idle period and for active Bob work to finish. The displayed version changes after the update restarts the service. A package update does not replace the bundled runtime or Finder/Dock icon; those require a newer desktop download.
+**Download versus app version:** the latest packaged desktop release is currently **2.19.0**. Newer application features are delivered by the in-app updater. See the [feature status](docs/FEATURE_STATUS.md) for implemented features and remaining integrations. Keep the app open and connected to the internet; installation waits for a safe idle period and for active Bob work to finish. The displayed version changes after the update restarts the service. A package update does not replace the bundled runtime or Finder/Dock icon; those require a newer desktop download.
 
 ## Everyday use
 
@@ -76,7 +76,7 @@ node tests/task_sort.test.cjs
 cd vendor/hxmail && go test ./...
 ```
 
-Build the universal reader with `scripts/build_readers.sh` and the Mac app with `scripts/build_mac.sh` using universal Python and PyInstaller. Signing and notarization require your own Apple Developer credentials; see [release instructions](docs/MAC_RELEASE_CHECKLIST.md).
+Build the Apple silicon readers with `scripts/build_readers.sh` and the Mac app with `scripts/build_mac.sh` using Apple silicon Python and PyInstaller. Signing and notarization require your own Apple Developer credentials; see [release instructions](docs/MAC_RELEASE_CHECKLIST.md).
 
 For isolated tests, set `OUTLOOK_ASSISTANT_DATA_DIR` and `OUTLOOK_ASSISTANT_PROFILE_ROOT`. Never use real mail or credentials as fixtures. Legacy Outlook tests require explicit `OUTLOOK_LEGACY_E2E=1`.
 
@@ -117,7 +117,7 @@ Version 2.17.0 adds the native macOS file picker. Older desktop windows need the
 Mac application download even after their page updates. **Mail & calendar** shows
 local source availability and buttons to open Outlook and Teams. Both apps must be
 signed in and have downloaded their data. Supported desktop builds target macOS 13+
-on Apple Silicon and Intel. Cache formats and organization permissions can vary;
+on Apple silicon. Cache formats and organization permissions can vary;
 installation alone does not guarantee readable or complete mail/calendar data.
 
 ### Calendar views
@@ -139,7 +139,7 @@ Drag files from Finder into the **Files** drop area on a saved task or project, 
 
 The general in-app chat has been removed. Task discovery and email drafting remain. Existing chat history is retained in local backups.
 
-Open **Settings → Connect AI apps → Copy connection settings**. Add the `outlook-assistant` entry to your desktop AI client’s local MCP configuration (merge with existing servers rather than replacing them). Keep Outlook Assistant running. Claude Desktop supports local MCP configuration; restart it after adding the server. This uses a bundled universal Mac executable, so no separate Python, Node, or Bob installation is required for MCP.
+Open **Settings → Connect AI apps → Copy connection settings**. Add the `outlook-assistant` entry to your desktop AI client’s local MCP configuration (merge with existing servers rather than replacing them). Keep Outlook Assistant running. Claude Desktop supports local MCP configuration; restart it after adding the server. This uses a bundled Apple silicon executable, so no separate Python, Node, or Bob installation is required for MCP.
 
 The connection exposes tools for searching mail, reading an email, listing tasks and projects, contacts/companies, and cached Teams meetings. It also creates and edits tasks/projects, moves tasks between lanes, and manages progress notes, waiting-on/next-step fields, and checklist steps. Results are paginated, mail exclusions are respected, and no API keys are returned. Changes save directly to the same local workspace and appear in the app. It does not send emails, run Bob, or expose attachment contents. Your chosen AI client may send requested content to its provider under that client’s settings.
 
@@ -156,3 +156,16 @@ For source installations, `python3 -m outlook_plugin.mcp_server` runs the same t
 Write tools are marked as mutations for the AI client. Creation/append calls require a stable `request_id` to prevent duplicates on retry. Partial task/project edits require the latest `revision` from `get_task`/`get_project` as `expected_revision`; stale edits return an error instead of overwriting newer data. Reconnect or refresh tools in your AI client after updating.
 
 Tasks in a project display its shared color. Edit the project to change the color for every task in it; existing projects receive an automatic color. Tasks moved out of a project return to their personal color. Completed tasks retain their muted appearance. MCP project creation/editing also accepts a `color`.
+
+## Regression checks
+
+Every push and pull request runs the Python workflow/storage suite, JavaScript UI regressions, syntax checks, and an Apple silicon architecture check in GitHub Actions. Run these locally before a release:
+
+```sh
+python3 -m unittest discover -s tests -v
+node --test tests/*.test.cjs
+```
+
+Tests use synthetic data. The save tests cover overlapping edits, failed saves, retries, quit protection, interrupted writes, damaged-file recovery, and persistence across processes. A passing suite does not replace the clean-Mac and signed-release checks in the release checklist.
+
+Version 2.19 and later target Apple silicon only. Intel Macs should keep their last compatible release; do not install the Apple silicon package on Intel.

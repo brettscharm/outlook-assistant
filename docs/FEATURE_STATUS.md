@@ -8,7 +8,7 @@ This tracks earlier requests against implemented behavior. A local cache is not 
 
 - Task progress: dated notes, checklist steps, waiting-on and next-step fields. Notes and steps require explicit Add; their drafts stay locally recoverable. Waiting/next-step fields autosave. Board cards show progress and the latest note.
 - Task handoff: export/import one task as JSON, including description, source link and checklist. No email contents or update history included. Import is explicit and idempotent. This is manual transfer, not cross-device delivery.
-- Teams calendar: calendar-only read-only snapshot reader, universal helper, upcoming cached instances with local times and join links. Cancellation/deduplication/date tests pass. Reads both legacy Teams and the embedded Outlook calendar in partitioned WebStorage. Read-only validation on October 21 found 372 embedded calendar events and 92 upcoming meetings; the legacy store alone ended September 16. No free/busy guarantees or recurrence expansion.
+- Teams calendar: calendar-only read-only snapshot reader, Apple silicon helper, upcoming cached instances with local times and join links. Cancellation/deduplication/date tests pass. Reads both legacy Teams and the embedded Outlook calendar in partitioned WebStorage. Read-only validation on October 21 found 372 embedded calendar events and 92 upcoming meetings; the legacy store alone ended September 16. No free/busy guarantees or recurrence expansion.
 - Meeting-email evidence: all cached mail folders, including Deleted Items, are searched for invitation/response subjects or .ics attachments. Downloaded .ics times/status are shown as evidence, separately from confirmed events. Folder location does not establish acceptance/cancellation. Up to 500 recent matching emails are shown with an explicit truncation notice.
 - Explicit mail archive: standard .eml snapshots, including downloaded attachments, under the app’s Application Support archive directory. Existing snapshots are retained. 5 GB archive bound; 50 MB individual and 100 MB per-message attachment bounds. Missing/skipped content is counted. Excluded domains are omitted. Not a full server archive or an automatic retention bypass.
 - Private Node setup: when absent, the Bob installer obtains Node 24 from nodejs.org, verifies its published SHA-256 checksum, validates archive paths, and installs without sudo. Tested with synthetic archives/mocks; not run on a clean physical Mac.
@@ -27,7 +27,7 @@ This tracks earlier requests against implemented behavior. A local cache is not 
 
 ## Already implemented
 
-Task review and local persistence, custom lanes, task details and email previews, optional priority, due-date indicators and sorting, hidden completed cards, owner/contact selection, contacts pagination and domain linking, formatted drafts, usage reporting, named-key status, dismissible errors, app code updates, universal desktop shell, automatic local recovery copies, excluded mail domains, and a mail-robot app identity.
+Task review and local persistence, custom lanes, task details and email previews, optional priority, due-date indicators and sorting, hidden completed cards, owner/contact selection, contacts pagination and domain linking, formatted drafts, usage reporting, named-key status, dismissible errors, app code updates, Apple silicon desktop shell, automatic local recovery copies, excluded mail domains, and a mail-robot app identity.
 
 ## Not implemented / requires additional verification
 
@@ -43,7 +43,7 @@ Task review and local persistence, custom lanes, task details and email previews
 | Native floating Assistant validation | Implemented in the desktop shell; cross-app/full-screen behavior still needs interactive native acceptance testing. |
 | Clean-Mac Node/Bob setup acceptance | Private Node installation is implemented; live end-to-end installation on a clean Mac remains unverified. |
 | General collaborating Bob agents | A bounded writer/reviewer/editor team now drafts replies. General task agent debate, persistent agents, and user cancellation of active sessions remain unimplemented. |
-| Universally installable signed release | No Developer ID credentials available. Signing/notarization tooling exists, but clean-Mac and physical Intel acceptance tests remain outstanding. |
+| Universally installable signed release | No Developer ID credentials available. Signing/notarization tooling exists, but clean-Mac acceptance tests remain outstanding. |
 | Signed code updates | Updates use HTTPS/repository commits, not an independently signed update manifest. |
 | Broad desktop distribution | A 2.15 development desktop build includes current code and icon. A signed/notarized, clean-Mac-tested release is still required for broad distribution. |
 
@@ -54,4 +54,4 @@ True model fine-tuning is not implemented; Bob profile instructions/examples are
 
 ## External AI clients
 
-The general in-app chat is removed as of 2.18.0. Local MCP tools expose mail, tasks, projects, contacts, and cached calendar data. Since 2.18.1, mutation tools create/edit tasks and projects and manage task progress and checklist steps with retry deduplication and stale-edit checks. Settings → Connect AI apps provides a configuration for desktop clients. No cloud endpoint or tunnel is enabled. Bob task discovery and reply drafting remain.
+The general in-app chat is removed as of 2.19.0. Local MCP tools expose mail, tasks, projects, contacts, and cached calendar data. Since 2.18.1, mutation tools create/edit tasks and projects and manage task progress and checklist steps with retry deduplication and stale-edit checks. Settings → Connect AI apps provides a configuration for desktop clients. No cloud endpoint or tunnel is enabled. Bob task discovery and reply drafting remain.

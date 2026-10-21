@@ -47,7 +47,7 @@ def record(success,stats):
     except (OSError,ValueError,TypeError,KeyError,OverflowError):LAST_ERROR=True
 
 def snapshot():
-    from . import config,tasks,task_workflow,email_chat,drafts,storage
+    from . import config,tasks,task_workflow,email_chat,drafts,storage,task_files,mail_archive
     now=datetime.now(timezone.utc).isoformat();day=now[:10];month=now[:7]
     with _LOCK:data=read_json(USAGE_FILE,{'started_at':None,'total':empty(),'days':{}})
     monthly=empty()
@@ -64,4 +64,6 @@ def snapshot():
     for directory in backup_dirs:
         if directory.exists():backup_bytes+=sum(size(path) for path in directory.iterdir())
     items.append({'name':'Recovery copies','bytes':backup_bytes})
+    for label,directory in [('Task and project files',task_files.ROOT),('Mail archive',mail_archive.ROOT)]:
+        items.append({'name':label,'bytes':sum(size(path) for path in directory.rglob('*')) if directory.exists() else 0})
     return {'started_at':data['started_at'],'last_request_at':data.get('last_request_at'),'today':normalized(data['days'].get(day,{})),'month':monthly,'total':normalized(data['total']),'tracking_error':LAST_ERROR,'storage':{'items':items,'total_bytes':sum(item['bytes'] for item in items),'free_bytes':shutil.disk_usage(USAGE_FILE.parent).free}}
