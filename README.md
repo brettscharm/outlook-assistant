@@ -181,3 +181,7 @@ The footer opens aggregate Bobcoins and token usage for this app on this Mac: to
 Projects can contain multiple named ISC opportunity, Gainsight renewal, and deployment links. Add these in the project editor; existing projects autosave changes. Links open the source record but do not synchronize its data. Dashboard imports and change alerts require a verified, accessible data source.
 
 Calendar overflow opens a list of all cached meetings for that date. Meeting details include **Join meeting** when a usable call URL is present in the cached meeting or location.
+
+### Bulk task review
+
+In **Tasks to review**, select individual suggestions or **Select all results** (including later pages). **Add selected…** can assign a project, owner, priority, date, or co-owners. Only checked fields override existing values. Successful additions stay saved; if a request fails, retry processes only the remaining selections. Completion suggestions are reviewed individually.
