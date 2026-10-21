@@ -190,6 +190,9 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         if path=='/api/task-scan-settings':return self._send_json(task_workflow.settings(data))
         if path=='/api/task-scan':return self._send_json(task_workflow.start(self.engine,data,email_id=data.get('email_id')))
         if path=='/api/task-scan-stop':return self._send_json(task_workflow.stop())
+        if path=='/api/task-email-draft':
+            from .task_communication import open_draft
+            return self._send_json(open_draft(data))
         if path=='/api/task-review':return self._send_json(task_workflow.action(data))
         if path=='/api/contact-company':
             links=link_companies(data['domains'],data.get('company','')) if 'domains' in data else link_company(data.get('domain',''),data.get('company',''))
@@ -276,8 +279,8 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
                 if due:
                     from datetime import date
                     date.fromisoformat(due)
-                tasks=add_task(data.get('type','my'),text,str(data.get('owner',''))[:200],due,source=source,description=str(data.get('description','')),source_type=data.get('source_type'),source_url=data.get('source_url',''),priority=data.get('priority','none'),project_id=data.get('project_id',''),color=data.get('color','none'),deadline=data.get('deadline'))
-            elif action=='edit':tasks=edit_task(str(data.get('id','')),str(data.get('text','')),str(data.get('owner','')),data.get('type','my'),str(data.get('due_date','')),description=data.get('description'),source_type=data.get('source_type'),source_url=data.get('source_url'),priority=data.get('priority'),project_id=data.get('project_id'),color=data.get('color'),deadline=data.get('deadline'))
+                tasks=add_task(data.get('type','my'),text,str(data.get('owner',''))[:200],due,source=source,description=str(data.get('description','')),source_type=data.get('source_type'),source_url=data.get('source_url',''),priority=data.get('priority','none'),project_id=data.get('project_id',''),color=data.get('color','none'),deadline=data.get('deadline'),co_owners=data.get('co_owners'))
+            elif action=='edit':tasks=edit_task(str(data.get('id','')),str(data.get('text','')),str(data.get('owner','')),data.get('type','my'),str(data.get('due_date','')),description=data.get('description'),source_type=data.get('source_type'),source_url=data.get('source_url'),priority=data.get('priority'),project_id=data.get('project_id'),color=data.get('color'),deadline=data.get('deadline'),co_owners=data.get('co_owners'))
             elif action=='move':tasks=move_task(str(data.get('id','')),str(data.get('lane_id','')))
             elif action=='toggle': tasks=toggle_task(data.get('id'))
             elif action=='delete': tasks=delete_task(data.get('id'))

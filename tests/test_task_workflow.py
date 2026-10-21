@@ -18,6 +18,34 @@ class WorkflowTests(unittest.TestCase):
   config.update_config({'user_context':{'full_name':'Brett Scharmett','email_addresses':'brett@example.com'}})
   w._STOP.clear();w.JOB.update(running=False,scanned=0,total=0,usage=0)
   self.opts={'since':'2026-10-01','mode':'mine','interval':0,'budget':1}
+ def test_co_owners_saved_and_retained(self):
+  tasks.add_task('my','Prepare proposal',co_owners=['Pat <pat@example.com>','Pat <pat@example.com>'])
+  task=tasks.load_tasks()['my_tasks'][0]
+  self.assertEqual(task['co_owners'],['Pat <pat@example.com>'])
+  tasks.edit_task(task['id'],'Prepare proposal','Me','my','',co_owners=['Alex'])
+  self.assertEqual(tasks.load_tasks()['my_tasks'][0]['co_owners'],['Alex'])
+  tasks.edit_task(task['id'],'Updated proposal','Me','my','')
+  self.assertEqual(tasks.load_tasks()['my_tasks'][0]['co_owners'],['Alex'])
+  with self.assertRaises(ValueError):tasks.add_task('my','Invalid',co_owners='Pat')
+ def test_task_only_domain_exclusion(self):
+  opts=w.validate_options(dict(self.opts,excluded_domains='example.com'))
+  self.assertEqual(w.candidate_messages(Engine([message(),dict(message(2),sender='Jane <jane@sub.example.com>')]),opts),[])
+  self.assertEqual(len(w.candidate_messages(Engine([message()]),self.opts)),1)
+ def test_quick_dismiss_does_not_teach_and_restore_removes_feedback(self):
+  with patch.object(BobAIAgent,'extract_tasks',return_value=[item()]):w.run(Engine([message()]),self.opts)
+  suggestion=w.snapshot()['suggestions'][0]
+  w.action({'action':'dismiss','id':suggestion['id'],'reason':'quick'})
+  with patch.object(BobAIAgent,'extract_tasks',return_value=[]) as extract:
+   w.run(Engine([message(2)]),self.opts)
+   self.assertEqual(extract.call_args.kwargs['feedback'],[])
+  w.action({'action':'dismiss','id':suggestion['id'],'reason':'not_role'})
+  with patch.object(BobAIAgent,'extract_tasks',return_value=[]) as extract:
+   w.run(Engine([message(3)]),self.opts)
+   self.assertEqual(extract.call_args.kwargs['feedback'][0]['reason'],'Not relevant to my role')
+  w.action({'action':'restore','id':suggestion['id']})
+  with patch.object(BobAIAgent,'extract_tasks',return_value=[]) as extract:
+   w.run(Engine([message(4)]),self.opts)
+   self.assertEqual(extract.call_args.kwargs['feedback'],[])
  def test_date_filter_resume_and_dismissal(self):
   engine=Engine([dict(message(0),received_time='2026-09-30T23:00:00Z'),message()])
   with patch.object(BobAIAgent,'extract_tasks',return_value=[item()]) as extract:

@@ -1,6 +1,7 @@
 from .storage import read_json, write_json
 from .config import DATA_DIR
 """Persistent, resumable task review and bounded background scanning."""
+from email.utils import parseaddr
 import hashlib
 import json
 import os
@@ -19,7 +20,7 @@ _LOCK=threading.RLock()
 _RUN=threading.Lock()
 _STOP=threading.Event()
 JOB={'running':False,'status':'idle','scanned':0,'total':0,'usage':0,'message':''}
-REASONS={'not_mine':'Not my task','not_role':'Not relevant to my role','done':'Already done','duplicate':'Duplicate','not_action':'Not a real action item'}
+REASONS={'quick':'Dismissed without feedback','not_mine':'Not my task','not_role':'Not relevant to my role','done':'Already done','duplicate':'Duplicate','not_action':'Not a real action item'}
 
 
 def load():
@@ -32,13 +33,15 @@ def save(data):
 def options():
     saved={k:v for k,v in read_config().get('task_scan',{}).items() if k != 'budget'}
     since=saved.get('since') or load().get('initial_since') or (date.today()-timedelta(days=7)).isoformat()
-    return dict({'since':since,'mode':'mine','interval':15},**saved)
+    return dict({'since':since,'mode':'mine','interval':15,'excluded_domains':[]},**saved)
 
 
 def validate_options(data):
     opts=options()
-    for key in ('since','mode','interval'):
+    for key in ('since','mode','interval','excluded_domains'):
         if key in data:opts[key]=data[key]
+    from .mail_filters import normalize_domains
+    opts['excluded_domains']=normalize_domains(opts.get('excluded_domains',[]))
     date.fromisoformat(opts['since'])
     if opts['since']>date.today().isoformat():raise ValueError('Choose a start date on or before today.')
     if opts['mode'] not in ('mine','all'):raise ValueError('Choose My tasks or All email tasks.')
@@ -116,7 +119,7 @@ def action(data):
             # Preserve idempotence even if an accepted suggestion is retried with an edited title.
             existing=load_tasks()
             if not any(t.get('suggestion_id')==item['id'] for group in existing.values() for t in group):
-                add_task(kind,title,owner,due,source,source_type=data.get('source_type','email'),source_url=data.get('source_url',''),priority=data.get('priority','none'),project_id=data.get('project_id',''),color=data.get('color','none'),deadline=data.get('deadline'))
+                add_task(kind,title,owner,due,source,source_type=data.get('source_type','email'),source_url=data.get('source_url',''),priority=data.get('priority','none'),project_id=data.get('project_id',''),color=data.get('color','none'),deadline=data.get('deadline'),co_owners=data.get('co_owners'))
             item.update(status='accepted',description=source['description'],text=title,owner=owner,type=kind,due_date=due)
         else:raise ValueError('Unknown review action.')
         save(store)
@@ -144,6 +147,8 @@ def candidate_messages(engine,opts,email_id=None):
         if not email_id and (not received_day or received_day<opts['since']):continue
         message=row if 'body' in row else engine.get_email_details(str(row['id']))
         if not message:continue
+        domain=parseaddr(message.get('sender',''))[1].rsplit('@',1)[-1].lower().rstrip('.')
+        if any(domain==rule or domain.endswith('.'+rule) for rule in opts.get('excluded_domains',[])):continue
         result.append(dict(id=str(message['id']),subject=message.get('subject',''),sender=message.get('sender',''),
             received_time=received,content=(message.get('body') or message.get('preview') or '')[:6000]))
     return sorted(result,key=lambda m:m['received_time'],reverse=True)
@@ -215,7 +220,7 @@ def run(engine,opts,email_id=None):
         batch=pending[offset:offset+10]
         with _LOCK:JOB['message']=f'Reviewing emails {offset+1}–{offset+len(batch)} of {len(pending)}…'
         current=load()
-        feedback=[dict(text=t['text'],reason=REASONS.get(t.get('reason'),'Dismissed')) for t in current['suggestions'].values() if t['status']=='dismissed'][-20:]
+        feedback=[dict(text=t['text'],reason=REASONS.get(t.get('reason'),'Dismissed')) for t in current['suggestions'].values() if t['status']=='dismissed' and t.get('reason') not in ('quick','')][-20:]
         active=[t for rows in load_tasks().values() for t in rows if not t.get('completed')][:200]
         found=ai.extract_tasks(batch,mode=opts['mode'],feedback=feedback,active_tasks=active)+ai.last_completions
         reported=ai.last_usage.get('session_costs',0)

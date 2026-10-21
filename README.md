@@ -127,3 +127,9 @@ selection controls. Click a meeting for details and its join link. Week and Day
 place overlapping meetings side by side and keep all-day events above the hourly
 grid. Times use the Mac's current timezone. Navigation reads the selected date
 range from the local cache; it cannot download uncached dates from Microsoft.
+
+### Task ownership and review
+
+Tasks have an owner and optional co-owners (one name or email per line). These are local labels, not shared assignments. **Draft email to owners** opens a draft in the Mac’s default email app when owner email addresses are available; review and send it yourself. Task notes are private to this Mac.
+
+Use **×** to dismiss a suggestion without providing feedback, or **Dismiss with feedback** to give a reason that guides later task checks. This is prompt context, not model training. Restore a dismissed suggestion to withdraw that feedback. Under **Email task options**, exclude sender domains from future task checks while keeping those messages in Mail. Existing tasks and suggestions are kept.

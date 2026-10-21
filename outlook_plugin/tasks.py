@@ -31,6 +31,16 @@ def save_tasks(tasks):
     write_json(TASKS_FILE,tasks)
 
 
+def validate_co_owners(value):
+    if not isinstance(value,list) or len(value)>20:raise ValueError('Add up to 20 co-owners.')
+    result=[]
+    for person in value:
+        if not isinstance(person,str) or len(person)>200 or any(ord(c)<32 for c in person):raise ValueError('Use a name or email address for each co-owner.')
+        person=person.strip()
+        if person and person.casefold() not in [p.casefold() for p in result]:result.append(person)
+    return result
+
+
 def add_task(
     task_type: str,
     text: str,
@@ -45,12 +55,14 @@ def add_task(
     project_id: str = "",
     color: str = "none",
     deadline=None,
+    co_owners=None,
 ) -> Dict[str, List[Dict[str, Any]]]:
     """Add a new task and return all updated tasks."""
     source_type,source_url=validate_source(source_type or ("email" if source and source.get("email_id") else "other"),source_url)
     from .projects import validate_id
     project_id=validate_id(project_id)
     priority=validate_priority(priority)
+    people=validate_co_owners(co_owners or [])
     extras=validate_task_details(color,deadline)
     tasks = load_tasks()
     if request_id and any(t.get("id")==request_id for rows in tasks.values() for t in rows):return tasks
@@ -75,6 +87,7 @@ def add_task(
         "created_at": datetime.now().isoformat(),
     }
 
+    new_item["co_owners"]=people
     new_item.update(extras)
     if source:
         new_item.update(source)
@@ -117,11 +130,12 @@ delete_task = _serialized(delete_task)
 
 
 @_serialized
-def edit_task(task_id, text, owner, kind, due_date, description=None, source_type=None, source_url=None, priority=None, project_id=None, color=None, deadline=None):
+def edit_task(task_id, text, owner, kind, due_date, description=None, source_type=None, source_url=None, priority=None, project_id=None, color=None, deadline=None, co_owners=None):
     from datetime import date
     if not text.strip(): raise ValueError('Enter a task.')
     if kind not in ('my','others','unclear'): raise ValueError('Choose an owner group.')
     if due_date: date.fromisoformat(due_date)
+    people=validate_co_owners(co_owners) if co_owners is not None else None
     if priority is not None:priority=validate_priority(priority)
     if project_id is not None:
         from .projects import validate_id
@@ -135,6 +149,7 @@ def edit_task(task_id, text, owner, kind, due_date, description=None, source_typ
                 if source_type is not None or source_url is not None:
                     platform,url=validate_source(source_type if source_type is not None else item.get('source_type','email' if item.get('email_id') else 'other'),source_url if source_url is not None else item.get('source_url',''))
                     item.update(source_type=platform,source_url=url)
+                if people is not None:item["co_owners"]=people
                 item.update(extras)
                 if priority is not None:item['priority']=priority
                 if project_id is not None:item['project_id']=project_id
