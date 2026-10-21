@@ -240,7 +240,7 @@ def run(engine,opts,email_id=None):
                 sid=hashlib.sha256((item['email_id']+'\n'+normalized+('\ncomplete:'+item['task_id'] if item.get('action_type')=='complete' else '')).encode()).hexdigest()[:24]
                 if sid in data['suggestions']:continue
                 domain=parseaddr(sources[item['email_id']]['sender'])[1].rsplit('@',1)[-1].lower()
-                item.update(id=sid,status='accepted' if (item['email_id'],' '.join(item['text'].lower().split())) in known else 'review',reason='',company=links.get(domain,''))
+                item.update(created_at=datetime.now().astimezone().isoformat(),id=sid,status='accepted' if (item['email_id'],' '.join(item['text'].lower().split())) in known else 'review',reason='',company=links.get(domain,''))
                 data['suggestions'][sid]=item
             for m in batch:data['processed'][key_for(m,opts)]={'email_id':m['id'],'checked':datetime.now().isoformat()}
             data['last_check']=datetime.now().isoformat();save(data)

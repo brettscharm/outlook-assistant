@@ -84,7 +84,7 @@ def add_task(
         "completed": False,
         "due_date": due_date or "",
         "type": task_type,
-        "created_at": datetime.now().isoformat(),
+        "created_at": datetime.now().astimezone().isoformat(),
     }
 
     new_item["co_owners"]=people
