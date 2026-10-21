@@ -14,7 +14,7 @@ from .engine import OutlookEngine
 from .local_store import profiles, LocalStoreBridge
 from .contacts import group_contacts, link_company, link_companies, suggest_company, set_favorite
 from .tasks import board_lanes, save_board_lanes, move_task, load_tasks, add_task, toggle_task, delete_task, edit_task
-from . import task_files, meeting_mail, calendar_cache, mail_archive, task_progress, bob_install, projects, ai_profiles, task_workflow, email_chat, workspace, setup_check, drafts, storage, usage, bob_status, outlook_status, onboarding
+from . import project_mail, task_files, meeting_mail, calendar_cache, mail_archive, task_progress, bob_install, projects, ai_profiles, task_workflow, email_chat, workspace, setup_check, drafts, storage, usage, bob_status, outlook_status, onboarding
 from .updater import check_and_apply_update
 
 PORT = 8484
@@ -79,6 +79,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             available=bool(release['version'] and installed and tuple(map(int,release['version'].split('.')))>tuple(map(int,installed.split('.'))))
             return self._send_json({**release,'installed':installed,'update_available':available})
         if path=='/api/task-files':return self._send_json(task_files.listing(q.get('kind',[''])[0],q.get('owner',[''])[0]))
+        if path=='/api/project-emails':return self._send_json(project_mail.listing(self.engine,q.get('project_id',[''])[0],q.get('search',[''])[0],q.get('offset',['0'])[0],q.get('limit',['25'])[0],q.get('discover',['false'])[0]=='true'))
         if path=='/api/projects':return self._send_json(projects.list_projects())
         if path=='/api/ai-profiles':return self._send_json({'profiles':ai_profiles.profiles(),'activity':ai_profiles.activity()})
         if path=='/api/drafts': return self._send_json(drafts.load())
@@ -154,7 +155,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             return self._send_json(data)
         if path.startswith('/api/'):
             return self._send_json({'error':'Unknown endpoint.'},404)
-        if path not in ('/','/index.html','/app.js','/tasks-ui.js','/review-bulk.js','/contact-groups.js','/task-files.js','/workspace-ui.js','/organize-ui.js','/calendar-ui.js','/onboarding-ui.js','/rich-editor.js','/reply-composer.js','/style.css','/app-icon.png'):
+        if path not in ('/','/index.html','/app.js','/tasks-ui.js','/review-bulk.js','/contact-groups.js','/task-files.js','/workspace-ui.js','/project-mail.js','/organize-ui.js','/calendar-ui.js','/onboarding-ui.js','/rich-editor.js','/reply-composer.js','/style.css','/app-icon.png'):
             return self._send_json({'error':'Not found.'},404)
         return super().do_GET()
 
@@ -188,6 +189,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         if path=='/api/onboarding': return self._send_json(onboarding.save(data))
         if path=='/api/task-files':return self._send_json(task_files.change(data))
         if path=='/api/bob-install':return self._send_json(bob_install.start())
+        if path=='/api/project-emails':return self._send_json(project_mail.link(self.engine,data.get('project_id'),data.get('email_id'),data.get('remove') is True))
         if path=='/api/projects':return self._send_json(projects.save(data))
         if path=='/api/ai-profiles':return self._send_json(ai_profiles.save(data))
         if path=='/api/ai-profile-test':

@@ -13,6 +13,8 @@ OWNER={'kind':{'type':'string','enum':['task','project']},'owner':ID}
 def definitions(tool):
  from .mcp_server import PAGE
  specs=[
+ ('list_project_emails','Read project emails linked through tasks or directly; unavailable mail has no content.',dict(PAGE,project_id=ID,query=S(1000)),['project_id'],False),
+ ('link_project_email','Associate a cached email with a project, or remove its direct association. Does not change Outlook or task links.',{'project_id':ID,'email_id':S(1000),'remove':BOOL},['project_id','email_id'],True),
  ('list_contact_groups','Read saved company contact groups, member emails and numeric revisions.',{},[],False),
  ('save_contact_group','Create or update a company contact group; reuse the ID on retry. Revision 0 creates; existing groups require their latest revision. remove deletes the group only.',{'id':ID,'revision':{'type':'integer','minimum':0,'maximum':2147483647},'domain':S(253),'name':S(100),'emails':array(S(254),1000),'remove':BOOL},['id','revision'],True),
  ('list_mail_folders','Read mailbox folder IDs and names.',{},[],False),
@@ -59,6 +61,10 @@ def suggestion(identifier):
 
 def handle(engine,name,args):
  from .mcp_server import page
+ if name in ('list_project_emails','link_project_email'):
+  from . import project_mail
+  if name=='list_project_emails':return project_mail.listing(engine,args['project_id'],args.get('query',''),args.get('offset',0),args.get('limit',25))
+  return project_mail.link(engine,args['project_id'],args['email_id'],args.get('remove',False))
  if name in ('list_contact_groups','save_contact_group'):
   from . import contact_groups
   return contact_groups.listing() if name=='list_contact_groups' else contact_groups.save(args)

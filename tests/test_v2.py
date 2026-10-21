@@ -1,4 +1,5 @@
 import json
+import re
 import os
 import tempfile
 import threading
@@ -50,6 +51,11 @@ class CoreTests(unittest.TestCase):
         base=f'http://127.0.0.1:{server.server_port}'
         with urllib.request.urlopen(base+'/api/config') as r:
             self.assertNotIn('secret',r.read().decode());self.assertIsNone(r.headers.get('Access-Control-Allow-Origin'))
+        with urllib.request.urlopen(base+'/',timeout=5) as r:
+            html=r.read().decode()
+        for script in re.findall(r'<script src="([^"]+)"',html):
+            with urllib.request.urlopen(base+script,timeout=5) as r:
+                self.assertTrue(r.read(),script)
         with urllib.request.urlopen(base+'/onboarding-ui.js',timeout=5) as r:
             self.assertIn('walkthrough',r.read().decode())
         with urllib.request.urlopen(base+'/api/onboarding',timeout=5) as r:
