@@ -1,8 +1,9 @@
 'use strict';
 window.projectRows=[];
 window.agentDirty=false;
+let projectFromTask=false;
 let editingProject=null,agentRows=[],agentLoaded=false,agentDirty=false,agentSaving=false,agentTimer;
-window.fillProjectSelect=(select,value)=>{select.replaceChildren(text('option','No project'));select.options[0].value='';for(const p of projectRows){const o=text('option',p.name);o.value=p.id;select.append(o);}select.value=value||'';};
+window.fillProjectSelect=(select,value)=>{select.replaceChildren(text('option','No project'));select.options[0].value='';for(const p of projectRows){const o=text('option',p.name);o.value=p.id;select.append(o);}const create=text('option','＋ Create project…');create.value='__create_project__';select.append(create);select.value=value||'';select.dataset.savedProject=select.value;};
 window.openProject=id=>{$('boardProject').value=id||'';try{localStorage.setItem('outlook-board-project',id||'');}catch{}$('boardSearch').value='';boardFingerprint='';view('tasks');renderTaskBoard();};
 window.renderBoardContext=rows=>{
  const p=projectRows.find(p=>p.id===$('boardProject').value);const root=$('boardContext');root.replaceChildren();
@@ -30,7 +31,7 @@ window.loadProjects=async()=>{
  $('boardProject').replaceChildren();for(const [value,label] of [['','All tasks'],['unassigned','No project'],...projectRows.map(p=>[p.id,p.name])]){const o=text('option',label);o.value=value;$('boardProject').append(o);}$('boardProject').value=selected;
  const saved=await api('/api/tasks');renderProjectCards([...saved.my_tasks,...saved.others_tasks]);boardFingerprint='';renderTaskBoard();
 };
-function openProjectEditor(p){$('projectLinks').replaceChildren();for(const link of p?.links||[])addProjectLinkRow(link);editingProject=p?.id||null;$('projectName').value=p?.name||'';$('projectDescription').value=p?.description||'';$('projectColor').value=p?.color||['blue','purple','green','orange','pink'][projectRows.length%5];$('projectStatus').textContent=p?'All changes saved':'';$('saveProject').hidden=!!p;$('closeProject').textContent=p?'Done':'Close';$('retryProjectSave').hidden=true;projectLastSaved=JSON.stringify(projectValues());$('projectEditor').showModal();window.mountTaskFiles($('projectEditor'),'project',editingProject);}
+function openProjectEditor(p,fromTask=false){projectFromTask=fromTask;$('projectLinks').replaceChildren();for(const link of p?.links||[])addProjectLinkRow(link);editingProject=p?.id||null;$('projectName').value=p?.name||'';$('projectDescription').value=p?.description||'';$('projectColor').value=p?.color||['blue','purple','green','orange','pink'][projectRows.length%5];$('projectStatus').textContent=p?'All changes saved':'';$('saveProject').hidden=!!p;$('closeProject').textContent=p?'Done':'Close';$('retryProjectSave').hidden=true;projectLastSaved=JSON.stringify(projectValues());$('projectEditor').showModal();window.mountTaskFiles($('projectEditor'),'project',editingProject);}
 $('newProject').onclick=()=>openProjectEditor();
 let projectSaveTimer,projectSavePromise=null,projectLastSaved='';
 function projectValues(){return {id:editingProject,name:$('projectName').value,description:$('projectDescription').value,color:$('projectColor').value,links:[...$('projectLinks').children].map(row=>({kind:row.querySelector('select').value,label:row.querySelector('[data-link-label]').value,url:row.querySelector('[data-link-url]').value.trim()}))};}
@@ -47,10 +48,10 @@ window.flushProjectEdits=async()=>{
 function queueProjectSave(){if(!editingProject)return;clearTimeout(projectSaveTimer);$('projectStatus').textContent='Saving…';projectSaveTimer=setTimeout(()=>window.flushProjectEdits(),650);}
 $('projectForm').addEventListener('input',queueProjectSave);$('projectForm').addEventListener('change',queueProjectSave);
 $('retryProjectSave').onclick=()=>window.flushProjectEdits();
-async function closeProjectEditor(){if(!await window.flushProjectEdits())return;$('projectEditor').close();await loadProjects();}
+async function closeProjectEditor(){if(!await window.flushProjectEdits())return;$('projectEditor').close();if(projectFromTask){projectFromTask=false;$('editTaskProject').focus();}await loadProjects();}
 $('closeProject').onclick=closeProjectEditor;$('projectEditor').addEventListener('cancel',e=>{e.preventDefault();closeProjectEditor();});
 $('backToSettings').onclick=async()=>{await $('settingsOpen').onclick();selectSettingsSection('personal');};
-$('projectForm').onsubmit=e=>{e.preventDefault();if(editingProject){closeProjectEditor();return;}busy(e.submitter,async()=>{try{await api('/api/projects',projectValues());$('projectEditor').close();await loadProjects();}catch(error){$('projectStatus').textContent=error.message;throw error;}});};
+$('projectForm').onsubmit=e=>{e.preventDefault();if(editingProject){closeProjectEditor();return;}busy(e.submitter,async()=>{try{const values=projectValues();const rows=await api('/api/projects',values);projectRows=rows;const created=rows.find(p=>p.name===values.name.trim());$('projectEditor').close();if(projectFromTask&&created){projectFromTask=false;fillProjectSelect($('editTaskProject'),created.id);$('editTaskProject').dispatchEvent(new Event('change',{bubbles:true}));$('editTaskProject').focus();}await loadProjects();}catch(error){$('projectStatus').textContent=error.message;throw error;}});};
 $('boardProject').onchange=()=>{try{localStorage.setItem('outlook-board-project',$('boardProject').value);}catch{}boardFingerprint='';renderTaskBoard();};
 for(const [id,page] of [['openProfile','context'],['openWritingStyle','writing'],['openUsageDetails','usage']])$(id).onclick=()=>{$('settings').close();view(page);};
 window.flushAgentEdits=async()=>{clearTimeout(agentTimer);while(agentSaving)await new Promise(resolve=>setTimeout(resolve,50));return !agentDirty||await saveAgent();};
@@ -85,3 +86,10 @@ function addProjectLinkRow(link={}){
  const remove=text('button','Remove');remove.type='button';remove.setAttribute('aria-label','Remove record link');remove.onclick=()=>{row.remove();queueProjectSave();};row.append(kind,label,url,remove);$('projectLinks').append(row);
 }
 $('addProjectLink').onclick=()=>{if($('projectLinks').children.length>=20)return;addProjectLinkRow();$('projectLinks').lastElementChild.querySelector('input').focus();};
+
+$('editTaskProject').addEventListener('change',event=>{
+ const select=event.currentTarget;
+ if(select.value==='__create_project__'){
+  event.stopImmediatePropagation();select.value=select.dataset.savedProject||'';openProjectEditor(null,true);$('projectName').focus();
+ }else select.dataset.savedProject=select.value;
+},true);
