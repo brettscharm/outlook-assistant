@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "outlook-assistant-plugin"
-version = "2.15.1"
+version = "2.15.2"
 description = "Local Outlook mail, tasks, projects, and IBM Bob assistance for Mac."
 readme = "README.md"
 requires-python = ">=3.9"

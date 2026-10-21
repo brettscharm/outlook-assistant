@@ -129,9 +129,6 @@ try{showCompletedTasks=localStorage.getItem('outlook-show-completed')!=='false';
 window.openTaskPage=id=>{if(id==='tasks')renderTaskBoard();else{taskFingerprint='';renderTaskList();}};
 function renderTaskBoard(){
  const query=$('boardSearch').value.trim().toLowerCase();
- const completedCount=taskSaved.filter(t=>t.completed).length;
- $('toggleCompletedTasks').textContent=(showCompletedTasks?'Hide completed':'Show completed')+' ('+completedCount+')';
- $('toggleCompletedTasks').setAttribute('aria-pressed',String(showCompletedTasks));
  const project=$('boardProject').value;
  const items=taskSaved.filter(t=>(!project||(project==='unassigned'?!t.project_id:t.project_id===project))).filter(t=>!query||[t.text,t.description,t.source_type,t.owner,t.assignee,t.company,t.email_subject].filter(Boolean).join(' ').toLowerCase().includes(query));
  items.sort((a,b)=>compareTasks(a,b,$('boardSort').value));
@@ -140,6 +137,10 @@ function renderTaskBoard(){
  const fingerprint=JSON.stringify([lanes,boardLimits,localToday(),showCompletedTasks]);if(draggedTask||fingerprint===boardFingerprint)return;boardFingerprint=fingerprint;
  const root=$('taskBoard');root.replaceChildren();
  for(const [key,label,rows] of lanes){const lane=text('section','','task-lane');lane.setAttribute('aria-label',label);lane.dataset.lane=key;lane.ondragover=e=>{if(draggedTask){e.preventDefault();e.dataTransfer.dropEffect='move';lane.classList.add('drop-target');}};lane.ondragleave=e=>{if(!lane.contains(e.relatedTarget))lane.classList.remove('drop-target');};lane.ondrop=e=>{e.preventDefault();lane.classList.remove('drop-target');const id=draggedTask;draggedTask=null;if(id)moveBoardTask(id,key);};const heading=text('div','','lane-heading');heading.append(text('h2',label),text('span',rows.length,'nav-count'));lane.append(heading);
+ if(key==='done'){
+ const toggle=text('button',showCompletedTasks?'Hide completed':'Show completed','lane-completed-toggle');
+ toggle.id='toggleCompletedTasks';toggle.type='button';toggle.setAttribute('aria-pressed',String(showCompletedTasks));toggle.onclick=toggleCompletedTasks;heading.append(toggle);
+ }
  if(key==='done'&&!showCompletedTasks){lane.append(text('p',rows.length?rows.length+' completed '+(rows.length===1?'task hidden.':'tasks hidden.'):'Completed tasks are hidden.','lane-empty'));root.append(lane);continue;}
  if(!rows.length)lane.append(text('p',query?'No matching tasks.':key==='done'?'Completed tasks appear here.':'Drag tasks here or choose this lane on a card.','lane-empty'));
  for(const task of rows.slice(0,boardLimits[key])){
@@ -231,7 +232,7 @@ $('editTaskType').addEventListener('change',()=>{
  }
 });
 
-$('toggleCompletedTasks').onclick=()=>{
+function toggleCompletedTasks(){
  showCompletedTasks=!showCompletedTasks;
  try{localStorage.setItem('outlook-show-completed',String(showCompletedTasks));}catch{}
  boardFingerprint='';renderTaskBoard();

@@ -124,3 +124,5 @@ dialog{max-height:calc(100dvh - 48px);overflow:auto;border-radius:16px;box-shado
 #assistantOpen{display:flex;align-items:center;gap:9px}.assistant-identity{display:flex;align-items:center;gap:10px}.assistant-identity img,#assistantOpen img{flex-shrink:0;object-fit:contain}
 
 #moreNavigation[hidden]{display:none}#projectList{display:grid;gap:16px;margin-top:20px}#boardProject{max-width:200px}#agentActivityQuick{font-size:11px;color:var(--muted)}#agentActivity{max-height:240px;overflow:auto}#settings-agents textarea{width:100%}#projectEditor{width:min(520px,90vw)}
+
+.lane-heading{flex-wrap:wrap}.lane-heading .nav-count{margin-left:auto}.lane-completed-toggle{flex-basis:100%;font-size:12px;padding:6px 10px;background:transparent;text-align:left;color:#51545b}
