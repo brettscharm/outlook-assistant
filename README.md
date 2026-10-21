@@ -141,7 +141,7 @@ The general in-app chat has been removed. Task discovery and email drafting rema
 
 Open **Settings → Connect AI apps → Copy connection settings**. Add the `outlook-assistant` entry to your desktop AI client’s local MCP configuration (merge with existing servers rather than replacing them). Keep Outlook Assistant running. Claude Desktop supports local MCP configuration; restart it after adding the server. This uses a bundled Apple silicon executable, so no separate Python, Node, or Bob installation is required for MCP.
 
-The connection exposes tools for searching mail, reading an email, listing tasks and projects, contacts/companies, and cached Teams meetings. It also creates and edits tasks/projects, moves tasks between lanes, and manages progress notes, waiting-on/next-step fields, and checklist steps. Results are paginated, mail exclusions are respected, and no API keys are returned. Changes save directly to the same local workspace and appear in the app. It does not send emails, run Bob, or expose attachment contents. Your chosen AI client may send requested content to its provider under that client’s settings.
+The connection exposes tools for searching mail, reading an email, listing tasks and projects, contacts/companies, and cached Teams meetings. It also creates and edits tasks/projects, moves tasks between lanes, and manages progress notes, waiting-on/next-step fields, and checklist steps. Results are paginated, mail exclusions are respected, and no API keys are returned. Changes save directly to the same local workspace and appear in the app. It can also manage review suggestions, company links and pins, board lanes, local drafts, attachments, profile preferences, exclusions, specialist instructions, and scan settings. Only `start_task_scan` calls Bob and consumes its allowance. Mail and calendar remain read-only. It cannot send emails, reveal API keys, or access arbitrary files. Your chosen AI client may send requested content to its provider under that client’s settings.
 
 This is a local stdio connection, not a public link. ChatGPT’s custom MCP setup requires a supported remote endpoint or Secure MCP Tunnel; a localhost URL pasted into chat does not grant access. This app does not publish your mailbox or configure a tunnel.
 
@@ -150,10 +150,10 @@ For source installations, `python3 -m outlook_plugin.mcp_server` runs the same t
 ### MCP write tools
 
 - Tasks: `get_task`, `create_task`, `edit_task`, `list_task_lanes`, `move_task`. Fields include owner/co-owners, priority, dates or meeting deadlines, color, source links, and project assignment.
-- Projects: `get_project`, `create_project`, `edit_project`.
+- Projects: `get_project`, `create_project`, `edit_project`, `delete_project` (empty projects only). Includes colors and ISC/Gainsight/deployment links.
 - Progress: `add_task_update`, `add_subtask`, `set_subtask_completed`, `set_task_next_step`.
 
-Write tools are marked as mutations for the AI client. Creation/append calls require a stable `request_id` to prevent duplicates on retry. Partial task/project edits require the latest `revision` from `get_task`/`get_project` as `expected_revision`; stale edits return an error instead of overwriting newer data. Reconnect or refresh tools in your AI client after updating.
+Write tools are marked as mutations for the AI client. Task/project creation and progress append calls require a stable `request_id` to prevent duplicates on retry. Partial task/project edits require the latest `revision` from `get_task`/`get_project` as `expected_revision`; stale edits return an error instead of overwriting newer data. Reconnect or refresh tools in your AI client after updating.
 
 Tasks in a project display its shared color. Edit the project to change the color for every task in it; existing projects receive an automatic color. Tasks moved out of a project return to their personal color. Completed tasks retain their muted appearance. MCP project creation/editing also accepts a `color`.
 
@@ -185,3 +185,5 @@ Calendar overflow opens a list of all cached meetings for that date. Meeting det
 ### Bulk task review
 
 In **Tasks to review**, select individual suggestions or **Select all results** (including later pages). **Add selected…** can assign a project, owner, priority, date, or co-owners. Only checked fields override existing values. Successful additions stay saved; if a request fails, retry processes only the remaining selections. Completion suggestions are reviewed individually.
+
+MCP attachments are restricted to saved task/project copies. Reads use paginated base64 chunks; uploads support files up to 48 KiB per call (use the app for larger files). Draft changes affect the app’s local drafts, not Outlook’s mailbox. Preferences and specialist edits require revisions; drafts use numeric revisions. Delete operations are explicit tools. Calendar range queries require timezone-aware ISO timestamps and are limited to 63 days. Reconnect your AI client to discover newly added tools.

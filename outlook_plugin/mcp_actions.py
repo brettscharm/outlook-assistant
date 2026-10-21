@@ -20,6 +20,8 @@ FIELDS={
 }
 
 
+LINKS={'type':'array','maxItems':20,'items':{'type':'object','properties':{'kind':{'type':'string','enum':['isc','gainsight','deployment','other']},'label':S(200),'url':S(4000)},'required':['url'],'additionalProperties':False}}
+
 def definitions(tool):
  return [
   tool('get_task','Read a task and its revision before editing.',{'task_id':ID},['task_id']),
@@ -27,12 +29,12 @@ def definitions(tool):
   tool('list_task_lanes','Read available board lane IDs and names.'),
   tool('create_task','Create a saved task. Defaults to the current user. Reuse request_id on retries.',dict(FIELDS,request_id=REQUEST,email_id=ID,evidence=S(1200)),['text','request_id'],write=True),
   tool('edit_task','Edit only supplied fields; omitted fields stay unchanged. Get the latest revision first.',dict(FIELDS,task_id=ID,expected_revision=REV),['task_id','expected_revision'],write=True),
-  tool('move_task','Move a task to a lane. The done lane completes it; other lanes reopen it.',{'task_id':ID,'lane_id':ID},['task_id','lane_id'],write=True),
-  tool('create_project','Create a project. Reuse request_id on retries.',{'name':dict(S(100),minLength=1),'description':S(4000),'color':{'type':'string','enum':list(projects.COLORS)},'request_id':REQUEST},['name','request_id'],write=True),
-  tool('edit_project','Edit project name/description; omitted fields stay unchanged.',{'project_id':ID,'name':dict(S(100),minLength=1),'description':S(4000),'color':{'type':'string','enum':list(projects.COLORS)},'expected_revision':REV},['project_id','expected_revision'],write=True),
+  tool('move_task','Move a task to a lane. The done lane completes it; other lanes reopen it.',{'task_id':ID,'lane_id':ID,'expected_revision':REV},['task_id','lane_id'],write=True),
+  tool('create_project','Create a project. Reuse request_id on retries.',{'name':dict(S(100),minLength=1),'description':S(4000),'color':{'type':'string','enum':list(projects.COLORS)},'links':LINKS,'request_id':REQUEST},['name','request_id'],write=True),
+  tool('edit_project','Edit project name/description; omitted fields stay unchanged.',{'project_id':ID,'name':dict(S(100),minLength=1),'description':S(4000),'color':{'type':'string','enum':list(projects.COLORS)},'links':LINKS,'expected_revision':REV},['project_id','expected_revision'],write=True),
   tool('add_task_update','Append a dated progress note. Reuse request_id on retries.',{'task_id':ID,'text':dict(S(4000),minLength=1),'request_id':REQUEST},['task_id','text','request_id'],write=True),
   tool('add_subtask','Add a checklist step. Reuse request_id on retries.',{'task_id':ID,'text':dict(S(500),minLength=1),'request_id':REQUEST},['task_id','text','request_id'],write=True),
-  tool('set_subtask_completed','Complete or reopen one checklist step.',{'task_id':ID,'subtask_id':ID,'completed':{'type':'boolean'}},['task_id','subtask_id','completed'],write=True),
+  tool('set_subtask_completed','Complete or reopen one checklist step.',{'task_id':ID,'subtask_id':ID,'completed':{'type':'boolean'},'expected_revision':REV},['task_id','subtask_id','completed'],write=True),
   tool('set_task_next_step','Set waiting-on and/or next step; omitted fields stay unchanged.',{'task_id':ID,'waiting_on':S(300),'next_step':S(2000),'expected_revision':REV},['task_id','expected_revision'],write=True),
  ]
 
@@ -60,11 +62,11 @@ def handle(engine,name,args):
   if name=='get_project':return result(project_by_id(args['project_id']),'project')
   if name in ('create_project','edit_project'):
    if name=='create_project':
-    rows=projects.save({'name':args['name'],'description':args.get('description',''),**({'color':args['color']} if 'color' in args else {})},request_id='mcp-'+args['request_id'])
+    rows=projects.save({'name':args['name'],'description':args.get('description',''),**{k:args[k] for k in ('color','links') if k in args}},request_id='mcp-'+args['request_id'])
     item=next(p for p in rows if p.get('request_id')=='mcp-'+args['request_id'])
    else:
     current=project_by_id(args['project_id']);check_revision(current,args)
-    projects.save({'id':current['id'],'name':args.get('name',current['name']),'description':args.get('description',current.get('description','')),'color':args.get('color',current['color'])})
+    projects.save({'id':current['id'],'name':args.get('name',current['name']),'description':args.get('description',current.get('description','')),'color':args.get('color',current['color']),'links':args.get('links',current.get('links',[]))})
     item=project_by_id(current['id'])
    return result(item,'project')
   if name=='create_task':
@@ -86,10 +88,14 @@ def handle(engine,name,args):
   if name=='edit_task':
    check_revision(item,args)
    tasks.edit_task(item['id'],args.get('text',item['text']),args.get('owner',item.get('assignee','')),args.get('type',item.get('type','my')),args.get('due_date',item.get('due_date','')),**{k:args[k] for k in ('description','co_owners','priority','project_id','source_type','source_url','color','deadline') if k in args})
-  elif name=='move_task':tasks.move_task(item['id'],args['lane_id'])
+  elif name=='move_task':
+   if 'expected_revision' in args:check_revision(item,args)
+   tasks.move_task(item['id'],args['lane_id'])
   elif name in ('add_task_update','add_subtask'):
    task_progress.change(item['id'],'add_update' if name=='add_task_update' else 'add_subtask',dict(args,request_id='mcp-'+hashlib.sha256(args['request_id'].encode()).hexdigest()))
-  elif name=='set_subtask_completed':task_progress.change(item['id'],'set_subtask',args)
+  elif name=='set_subtask_completed':
+   if 'expected_revision' in args:check_revision(item,args)
+   task_progress.change(item['id'],'set_subtask',args)
   elif name=='set_task_next_step':
    check_revision(item,args)
    task_progress.change(item['id'],'set_waiting',{'waiting_on':args.get('waiting_on',item.get('waiting_on','')),'next_step':args.get('next_step',item.get('next_step',''))})
