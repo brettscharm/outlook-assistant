@@ -16,3 +16,9 @@ test('failed group save keeps draft dirty and allows retry before quit',async()=
  await assert.rejects(ctx.window.flushContactGroups(),/Offline/);assert.equal(vm.runInContext('groupEditor.dirty',ctx),true);assert.match($('contactGroupStatus').textContent,/Not saved/);
  ctx.api=async(path,payload)=>({...payload,revision:1});await ctx.window.flushContactGroups();assert.equal(vm.runInContext('groupEditor.dirty',ctx),false);assert.equal(ctx.state.pending,0);
 });
+
+test('calendar group preparation excludes rooms and retains people across companies',async()=>{
+ const {ctx}=setup();ctx.loadContacts=async()=>{};ctx.openContactGroup=(company,group,seed)=>{ctx.created={company,seed};};
+ await ctx.window.createGroupFromMeeting({subject:'Planning',attendees:[{name:'Pat',email:'pat@example.com',type:'required'},{name:'Sam',email:'sam@other.com',type:'optional'},{name:'Room',email:'room@example.com',type:'resource'},{name:'No address',email:''}]});
+ assert.deepEqual(Array.from(ctx.created.seed.emails),['pat@example.com','sam@other.com']);assert.equal(ctx.created.seed.name,'Planning');assert.equal(ctx.created.company.company,'Example');
+});

@@ -31,6 +31,44 @@ func nested(object map[string]any, keys ...string) any {
 	}
 	return value
 }
+func attendeeRows(object map[string]any) ([]map[string]any, bool) {
+	rows := []map[string]any{}
+	available := false
+	for _, field := range []struct{ key, kind string }{{"RequiredAttendees", "required"}, {"OptionalAttendees", "optional"}, {"Resources", "resource"}, {"attendees", "invited"}} {
+		values, ok := object[field.key].([]any)
+		if !ok {
+			continue
+		}
+		available = true
+		for _, value := range values {
+			person, ok := value.(map[string]any)
+			if !ok {
+				continue
+			}
+			mailbox, ok := person["Mailbox"].(map[string]any)
+			if !ok {
+				mailbox, ok = person["emailAddress"].(map[string]any)
+			}
+			if !ok {
+				mailbox = person
+			}
+			row := map[string]any{"type": field.kind}
+			for _, pair := range [][2]string{{"Name", "name"}, {"name", "name"}, {"EmailAddress", "email"}, {"address", "email"}, {"email", "email"}, {"ResponseType", "response"}, {"responseType", "response"}} {
+				source := mailbox
+				if pair[1] == "response" {
+					source = person
+				}
+				if text, ok := source[pair[0]].(string); ok {
+					row[pair[1]] = text
+				}
+			}
+			if len(row) > 1 {
+				rows = append(rows, row)
+			}
+		}
+	}
+	return rows, available
+}
 func outlookRow(object map[string]any, account string) map[string]any {
 	row := map[string]any{"account": account, "source": "Teams calendar"}
 	for source, target := range map[string]string{"Subject": "subject", "Start": "startTime", "End": "endTime", "CalendarItemType": "eventType", "IsCancelled": "isCancelled", "IsAllDayEvent": "isAllDayEvent", "Location": "location", "OnlineMeetingJoinUrl": "skypeTeamsMeetingUrl", "LastModifiedTime": "lastModifiedTime", "UID": "iCalUID", "ResponseType": "responseType", "IsDraft": "isDraft"} {
@@ -42,6 +80,8 @@ func outlookRow(object map[string]any, account string) map[string]any {
 	}
 	row["objectId"] = nested(object, "ItemId", "Id")
 	row["organizerName"] = nested(object, "Organizer", "Mailbox", "Name")
+	row["organizerEmail"] = nested(object, "Organizer", "Mailbox", "EmailAddress")
+	row["attendees"], row["attendeesAvailable"] = attendeeRows(object)
 	if mailbox, ok := nested(object, "ItemId", "mailboxInfo", "mailboxSmtpAddress").(string); ok && mailbox != "" {
 		row["account"] = strings.ToLower(mailbox)
 	}
@@ -124,11 +164,12 @@ func main() {
 							return nil
 						}
 						row := map[string]any{"account": account.TenantID + "/" + account.UserID, "source": "Legacy Teams calendar"}
-						for _, key := range []string{"objectId", "iCalUID", "subject", "startTime", "endTime", "eventType", "isCancelled", "isAllDayEvent", "organizerName", "location", "skypeTeamsMeetingUrl", "lastModifiedTime"} {
+						for _, key := range []string{"objectId", "iCalUID", "subject", "startTime", "endTime", "eventType", "isCancelled", "isAllDayEvent", "organizerName", "organizerEmail", "location", "skypeTeamsMeetingUrl", "lastModifiedTime"} {
 							if v, ok := object[key]; ok {
 								row[key] = v
 							}
 						}
+						row["attendees"], row["attendeesAvailable"] = attendeeRows(object)
 						rows = append(rows, row)
 						return nil
 					})

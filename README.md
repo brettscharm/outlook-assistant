@@ -195,3 +195,5 @@ MCP attachments are restricted to saved task/project copies. Reads use paginated
 ### Company contact groups
 
 Under **Contacts & companies**, expand a company and choose **Add group**. Name a team or department, select people across its linked domains, or paste addresses. Changes save automatically on this Mac. **Copy emails** copies a deduplicated semicolon-separated list for Outlook. Groups survive restarts and mail refreshes, and are included in local configuration backups. Deleting a group leaves the contacts untouched. MCP clients can use `list_contact_groups` and `save_contact_group` after reconnecting.
+
+Calendar event details show cached invitees, their required/optional status and responses when available. **Create group** preselects invitees with email addresses (excluding rooms/resources) and lets you choose a company and adjust membership. **Copy emails** is also available directly in the event. Missing cached invitees are reported rather than inferred; the local cache cannot guarantee a complete invitation list.

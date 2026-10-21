@@ -46,3 +46,16 @@ class CalendarTests(unittest.TestCase):
   self.assertEqual(meeting_url({'location':'Join: https://example.webex.com/meet/room'}),'https://example.webex.com/meet/room')
   for value in ('javascript:alert(1)','https://user:pass@example.com/','https://example.com/[redacted]'):
    self.assertEqual(meeting_url({'skypeTeamsMeetingUrl':value}),'')
+
+ def test_attendees_are_deduplicated_and_invalid_addresses_not_copyable(self):
+  now=datetime(2026,10,21,tzinfo=timezone.utc)
+  row=dict(account='a',objectId='event',startTime='2026-10-22T12:00:00Z',endTime='2026-10-22T13:00:00Z',attendeesAvailable=True,organizerEmail='HOST@example.com',attendees=[{'name':'Pat','email':'PAT@example.com','type':'required','response':'Accept'},{'name':'Pat duplicate','email':'pat@example.com','type':'optional'},{'name':'Room','email':'room@example.com','type':'resource'},{'name':'Name only','email':'invalid'}])
+  events,_=normalize([row],now,30);event=events[0]
+  self.assertEqual(len(event['attendees']),3)
+  self.assertEqual(event['attendees'][0],{'name':'Pat','email':'pat@example.com','type':'required','response':'Accept'})
+  self.assertEqual(event['attendees'][2]['email'],'')
+  self.assertEqual(event['organizer_email'],'host@example.com')
+  self.assertTrue(event['attendees_available'])
+  row.pop('attendeesAvailable');row.pop('attendees')
+  events,_=normalize([row],now,30)
+  self.assertFalse(events[0]['attendees_available']);self.assertEqual(events[0]['attendees'],[])

@@ -30,6 +30,14 @@ function showCalendarMeeting(event){
  if(event.organizer)root.append(text('p','Organizer · '+event.organizer));if(event.location)root.append(text('p','Location · '+event.location));
  try{const url=new URL(event.join_url);if(url.protocol==='https:'&&!url.username&&!url.password&&!event.join_url.includes('[redacted]')){const join=text('a','Join meeting','feedback-link');join.href=url.href;join.target='_blank';join.rel='noopener noreferrer';root.append(join);}}catch{}
  if(!root.querySelector('a'))root.append(text('p','No call link was found in this cached event. Open the invitation in Outlook or Teams.','muted small'));
+ const attendees=event.attendees||[];
+ root.append(text('h3','Invited people'));
+ if(attendees.length){
+  const list=text('div','','meeting-attendees');
+  for(const person of attendees){const row=text('div','','meeting-attendee');row.append(text('strong',person.name||person.email),text('span',[person.email,person.type==='invited'?'':person.type,person.response].filter(Boolean).join(' · '),'muted small'));list.append(row);}root.append(list);
+  const addresses=[...new Set(attendees.filter(p=>p.type!=='resource'&&p.email).map(p=>p.email))];
+  if(addresses.length){const actions=text('div','','actions');const create=text('button','Create group');create.onclick=()=>busy(create,async()=>{await window.createGroupFromMeeting(event);});const copy=text('button','Copy emails');copy.onclick=()=>copyGroupEmails(addresses);actions.append(create,copy);root.append(actions);}
+ }else root.append(text('p',event.attendees_available?'No invitees are listed in this cached event.':'The invitee list was not saved in this calendar cache. Open the invitation in Outlook or Teams.','muted small'));
  root.append(text('p','Saved calendar event · Changes are made in Teams or Outlook.','muted small'));if(!$('calendarMeeting').open)$('calendarMeeting').showModal();
 }
 function calendarEventButton(event,compact=false){

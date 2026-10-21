@@ -25,3 +25,23 @@ func TestOutlookAdapter(t *testing.T) {
 		t.Fatal("undefined field leaked")
 	}
 }
+
+func TestAttendeeAllowlist(t *testing.T) {
+	object := map[string]any{"RequiredAttendees": []any{map[string]any{"Mailbox": map[string]any{"Name": "Pat", "EmailAddress": "pat@example.com", "Secret": "hidden"}, "ResponseType": "Accept", "Body": "private"}}, "OptionalAttendees": []any{map[string]any{"Mailbox": map[string]any{"Name": "Sam", "EmailAddress": "sam@example.org"}}}}
+	row := outlookRow(object, "account")
+	attendees := row["attendees"].([]map[string]any)
+	if row["attendeesAvailable"] != true || len(attendees) != 2 || attendees[0]["email"] != "pat@example.com" || attendees[0]["response"] != "Accept" || attendees[1]["type"] != "optional" {
+		t.Fatal("attendees lost")
+	}
+	if _, ok := attendees[0]["Secret"]; ok {
+		t.Fatal("unrelated data leaked")
+	}
+	_, available := attendeeRows(map[string]any{})
+	if available {
+		t.Fatal("invented coverage")
+	}
+	_, available = attendeeRows(map[string]any{"RequiredAttendees": []any{}})
+	if !available {
+		t.Fatal("empty cached list unrecognized")
+	}
+}

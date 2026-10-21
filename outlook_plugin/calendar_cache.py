@@ -29,6 +29,28 @@ def meeting_url(row):
         except ValueError:pass
     return ''
 
+def attendee_email(value):
+    if not isinstance(value,str):return ''
+    value=value.strip().lower()
+    return value if len(value)<=254 and re.fullmatch(r'[^\s@<>?,;]+@[^\s@<>?,;]+\.[^\s@<>?,;]+',value) else ''
+
+
+def attendees(row):
+    people={}
+    raw=row.get('attendees',[])
+    if not isinstance(raw,list):return []
+    for item in raw[:2000]:
+        if not isinstance(item,dict):continue
+        name=str(item.get('name') or '')[:500]
+        email=attendee_email(item.get('email'))
+        if not name and not email:continue
+        key=email or 'name:'+name.casefold()
+        kind=item.get('type') if item.get('type') in ('required','optional','resource') else 'invited'
+        person={'name':name or email,'email':email,'type':kind,'response':str(item.get('response') or '')[:100]}
+        if key not in people or people[key]['type']!='required':people[key]=person
+    return list(people.values())
+
+
 def normalize(rows,now,days):
     entries={};skipped=0
     for row in rows:
@@ -47,6 +69,7 @@ def normalize(rows,now,days):
         if end<=now or start>=now+timedelta(days=days):continue
         result.append({'id':key,'meeting_id':hashlib.sha256(json.dumps([row.get('account'),row.get('objectId') or [row.get('iCalUID'),start.isoformat()]]).encode()).hexdigest(),'subject':str(row.get('subject') or 'Untitled meeting')[:2000],
           'start_time':start.isoformat(),'end_time':end.isoformat(),'organizer':str(row.get('organizerName') or '')[:500],
+          'organizer_email':attendee_email(row.get('organizerEmail')),'attendees':attendees(row),'attendees_available':row.get('attendeesAvailable') is True,
           'location':str(row.get('location') or '')[:2000],'join_url':meeting_url(row),
           'all_day':row.get('isAllDayEvent') is True,'source':str(row.get('source') or 'Teams cache'),'response':str(row.get('responseType') or '')})
     return sorted(result,key=lambda row:row['start_time']),skipped

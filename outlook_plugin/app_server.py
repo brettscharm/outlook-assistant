@@ -123,7 +123,9 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             backend=self.engine.get_active_backend()
             if not isinstance(backend,LocalStoreBridge): raise RuntimeError('Contacts currently requires the local Outlook cache reader.')
             cfg=read_config()
-            groups=group_contacts(backend.get_emails(folder='all',limit=None),cfg.get('domain_companies',{}))
+            links=dict(cfg.get('domain_companies',{}))
+            for saved_group in cfg.get('contact_groups',[]):links.setdefault(saved_group['domain'],'')
+            groups=group_contacts(backend.get_emails(folder='all',limit=None),links)
             accounts=cfg.get('user_context',{}).get('accounts','')
             companies=sorted(set([row.split('\t')[0].strip() for row in accounts.splitlines() if row.strip()]+list(cfg.get('domain_companies',{}).values())),key=str.casefold)
             for group in groups:
