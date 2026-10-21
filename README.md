@@ -1,121 +1,82 @@
 # Outlook Assistant for Mac
 
-Read the mail **already cached by New Outlook on your Mac**, search it, keep tasks and personal work context, and generate drafts and briefings through **IBM Bob Shell** using your own Bob API key.
+A desktop workspace for mail cached by Outlook, tasks, contacts, and an IBM Bob-powered assistant. Opens in its own Mac window—no browser or Terminal needed for everyday use.
 
-## Open the Mac app
+## Install on a Mac
 
-Download the Mac app from [Releases](https://github.com/brettscharm/outlook-assistant/releases), unzip it, move **Outlook Assistant.app** into Applications, and open it. Python and the local mail reader are included. Version 2.8 opens its own native Mac window with a Dock icon and menus. Its bundled local service starts automatically without a Terminal window. The browser interface remains available for migration and troubleshooting, but is no longer the main entry point.
+1. **[Open the latest release](https://github.com/brettscharm/outlook-assistant/releases/latest)** and download the **Desktop-Mac.zip** file under **Assets**. Do not choose GitHub’s “Source code” ZIP.
+2. Unzip it and move **Outlook Assistant.app** into **Applications**. Keep one installed copy.
+3. Open **Microsoft Outlook**, sign in, and let your mail finish downloading.
+4. Open **Outlook Assistant**. Use **Settings → Setup** to see any missing requirements.
+5. For AI features, install **[IBM Bob Shell](https://bob.ibm.com/docs/shell/getting-started/install-and-setup)**, then add your Bob API key in **Settings → Bob connection** and test the connection. Add your name and email in **More → My context**.
 
-The release provides one **Universal Mac** download for Apple silicon and Intel, requiring **macOS 13 or later**. Python and a universal cache reader are bundled; recipients do not need Python, Git, Xcode, or Homebrew to launch the app. IBM Bob Shell 2.x and its Node.js 24+ runtime remain separate prerequisites for AI features. The native Apple silicon and translated Intel app paths were smoke-tested with isolated empty settings. Physical Intel hardware, other macOS versions, and other Outlook cache layouts have not been verified. This is ad-hoc signed, not Developer ID signed or notarized: macOS or company policy may block it. Do not disable security controls to run it.
+**[Step-by-step installation and troubleshooting →](docs/INSTALL.md)**
 
-For source users, double-click **Launch Outlook Assistant.command**, or run `./run.sh`. No administrator access, launch agent, shell-profile edit, or background installer is required.
+The Mac app includes Python and the mail reader. You do not need Git, Xcode, Python, or Homebrew to open it. AI features additionally require **Bob Shell 2.x and Node.js 24+**; these are not automatically installed or updated by this app. Use IBM’s official setup instructions.
 
-## Everyday workflow
+**Requirements:** macOS 13 or later, Apple silicon or Intel, and New Outlook with a supported local cache. Compatibility with every Mac, Outlook version, and company-managed device is not guaranteed. The current downloadable app is ad-hoc signed, **not Developer ID signed or notarized**. macOS or company policy may block it; do not disable security controls.
 
-Use Tasks, Mail, Ask your email, Drafts, and Contacts for daily work. More contains context, writing style, usage, calendar, and briefing. Setup links take you to the missing step. Tasks and Drafts are searchable and paginated. Saved drafts can be edited without their source email, and the compact email toolbar keeps additional formatting under More formatting. Large rich-text saves and browser recovery conflicts are handled without blocking other drafts.
+**Download versus app version:** the latest packaged desktop release is currently **2.10.0**. Newer application features are delivered by the in-app updater. Keep the app open and connected to the internet; installation waits for a safe idle period and for active Bob work to finish. The displayed version changes after the update restarts the service. A package update does not replace the bundled runtime or Finder/Dock icon; those require a newer desktop download.
 
-Usage shows locally recorded Bobcoins and available token counts; it is not an account-wide balance or dollar invoice. Invalid, expired, and revoked keys show persistent, credential-specific warnings after a request detects the problem.
+## Everyday use
 
-## Connect Bob
+- **Tasks:** create and edit tasks, customize lanes, and drag cards between them. Optional priorities and due dates support sorting. Upcoming deadlines stand out; completed cards turn gray and can be hidden without deleting them.
+- **Tasks to review:** review suggested actions before adding them. Accepting one keeps you on the review page. Unclear suggestions default to you; choosing My task uses your saved name. You can assign a different owner or dismiss a suggestion with a reason.
+- **Mail:** browse cached mail and folders, search, preview source emails, and draft replies. Outlook must download new mail before this app can read it.
+- **Drafts:** drafts save locally. Copy a draft into Outlook, review it, and send it there. The app does not send mail or insert Reply All drafts into Outlook.
+- **Contacts:** browse cached senders by domain and link multiple domains to one company. This is not an Outlook address-book sync.
+- **Assistant:** open it from the bottom left, or expand it. Ask about mail, tasks, and contacts. Supported changes appear as proposals for you to review and apply.
+- **More:** My context, Writing style, Usage, Briefing, and Calendar. Calendar is not connected; Briefing summarizes a limited email snapshot, not your complete day.
 
-Install [IBM Bob Shell 2.x](https://bob.ibm.com/docs/shell/getting-started/install-and-setup) through IBM's official distribution. In Settings, enter your Bob API key, and a team ID if you use a general key. Click **Test Bob connection**.
+Your name, role, account list, and writing preferences help personalize Bob’s results. Writing style uses examples and instructions; it does not train a new model. Usage reports this app’s recorded Bobcoins and available token counts, not an account-wide balance or dollar bill.
 
-The app invokes `bob run --format json`, passes prompts on stdin and the key through `BOB_API_KEY`, and reads `last_message` plus session usage. Requests use your Bob subscription; the app does not use an invented Bob HTTP API or substitute canned replies. Each request has a 120-second timeout, three-turn limit, and one-Bobcoin cost limit. Only one Bob request runs at a time. File, command, MCP, skill, subagent, and mode tools are disabled for these sessions.
+## Automatic task discovery and sync
 
-Bob runs when you request an AI action or enable scheduled task scans. Mail refresh does not consume Bob usage. Email text is untrusted context, not an instruction to execute commands. Generated drafts autosave locally until you copy them; the app cannot send mail.
+After identity and Bob connection setup, a fresh configuration defaults to checking every **15 minutes**, initially looking back **seven days**. Existing saved scan settings are preserved. Change the date range or pause discovery in **Tasks to review → Task discovery settings**.
 
-## Local Outlook data
+Checks run while the app’s local service is running and process unprocessed or changed cached messages in batches. Relevant message excerpts and saved context go to IBM Bob using your allowance. The app imposes no spending cap; IBM account limits still apply. Mail-only reads do not use Bob.
 
-New Outlook's active store is normally:
+**Sync now** refreshes cached mail and requests a task check when setup is complete and Bob is available. It cannot force Outlook to download cloud mail. Keep Outlook open and synced for fresh data. Bob receives limited cached excerpts, so review task ownership, dates, and generated answers.
 
-```
+## Your data and updates
+
+Saved tasks, drafts, chat, and preferences live outside the app bundle and survive normal restarts and updates. Changes autosave; adding a new task and accepting a suggestion remain explicit actions.
+
+- User data: `~/.outlook_assistant_*.json` in your Mac user folder.
+- Local recovery copies: `~/.outlook_assistant_backups`.
+- Updated app code: `~/Library/Application Support/Outlook Assistant/app`.
+- **Settings → Startup & storage → Export a backup** creates an extra copy excluding your Bob key and mailbox. In-app backup import is not implemented.
+
+Private files have owner-only permissions, not encryption. Local recovery copies may contain credentials and private work content; use your normal Mac backup for protection against laptop or disk loss. The app does not send usage registrations to the repository owner.
+
+Keep one app at `~/Applications/Outlook Assistant.app` or `/Applications/Outlook Assistant.app`. Code updates use the same Application Support directory and do not create duplicate apps. To replace the desktop bundle, quit the app and replace that same copy. Do not delete your user-data files to update.
+
+Updates use HTTPS and an exact repository commit; they do not yet have independently signed update manifests. Developer ID signing, notarization, and fresh-machine testing remain production-release requirements. See the [Mac release checklist](docs/MAC_RELEASE_CHECKLIST.md).
+
+## Outlook cache access
+
+The reader discovers profiles under:
+
+```text
 ~/Library/Group Containers/UBF8T346G9.Office/Outlook/Outlook 15 Profiles/<profile>/HxStore.hxd
 ```
 
-Large cached bodies can be stored under that profile's `Files/` directory. The older `Data/Outlook.sqlite` can contain stale legacy mail even while New Outlook is running. Finding Outlook installed is not proof of current mailbox access.
+It reads a temporary copy and does not modify Outlook’s store. Select a profile in Settings if several are found. No Microsoft app registration or Graph sign-in is used for this local-cache path. macOS permissions and organization policy still apply.
 
-The app automatically finds profiles and uses a pinned, locally built **hxmail** reader. It reads a consistent temporary copy, then removes the copy. The original store is never modified. No Microsoft app registration, Graph token, or cloud mailbox login is used for this path. macOS may ask for permission to access Outlook's data. Several profiles require selection in Settings.
+Outlook’s private cache format can change. This is an experimental reader, not a Microsoft-supported mailbox export. A missing body displays as Preview only. Cloud-only mail, full attachment archiving, Slack ingestion, shared task assignment, and calendar sync are not implemented.
 
-This is an **experimental cache reader**, not a Microsoft-supported export API. Supported layouts include Outlook 16.112's header `0x428`, body `0x740`, and folder `0x4c2`, plus upstream 16.114/16.115 layouts. Unknown layouts fail visibly. Deleted/stale records or incomplete folders can exist in caches; the view is not an authoritative server export. Multiple account roots are included; folder identity is preserved, but account labels are not inferred.
+## Developers
 
-A cached body is shown when available; otherwise the app explicitly shows **Preview only**. It cannot download content Outlook has not cached. Keep Outlook running and synced for new mail; the page checks the cache every minute, and **Sync now** re-reads it. This button does not force Outlook to fetch cloud content.
+For source development, Python is required. Double-click **Launch Outlook Assistant.command** or run `./run.sh` from a checkout. The similarly named **Install Outlook Assistant.command** is a source launcher, not the packaged desktop installer. Most users should use the release ZIP above.
 
-**Calendar support is not implemented for the new cache format.** Meeting invitations are searchable as mail, but do not establish availability. Bob must not invent free time. Legacy AppleScript and explicit Graph bridges remain in source for compatibility, but are not substitutes for a successful current-cache read.
-
-## My context
-
-Use **My context** for your role, accounts/customers, key people, priorities, and writing preferences. Context and the Bob key are saved in `~/.outlook_assistant_config.json` with owner-only permissions; tasks use `~/.outlook_assistant_tasks.json`. These files are not part of the application or GitHub repository. The API never returns the saved Bob key.
-
-Your selected email and saved context go to IBM Bob when generating a draft. Briefings currently use up to 40 unread Inbox previews. IBM Bob's own retention and logging policies still apply. This is not fully offline AI. Mail itself is kept in memory by the app; no app-managed mailbox database or remote telemetry is created.
-
-## Updates
-
-While the page is open, updates are checked automatically after 45 seconds and then every five minutes. Installation waits until the page has been idle for 30 seconds, Bob is not working, Settings is closed, and no task suggestions are awaiting review. The update restarts the local server. The open page detects the new server instance and refreshes automatically. Draft text is retained across that refresh. Source checkouts with local changes are not overwritten. ZIP/app installs stage the new package and validate archive paths before replacing it. Updates use HTTPS and the repository's exact commit; they are not independently cryptographically signed.
-
-The bundled Python runtime stays inside the app; updateable application code lives in `~/Library/Application Support/Outlook Assistant/app`. Keep one installed copy at `~/Applications/Outlook Assistant.app` (or `/Applications/Outlook Assistant.app`). App updates replace code in the same Application Support folder; they do not create another app. Runtime upgrades should replace the existing app at the same path, rather than keeping numbered copies. Start at login prefers the installed app service. Your settings and tasks survive code updates.
-
-## Development and validation
-
-```
+```sh
 python3 -m unittest discover -s tests -v
+node tests/task_sort.test.cjs
 cd vendor/hxmail && go test ./...
 ```
 
-Build the reader with Go 1.27+ for `GOOS=darwin`, `GOARCH=arm64` and `amd64` and combine them with `scripts/build_readers.sh` into the universal `outlook_plugin/bin/hxmail-darwin`. Build the app with Python and PyInstaller using `scripts/build_mac.sh`. Legacy Outlook integration tests require `OUTLOOK_LEGACY_E2E=1` and a populated Legacy Outlook account.
+Build the universal reader with `scripts/build_readers.sh` and the Mac app with `scripts/build_mac.sh` using universal Python and PyInstaller. Signing and notarization require your own Apple Developer credentials; see [release instructions](docs/MAC_RELEASE_CHECKLIST.md).
 
-See `vendor/hxmail/UPSTREAM.md`, `LICENSE`, and `THIRD_PARTY_NOTICES.md` for provenance and licenses. No real emails or credentials are included in test fixtures.
+For isolated tests, set `OUTLOOK_ASSISTANT_DATA_DIR` and `OUTLOOK_ASSISTANT_PROFILE_ROOT`. Never use real mail or credentials as fixtures. Legacy Outlook tests require explicit `OUTLOOK_LEGACY_E2E=1`.
 
-## Tasks from mail
-
-Tasks opens first. Set your full name, email addresses/aliases, role, and account context in My context. Bob distinguishes explicit requests to you, commitments you made, other named owners, and unclear ownership. Email previews show a task summary above the message after scanning.
-
-Choose a starting date (this month by default) and My tasks / All tasks. Scans review all matching cached messages in batches of ten, with up to 6,000 characters per message. Completed batches are remembered using message content, scan mode, and your context; restarting resumes unprocessed or changed messages. The app does not impose a spending cap; IBM account limits still apply. Stop finishes the current batch. Missing cloud mail is not fetched. AI extraction remains limited to the cached text supplied.
-
-Automatic checks are opt-in at 15, 30, or 60 minutes. They run while the local server is running even if the browser is closed, use the saved Bob key and allowance, and review only unprocessed/changed messages within the chosen range. The timer restarts when the app restarts. Updates defer during an active scan.
-
-Review suggestions before adding them. Each has an owner, source quote, company when linked, and a due date only when supported by a literal deadline quote. Bob interprets relative dates using the source message's received timestamp; ambiguous dates remain undated or flagged for review. Edit owners and dates before or after saving. My tasks, others/unclear, completed, and due-date filters keep the lists separate.
-
-Dismissal reasons (not mine, not relevant to role, already done, duplicate, not an action) persist, can be restored, and provide limited feedback for future extraction. Stable source/evidence IDs suppress repeated suggestions; this is not a guarantee of semantic deduplication across different emails.
-
-Private local data: `~/.outlook_assistant_config.json` stores identity, context, key, company links, and scan settings; `~/.outlook_assistant_tasks.json` stores accepted tasks; `~/.outlook_assistant_task_review.json` stores suggestions, supporting quotes, dismissals, and scan checkpoints. Files use owner-only permissions, not encryption. Keys are never included in browser configuration responses or releases.
-
-## Contacts and companies
-
-Contacts groups unique senders from the local cache by exact email domain. It is not a full Outlook address-book sync. Expand a domain, choose a company suggested from your saved account list (first spreadsheet column), or type a new name, then Save company. Multiple domains can use the same company name; subdomains remain separate groups. Company links are private local settings, can be unlinked, and are included as context only when you request a Bob action. Shared domains such as gmail.com are not reliable company identifiers. Search contacts by person, address, domain, or linked company; Search mail opens a mailbox search for that address.
-
-### Ask your email
-
-The **Ask your email** tab searches downloaded mail locally, then asks IBM Bob to answer with supporting email links. Follow-up questions include recent conversation context. Retrieval ranks word matches in subjects, senders, and cached bodies; it is not a complete semantic mailbox search. Each answer receives at most 12 matching message excerpts of 6,000 characters each. Missing cache data is not evidence that a message or commitment does not exist.
-
-Chat history is saved in `~/.outlook_assistant_chat.json` with owner-only permissions, survives app/laptop restarts, and can be cleared independently of tasks and mail. Draft questions are retained in browser local storage. Nothing is sent or edited in Outlook.
-
-### Everyday workspace features
-
-- **Writing style:** paste examples you wrote, ask Bob to produce a guide, and refine it. Samples and guide changes autosave. The guide is included in future reply requests. This is prompt personalization, not fine-tuning. Raw samples stay in your private local settings and are sent to Bob only when you request learning.
-- **Drafts:** typed and generated replies autosave to a private data file, with a browser recovery copy for pending edits. Continue, copy, discard, or undo the latest discard. They are shared by app windows on this Mac, not synced to Outlook.
-- **Settings → Start at login:** creates a per-user macOS LaunchAgent for the current app location, effective at the next login. Leave the app at that location. It starts the local server without opening a browser; scheduled task checks remain separately configurable. Turning this off removes the login configuration, without interrupting the current app. Actual login behavior depends on macOS permissions and device policy.
-- **Settings → Download a backup:** exports tasks, review state, chat, selected preferences, saved drafts, and pending browser drafts as JSON. Bob API keys, team settings, Outlook profile paths, and the mailbox are excluded. Keep this file private. There is no in-app restore workflow yet.
-- **Data integrity:** unreadable task files are preserved rather than reset. Updates defer while Bob requests are active.
-
-### Fresh Mac requirements and setup
-
-1. macOS 13+ on Apple silicon or Intel; download the Universal Mac ZIP. Move the app to Applications before enabling Start at login.
-2. New Outlook must be signed in and have a supported local HxStore cache. Open Outlook and allow mail to download. Cache formats differ across Outlook versions; support is not guaranteed just because Outlook is installed.
-3. Install IBM Bob Shell 2.x through IBM’s official distribution, then provide your own Bob key in Settings. Use Test Bob connection to verify the subscription.
-4. Use **Finish setup** / Settings for the first-run checklist. Add your name and work email in My context before task extraction.
-
-The desktop app does not automatically fall back to AppleScript if the cache is missing. It reports what setup is needed without prompting to automate Outlook. These checks identify prerequisites; they cannot override company policy or prove a cache format is supported until it is read.
-
-Builds default to `--target-arch universal2` and require universal Python and compatible libraries. The build declares macOS 13 as its minimum, stamps the app version, and verifies its signature. For Developer ID signing, notarization, stapling and Gatekeeper validation, run `scripts/notarize_mac.sh` with your signing identity and Keychain notary profile. See [Mac release checklist](docs/MAC_RELEASE_CHECKLIST.md) for the uncompleted clean-machine acceptance tests and signed-update requirement. Bob version checks now reject unsupported or unreadable versions before inference.
-
-For isolated testing, `OUTLOOK_ASSISTANT_DATA_DIR` puts settings and runtime code in a separate directory, and `OUTLOOK_ASSISTANT_PROFILE_ROOT` selects a separate cache search location. Defaults preserve existing users’ files and profile discovery.
-
-### Desktop app and durable storage (2.7)
-
-- Open **Outlook Assistant.app** normally. Closing its window leaves the app/background checks running; reopen it from the Dock. Quit stops the service when that window launched it. An existing independently launched service is left intact. No Terminal or browser tab is required.
-- Existing tasks, chat, identity, account list, company links, style, and scan progress remain in the same private user files, outside the app bundle and update directory. Updates do not replace those files.
-- Reply drafts now autosave to `~/.outlook_assistant_drafts.json`. Existing browser drafts migrate when that browser page first loads 2.7. The native app reads the same disk file. Wait for **Saved on this Mac** before clearing old browser data. Offline edits retain a browser recovery copy and retry. Conflicting edits are preserved for review rather than silently overwritten.
-- Context, writing samples/style, company links, valid scan settings, and edits to saved tasks autosave. Credential fields save on change/blur. Creating/accepting a new task and invoking AI remain explicit actions.
-- JSON saves flush file contents, replace the primary atomically, and flush the directory. Private recovery copies live in `~/.outlook_assistant_backups`: three previous saves and up to seven daily versions per file. Existing files receive an initial copy on startup. If a file is missing or invalid JSON, the reader restores an available valid copy and preserves a damaged original. Settings shows recovery notices. A recovered copy can be older than the last edit.
-- Local recovery copies may contain the saved API key and private work content; directory permissions are owner-only and files are owner-readable/writable. Downloaded exports still exclude the configured API key. These copies share the laptop’s disk, so they do not protect against disk failure or loss of the laptop; use an external Mac backup for that.
-- A stopped process or restart does not remove completed saves. An interrupted AI request or unfinished scan batch may need another run. No actual OS reboot was performed in QA; a forced native-app/service termination and reopen was tested.
+See `vendor/hxmail/UPSTREAM.md`, `LICENSE`, and `THIRD_PARTY_NOTICES.md` for provenance and licenses.
