@@ -148,6 +148,10 @@ def sync_tasks(engine, automatic=False):
         return {'state':'running','message':'Task check is already running.'}
     if _BOB_LOCK.locked():
         return {'state':'busy','message':'Mail synced. Bob is busy; try Sync now again when it finishes.'}
+    from .ai_agent import bob_executable, node_executable
+    executable=bob_executable()
+    if not executable or not node_executable(executable):
+        return {'state':'setup','message':'Install IBM Bob Shell and its required Node.js runtime. Open Settings → Setup for installation instructions.'}
     if automatic and automatic_state()!='ready':
         return {'state':'setup','message':'Test your Bob connection in Settings to resume task discovery.'}
     try:

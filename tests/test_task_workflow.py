@@ -130,3 +130,9 @@ class SyncTests(unittest.TestCase):
    self.assertEqual(w.sync_tasks(None)['state'],'running');start.assert_not_called()
    running.locked.return_value=False;bob.locked.return_value=True
    self.assertEqual(w.sync_tasks(None)['state'],'busy');start.assert_not_called()
+
+ def test_sync_explains_missing_bob(self):
+  with patch.object(w,'identity_ready',return_value=True),patch.object(w,'get_bob_api_key',return_value='fake'),patch.object(w,'_RUN') as running,patch.object(w,'_BOB_LOCK') as bob,patch('outlook_plugin.ai_agent.bob_executable',return_value=None),patch.object(w,'start') as start:
+   running.locked.return_value=False;bob.locked.return_value=False
+   result=w.sync_tasks(None)
+   self.assertEqual(result['state'],'setup');self.assertIn('Settings',result['message']);start.assert_not_called()
