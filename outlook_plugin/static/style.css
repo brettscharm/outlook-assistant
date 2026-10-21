@@ -180,3 +180,5 @@ main>header{height:auto;min-height:68px;gap:12px;flex-wrap:wrap;padding-top:12px
 .project-links-field{border:1px solid #dfe3e8;border-radius:12px;padding:16px;min-width:0}.project-link-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}.project-link-row input[data-link-url]{grid-column:1/-1}.project-link-row button{justify-self:start}.project-record-links{margin-top:12px}
 /* Reserve room for three meetings and the overflow button inside its own date. */
 .calendar-month-day{min-height:158px;height:auto;overflow:hidden}.calendar-month-day .calendar-event{height:23px;min-height:23px;padding:4px 6px}.calendar-more{display:block;min-height:24px}
+
+.sync-controls #sync{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:150px;padding:8px 14px}.sync-controls #syncTime{font-size:10px;font-weight:400;line-height:1.3;max-width:240px}.sync-controls #syncLabel{font-weight:600}
