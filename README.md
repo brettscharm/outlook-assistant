@@ -225,3 +225,10 @@ Choose **View emails** on a project card or its task board. The list combines em
 **Unlink** removes only a direct association. An email remains visible if a project task still links to it; Outlook mail is never moved or deleted. Links survive app updates and restarts but do not archive the email body: missing or excluded mail shows as unavailable without exposing its content. MCP clients can use `list_project_emails` and `link_project_email` after reconnecting.
 
 Project colors support any six-digit hex color. In **Edit project**, use the color picker or enter a code such as `#008080`. Changes autosave and apply to the project and its task cards. Existing named colors remain supported, including through MCP.
+
+
+### Meeting scheduling tasks
+
+Task discovery recognizes requests to schedule, book, arrange, or reschedule meetings. It keeps the named scheduler as owner, including someone the user is waiting on, and distinguishes a scheduling deadline from the requested meeting date. Status updates should not duplicate an already active scheduling task.
+
+A matching email invitation or explicit booking confirmation can produce a **completion suggestion** in Tasks to review. Promises, tentative holds, cancellation, or a proposed date passing do not establish completion. Scheduling does not complete preparation or attendance tasks. Completion still requires your review. The task finder uses the supplied cached emails for this check; it does not independently query Teams or infer that no meeting exists from missing calendar data. Instructions and examples are included in the Task finder defaults; core scheduling rules also apply when you have customized its instructions. This updates guidance, not Bob's underlying model weights.

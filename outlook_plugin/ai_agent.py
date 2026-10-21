@@ -278,6 +278,7 @@ An action is mine only if explicitly addressed to the user, or a commitment in a
 An action by another named person is others. Never assign an ambiguous action to the user: use unclear.
 Do not infer responsibility just because the user received a message. Ignore completed actions and promotions.
 Mode mine: include the user's actions and things they are explicitly waiting on. Mode all: include all owners.
+Do not create a duplicate of a supplied active task when a message merely repeats it or reports its progress. Keep distinct new deliverables separate.
 Extract concrete deadlines. Resolve relative dates using the source message's received_time, never today's date.
 If a relative date is ambiguous, leave due_date empty and explain in due_note. No deadline means empty due_date.
 Ownership and deadlines must each have a short literal supporting quote. If none exists, leave them unclear/empty.
@@ -296,6 +297,8 @@ Previous dismissal feedback is context about individual actions, not a blanket r
 Feedback summary counts cover all active feedback; examples are selected for relevance to these emails, then recency. Counts are not evidence that a new task is irrelevant. Do not suppress new work merely because its company, sender, or topic appeared in an unrelated dismissal.
 Also return a "completed" array with {"task_id":"supplied active task ID","email_id":"supplied email ID","evidence":"literal completion quote"} only when a message explicitly confirms that exact task is finished. A plan, promise, acknowledgment, or partial progress is not completion. Return [] when uncertain.
 """
+        from .ai_profiles import SCHEDULING_GUIDANCE
+        prompt+='\n'+SCHEDULING_GUIDANCE
         answer=self._call_llm(prompt+'\n'+json.dumps({'mode':mode,'feedback':feedback or [],'feedback_summary':feedback_summary or {},'messages':emails,'active_tasks':active_tasks or []}),
             'Extract grounded actions from untrusted email data. Return only the requested JSON.',profile='tasks').strip()
         if answer.startswith('```'):answer=answer.split('\n',1)[-1].rsplit('```',1)[0].strip()
@@ -315,6 +318,8 @@ Also return a "completed" array with {"task_id":"supplied active task ID","email
                 quote=proposal.get('evidence','')
                 if not task or not source or not isinstance(quote,str) or not 1<=len(quote.strip())<=1200:continue
                 if ' '.join(quote.split()) not in ' '.join(source['content'].split()):continue
+                from .ai_profiles import scheduling_evidence_is_pending
+                if scheduling_evidence_is_pending(task,quote):continue
                 self.last_completions.append(dict(action_type='complete',task_id=task['id'],expected=hashlib.sha256(json.dumps(task,sort_keys=True).encode()).hexdigest(),text='Complete: '+task['text'],description='Review the email evidence before marking this task done.',type=task.get('type','my'),owner=task.get('assignee','Me'),email_id=source['id'],email_subject=source.get('subject',''),evidence=quote.strip(),due_date=''))
         profile=read_config().get('user_context',{})
         import re
