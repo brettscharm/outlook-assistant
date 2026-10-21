@@ -1,5 +1,5 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
-const source=fs.readFileSync('outlook_plugin/static/calendar-ui.js','utf8');const context=vm.createContext({});vm.runInContext(source.slice(0,source.indexOf("let calendarMode=")),context);
+const source=fs.readFileSync('outlook_plugin/static/calendar-ui.js','utf8');const context=vm.createContext({});vm.runInContext(source.slice(0,source.indexOf("let calendarHideWeekends=")),context);
 const old=process.env.TZ;process.env.TZ='America/New_York';
 let range=context.calendarRange(new Date(2026,2,8),'day');assert.equal((range.end-range.start)/3600000,23);
 range=context.calendarRange(new Date(2026,10,1),'day');assert.equal((range.end-range.start)/3600000,25);
@@ -18,3 +18,14 @@ const nodes={calendarMeetingTitle:{},calendarMeetingDetails:{children:[],replace
 const dayContext=vm.createContext({$:id=>nodes[id],text:(tag,label)=>({tag,label,children:[],append(...items){this.children.push(...items);}}),calendarOverlaps:()=>true,calendarEvents:[{subject:'One',start_time:'2026-10-22T08:00:00Z'},{subject:'Two',start_time:'2026-10-22T09:00:00Z'}],calendarEventButton:event=>({event}),chooseCalendarDay(){throw Error('Should not change the view until requested');}});
 vm.runInContext(source.slice(source.indexOf('function showCalendarDay('),source.indexOf('function saveCalendarMode')),dayContext);
 dayContext.showCalendarDay(new Date(2026,9,22));assert.equal(nodes.calendarMeeting.open,true);assert.equal(nodes.calendarMeetingDetails.children[0].children.length,2);
+
+const week=context.calendarRange(new Date(2026,9,21),'week');
+assert.deepEqual(Array.from(context.calendarVisibleDays(week,'week',true),d=>d.getDay()),[1,2,3,4,5]);
+assert.equal(context.calendarVisibleDays(week,'week',false).length,7);
+const month=context.calendarRange(new Date(2026,7,21),'month');
+assert.equal(context.calendarVisibleDays(month,'month',true).length,30);
+assert.ok(context.calendarVisibleDays(month,'month',true).every(d=>d.getDay()>0&&d.getDay()<6));
+const sunday=context.calendarRange(new Date(2026,2,8),'day');
+assert.equal(context.calendarVisibleDays(sunday,'day',true).length,1);
+assert.equal(context.calendarVisibleDays(sunday,'day',true)[0].getDay(),0);
+assert.equal(week.days,7); // Presentation filtering never narrows the fetched range.
