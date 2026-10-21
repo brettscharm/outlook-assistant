@@ -104,6 +104,9 @@ class LocalStoreBridge:
             rows = [m for m in rows if q in '\n'.join(str(m.get(k,'')) for k in ('subject','sender','preview','body')).casefold()]
         return [{k:v for k,v in m.items() if k!='body'} for m in rows[offset:None if limit is None else offset+limit]]
 
+    def get_cached_messages(self):
+        return visible_messages(self._load()['rows'])
+
     def get_email_details(self, message_id):
         return next((m for m in visible_messages(self._load()['rows']) if m['id']==str(message_id)),None)
 

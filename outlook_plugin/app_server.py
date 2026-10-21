@@ -14,7 +14,7 @@ from .engine import OutlookEngine
 from .local_store import profiles, LocalStoreBridge
 from .contacts import group_contacts, link_company, link_companies, suggest_company
 from .tasks import board_lanes, save_board_lanes, move_task, load_tasks, add_task, toggle_task, delete_task, edit_task
-from . import bob_install, projects, ai_profiles, assistant, task_workflow, email_chat, workspace, setup_check, drafts, storage, usage, bob_status, outlook_status
+from . import meeting_mail, calendar_cache, mail_archive, task_progress, bob_install, projects, ai_profiles, assistant, task_workflow, email_chat, workspace, setup_check, drafts, storage, usage, bob_status, outlook_status
 from .updater import check_and_apply_update
 
 PORT = 8484
@@ -118,6 +118,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         if path=='/api/folders': return self._send_json(self.engine.list_folders())
         if path=='/api/accounts': return self._send_json(self.engine.list_accounts())
         if path=='/api/task-lanes': return self._send_json(board_lanes())
+        if path=='/api/archive':return self._send_json(mail_archive.status())
         if path=='/api/tasks': return self._send_json(load_tasks())
         if path=='/api/emails':
             backend=self.engine.get_active_backend()
@@ -128,8 +129,9 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         if path=='/api/email':
             item=self.engine.get_email_details(q.get('id',[''])[0])
             return self._send_json(item if item else {'error':'Message not found.'},200 if item else 404)
+        if path=='/api/meeting-mail':return self._send_json(meeting_mail.discover(self.engine))
         if path=='/api/calendar':
-            return self._send_json(self.engine.get_upcoming_events(days_ahead=7,limit=50))
+            return self._send_json(calendar_cache.snapshot())
         if path.startswith('/api/'):
             return self._send_json({'error':'Unknown endpoint.'},404)
         if path not in ('/','/index.html','/app.js','/tasks-ui.js','/chat-ui.js','/workspace-ui.js','/organize-ui.js','/rich-editor.js','/style.css','/app-icon.png'):
@@ -239,6 +241,10 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             suggestions=[t for t in suggestions if (t['email_id'],' '.join(t['text'].lower().split())) not in known]
             return self._send_json({'suggestions':suggestions,'scanned':len(messages),'usage':self.ai.last_usage})
         if path=='/api/task-lanes':return self._send_json(save_board_lanes(data.get('lanes')))
+        if path=='/api/archive':return self._send_json(mail_archive.archive(self.engine))
+        if path=='/api/task-progress':return self._send_json(task_progress.change(str(data.get('id','')),data.get('action'),data))
+        if path=='/api/task-handoff':return self._send_json(task_progress.export_task(str(data.get('id',''))))
+        if path=='/api/task-import':return self._send_json(task_progress.import_task(data.get('handoff')))
         if path=='/api/tasks':
             action=data.get('action','add')
             if action=='add':
@@ -265,7 +271,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             else: raise ValueError('Unknown task action.')
             return self._send_json(tasks)
         if path=='/api/update':
-            if task_workflow.snapshot()['job']['running'] or email_chat._LOCK.locked() or _BOB_LOCK.locked():return self._send_json({'updated':False,'message':'Update deferred until the current AI work completes.'})
+            if mail_archive._LOCK.locked() or task_workflow.snapshot()['job']['running'] or email_chat._LOCK.locked() or _BOB_LOCK.locked():return self._send_json({'updated':False,'message':'Update deferred until the current AI work completes.'})
             updated,msg=check_and_apply_update(auto_pull=True)
             self._send_json({'updated':updated,'message':msg})
             if updated:

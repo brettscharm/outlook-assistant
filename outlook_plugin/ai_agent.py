@@ -48,7 +48,8 @@ def bob_executable():
 
 
 def node_executable(bob=None):
-    candidates=([str(Path(bob).parent/'node')] if bob else [])+[shutil.which('node')]+[str(p/'node') for p in executable_directories()]
+    from .node_install import executable as managed_node
+    candidates=[managed_node()]+([str(Path(bob).parent/'node')] if bob else [])+[shutil.which('node')]+[str(p/'node') for p in executable_directories()]
     checked=set()
     for candidate in candidates:
         if not candidate or candidate in checked or not os.path.isfile(candidate) or not os.access(candidate,os.X_OK): continue
@@ -96,7 +97,7 @@ class BobAIAgent:
     def is_configured(self):
         return bool(self.api_key and bob_executable())
 
-    def _call_llm(self, prompt, system_prompt="You are an executive Outlook assistant.", profile="assistant"):
+    def _call_llm(self, prompt, system_prompt="You are an executive Outlook assistant.", profile="assistant", _coordinated=False):
         if not self.api_key:
             raise RuntimeError("Add your Bob API key in Settings.")
         executable = bob_executable()
@@ -109,7 +110,7 @@ class BobAIAgent:
         if not compatibility["ready"]:
             raise RuntimeError(compatibility["detail"])
         # Interactive chat waits for the current scan instead of failing immediately.
-        acquired = _BOB_LOCK.acquire(timeout=180) if profile == "assistant" else _BOB_LOCK.acquire(blocking=False)
+        acquired = True if _coordinated else (_BOB_LOCK.acquire(timeout=180) if profile == "assistant" else _BOB_LOCK.acquire(blocking=False))
         if not acquired:
             if profile == "assistant":
                 raise RuntimeError("Bob is still busy. Your message is saved in the composer; please send it again shortly.")
@@ -161,7 +162,7 @@ class BobAIAgent:
                 if attempted:usage.record(success,reported_stats)
             finally:
                 ai_profiles.finish(activity_id,success)
-                _BOB_LOCK.release()
+                if not _coordinated:_BOB_LOCK.release()
 
     def generate_ai_briefing(self, calendar_events: List[Dict[str, Any]], unread_emails: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Synthesize daily executive agenda with meeting preps and action items."""
@@ -259,7 +260,8 @@ Instructions:
 - Directly address their questions.
 - Return only an HTML email body fragment, without markdown fences, a subject header, or commentary. Use p, br, strong, em, ul, ol, li and a for readable formatting. Use inline font-family, font-size, color, background-color, or text-decoration only when requested. Never include scripts, images, remote resources, or tracking. Keep default formatting restrained.
 """
-        return self._call_llm(prompt,profile="writer")
+        from .agent_team import draft
+        return draft(self,prompt,email,intent)
 
     def extract_tasks(self, emails, mode='all', feedback=None, active_tasks=None):
         """Require source evidence; default ambiguous ownership to the user."""

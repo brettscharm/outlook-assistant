@@ -4,7 +4,7 @@ import json
 import re
 import uuid
 from datetime import date
-from . import email_chat, tasks, contacts, projects
+from . import email_chat, tasks, contacts, projects, task_progress
 from .config import read_config
 from .ai_agent import BobAIAgent
 
@@ -41,6 +41,16 @@ def proposal(raw, saved, lanes, domains):
             if payload['type'] not in ('my','others','unclear'):raise ValueError('Invalid owner group.')
             if payload['due_date']:date.fromisoformat(payload['due_date'])
             label='Update task: '+task['text']
+    elif kind in ('add_update','add_subtask','set_waiting'):
+        task=saved.get(raw.get('task_id'))
+        if not task:raise ValueError('The suggested task was not found.')
+        expected=fingerprint(task);payload={'task_id':task['id']}
+        if kind=='set_waiting':
+            payload.update(waiting_on=clean_text(raw.get('waiting_on',''),300),next_step=clean_text(raw.get('next_step',''),2000))
+            label='Update next step: '+task['text']
+        else:
+            payload['text']=clean_text(raw.get('text'),4000 if kind=='add_update' else 500,True)
+            label=('Add update: ' if kind=='add_update' else 'Add checklist step: ')+payload['text']
     elif kind=='link_company':
         values=raw.get('domains')
         if not isinstance(values,list) or not 1<=len(values)<=100 or any(not isinstance(v,str) or v not in domains for v in values):raise ValueError('Choose domains from the supplied contacts.')
@@ -84,6 +94,7 @@ For a workspace-only answer or a clarification source_ids may be empty. For emai
 {"kind":"update_task","task_id":"existing ID", "text":"optional replacement", "description":"optional replacement","owner":"optional replacement","type":"my|others|unclear","due_date":"YYYY-MM-DD or empty"} (omit unchanged fields)
 {"kind":"move_task","task_id":"existing ID","lane_id":"existing lane ID"}
 {"kind":"link_company","domains":["known contact domain"],"company":"company name"}
+Progress actions: {"kind":"add_update","task_id":"existing ID","text":"progress note"}, {"kind":"add_subtask","task_id":"existing ID","text":"checklist step"}, {"kind":"set_waiting","task_id":"existing ID","waiting_on":"person or dependency","next_step":"next action"}. These also require Apply. Never infer that work is completed from a plan or acknowledgment.
 create_task and update_task may also include priority (none|low|medium|high), project_id (supplied ID or empty), source_type (email|slack|teams|meeting|other), and source_url (http/https or empty). Omit unchanged fields. Default new task ownership to the user. Only set a deadline requested by the user or supported by email evidence. Keep ownership separate from task lanes.'''+'\n'+json.dumps({'question':question,'conversation':previous,'workspace':workspace,'emails':messages,'user':read_config().get('user_context',{})})
         raw=(ai or BobAIAgent())._call_llm(prompt)
         try:result=json.loads(re.sub(r'^```(?:json)?\s*|\s*```$','',raw.strip()))
@@ -117,6 +128,11 @@ def apply(action_id):
                 if task is None or fingerprint(task)!=action['expected']:raise ValueError('This task changed since the suggestion. Ask for an updated suggestion.')
                 if kind=='move_task':tasks.move_task(p['task_id'],p['lane_id'])
                 else:tasks.edit_task(p['task_id'],p['text'],p['owner'],p['type'],p['due_date'],p['description'],priority=p.get('priority'),project_id=p.get('project_id'),source_type=p.get('source_type'),source_url=p.get('source_url'))
+        elif kind in ('add_update','add_subtask','set_waiting'):
+            with tasks._LOCK:
+                task=next((t for rows in tasks.load_tasks().values() for t in rows if t['id']==p['task_id']),None)
+                if task is None or fingerprint(task)!=action['expected']:raise ValueError('This task changed. Ask for an updated suggestion.')
+                task_progress.change(p['task_id'],kind,{**p,'request_id':action['id']})
         elif kind=='create_task':tasks.add_task(p['type'],p['text'],p['owner'],p['due_date'],description=p['description'],request_id=action['id'],priority=p.get('priority','none'),project_id=p.get('project_id',''),source_type=p.get('source_type','other'),source_url=p.get('source_url',''))
         elif kind=='link_company':
             from .config import _LOCK

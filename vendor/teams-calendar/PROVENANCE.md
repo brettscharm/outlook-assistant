@@ -1,0 +1,1 @@
+Calendar-only reader dependencies from github.com/ourostack/m365crawl commit 29d3e690fc6a376afc1dcd4e454a67acc68c1702. Original MIT license included. Only calendar database/store values are decoded; source caches are snapshotted read-only.

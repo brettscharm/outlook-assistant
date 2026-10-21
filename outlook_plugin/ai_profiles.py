@@ -4,6 +4,8 @@ from datetime import datetime,timezone
 from .config import read_config,update_config,_LOCK
 DEFAULTS={
  'tasks':{'name':'Task finder','instructions':'Find concrete outstanding actions. Prefer specific deliverables over generic follow-ups. Use saved identity and role. Keep descriptions grounded in the source.','examples':''},
+ 'reviewer':{'name':'Grounding reviewer','instructions':'Independently check source facts, requests, uncertainty and commitments. Never invent availability.','examples':''},
+ 'editor':{'name':'Reply editor','instructions':'Reconcile the draft with source evidence and the independent review. Preserve the user’s writing style and required HTML format.','examples':''},
  'writer':{'name':'Email writer','instructions':'Write clear, concise replies in the saved writing style. Do not invent facts or commitments. Preserve requested formatting.','examples':''},
  'assistant':{'name':'Workspace assistant','instructions':'Help with tasks, contacts, projects, and email. Explain uncertainty and propose changes for review.','examples':''},
  'briefing':{'name':'Email summary','instructions':'Summarize important unread mail and pending decisions. State the limits of the supplied snapshot.','examples':''},

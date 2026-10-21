@@ -7,10 +7,14 @@ class BobInstallTests(unittest.TestCase):
    self.assertEqual(b.release()['version'],'2.0.2');b.release();self.assertEqual(fetch.call_count,1)
   with patch.object(b,'_RELEASE',{'checked':0,'version':'','error':''}),patch.object(b.urllib.request,'urlopen',return_value=io.BytesIO(b'3.0.0')):
    self.assertEqual(b.release()['version'],'');self.assertTrue(b.release()['error'])
- def test_missing_node_never_launches_installer(self):
-  with patch.object(a,'node_executable',return_value=None),patch.object(b.subprocess,'Popen') as launch:
-   with self.assertRaisesRegex(ValueError,'Node.js'):b.start()
-   launch.assert_not_called()
+ def test_missing_node_starts_private_runtime_setup(self):
+  from outlook_plugin import node_install
+  class Immediate:
+   def __init__(self,target,**kw):self.target=target
+   def start(self):self.target()
+  with patch.object(b,'_STATE',{'state':'idle','message':''}),patch.object(a,'node_executable',return_value=None),patch.object(node_install,'install',side_effect=ValueError('Synthetic download failure')) as install,patch.object(b.threading,'Thread',Immediate),patch.object(b.subprocess,'Popen') as launch:
+   self.assertEqual(b.start()['state'],'failed');install.assert_called_once();launch.assert_not_called()
+   self.assertFalse(a._BOB_LOCK.locked())
  def test_busy_bob_never_installs(self):
   with patch.object(a,'node_executable',return_value='/fake/node'),patch.object(b.Path,'is_file',return_value=True),patch.object(a,'_BOB_LOCK') as lock,patch.object(b.subprocess,'Popen') as launch:
    lock.acquire.return_value=False

@@ -6,6 +6,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     var web: WKWebView!
     var service: Process?
     var timer: Timer?
+    var floating = false
+    var regularFrame: NSRect?
     var checking = false
     var loaded = false
     var lastLaunch = Date.distantPast
@@ -17,6 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         let appMenu = NSMenu()
         let item = NSMenuItem(); item.submenu = appMenu; menu.addItem(item)
         appMenu.addItem(withTitle: "Show Outlook Assistant", action: #selector(showWindow), keyEquivalent: "0").target = self
+        appMenu.addItem(withTitle: "Float Assistant Above Other Apps", action: #selector(toggleFloating), keyEquivalent: "j").target = self
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Quit Outlook Assistant", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         let edit = NSMenu(title: "Edit")
@@ -39,6 +42,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         checkService()
         timer = Timer.scheduledTimer(withTimeInterval:3,repeats:true) { [weak self] _ in self?.checkService() }
     }
+    @objc func toggleFloating() {
+        floating.toggle()
+        if floating {
+            regularFrame = window.frame
+            window.level = .floating
+            window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+            window.minSize = NSSize(width:420,height:540)
+            window.setContentSize(NSSize(width:480,height:700))
+            web.evaluateJavaScript("document.body.classList.add('native-assistant-panel');view('chat');",completionHandler:nil)
+        } else {
+            window.level = .normal
+            window.collectionBehavior = []
+            window.minSize = NSSize(width:760,height:600)
+            if let frame=regularFrame {window.setFrame(frame,display:true)}
+            web.evaluateJavaScript("document.body.classList.remove('native-assistant-panel');view('tasks');",completionHandler:nil)
+        }
+        showWindow()
+    }
     @objc func showWindow() { window?.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true) }
     func applicationShouldHandleReopen(_ sender:NSApplication,hasVisibleWindows flag:Bool)->Bool { showWindow();return true }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender:NSApplication)->Bool { false }
@@ -53,7 +74,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     }
     func userContentController(_ userContentController:WKUserContentController,didReceive message:WKScriptMessage) {
         guard message.name=="saveBackup", message.frameInfo.isMainFrame, message.frameInfo.securityOrigin.host=="localhost", message.frameInfo.securityOrigin.port==port, let body=message.body as? String, body.utf8.count<50_000_000 else{return}
-        let panel=NSSavePanel();panel.nameFieldStringValue="Outlook-Assistant-Backup.json";panel.canCreateDirectories=true
+        let panel=NSSavePanel();panel.nameFieldStringValue=body.contains("outlook-task-handoff") ? "Task-handoff.json" : "Outlook-Assistant-Backup.json";panel.canCreateDirectories=true
         panel.beginSheetModal(for:window) { response in
             var saved=false
             if response == .OK, let url=panel.url {do {try body.write(to:url,atomically:true,encoding:.utf8);try FileManager.default.setAttributes([.posixPermissions:0o600],ofItemAtPath:url.path);saved=true}catch{}}
@@ -81,6 +102,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
                 }
             }
         }.resume()
+    }
+    func webView(_ webView:WKWebView,didFinish navigation:WKNavigation!) {
+        if floating {webView.evaluateJavaScript("document.body.classList.add('native-assistant-panel');view('chat');",completionHandler:nil)}
     }
     func webView(_ webView:WKWebView,decidePolicyFor action:WKNavigationAction,decisionHandler:@escaping(WKNavigationActionPolicy)->Void) {
         guard let url=action.request.url else {decisionHandler(.cancel);return}

@@ -12,11 +12,11 @@ A desktop workspace for mail cached by Outlook, tasks, contacts, and an IBM Bob-
 
 **[Step-by-step installation and troubleshooting →](docs/INSTALL.md)**
 
-The Mac app includes Python and the mail reader. You do not need Git, Xcode, Python, or Homebrew to open it. AI features additionally require **Bob Shell 2.x and Node.js 24+**; Node is a separate prerequisite. Once Node 24+ and npm are installed, Settings → Setup → Install or update Bob can run IBM’s installer into an app-private folder. Installation requires a click; it is not automatic.
+The Mac app includes Python and the mail reader. You do not need Git, Xcode, Python, or Homebrew to open it. AI features additionally require **Bob Shell 2.x and Node.js 24+**; Settings → Setup → Install or update Bob installs a private Node 24 runtime if needed, then runs IBM’s installer. Installation starts with an explicit click.
 
 **Requirements:** macOS 13 or later, Apple silicon or Intel, and New Outlook with a supported local cache. Compatibility with every Mac, Outlook version, and company-managed device is not guaranteed. The current downloadable app is ad-hoc signed, **not Developer ID signed or notarized**. macOS or company policy may block it; do not disable security controls.
 
-**Download versus app version:** the latest packaged desktop release is currently **2.15.0**. Newer application features are delivered by the in-app updater. See the [feature status](docs/FEATURE_STATUS.md) for implemented features and remaining integrations. Keep the app open and connected to the internet; installation waits for a safe idle period and for active Bob work to finish. The displayed version changes after the update restarts the service. A package update does not replace the bundled runtime or Finder/Dock icon; those require a newer desktop download.
+**Download versus app version:** the latest packaged desktop release is currently **2.16.0**. Newer application features are delivered by the in-app updater. See the [feature status](docs/FEATURE_STATUS.md) for implemented features and remaining integrations. Keep the app open and connected to the internet; installation waits for a safe idle period and for active Bob work to finish. The displayed version changes after the update restarts the service. A package update does not replace the bundled runtime or Finder/Dock icon; those require a newer desktop download.
 
 ## Everyday use
 
@@ -28,7 +28,7 @@ The Mac app includes Python and the mail reader. You do not need Git, Xcode, Pyt
 - **Assistant:** open it from the bottom left, or expand it. Ask about mail, tasks, and contacts. Supported changes appear as proposals for you to review and apply.
 - **Projects:** group related tasks, filter the board, and see completion counts.
 - **Settings → AI assistants:** edit instructions and examples, restore defaults, and test sample content. **AI activity** shows real request status.
-- **Settings → Profile & writing:** your identity, role, writing style, and usage details. Calendar remains unconnected.
+- **Settings → Profile & writing:** your identity, role, writing style, and usage details. Calendar reads cached Teams meetings.
 
 Your name, role, account list, and writing preferences help personalize Bob’s results. Writing style uses examples and instructions; it does not train a new model. Usage reports this app’s recorded Bobcoins and available token counts, not an account-wide balance or dollar bill.
 
@@ -65,7 +65,7 @@ The reader discovers profiles under:
 
 It reads a temporary copy and does not modify Outlook’s store. Select a profile in Settings if several are found. No Microsoft app registration or Graph sign-in is used for this local-cache path. macOS permissions and organization policy still apply.
 
-Outlook’s private cache format can change. This is an experimental reader, not a Microsoft-supported mailbox export. A missing body displays as Preview only. Cloud-only mail, full attachment archiving, Slack ingestion, shared task assignment, and calendar sync are not implemented.
+Outlook’s private cache format can change. This is an experimental reader, not a Microsoft-supported mailbox export. A missing body displays as Preview only. Cloud-only mail, cloud-only attachments, Slack ingestion, and automatic shared task delivery are not supported. Calendar reads cached Teams instances; it is not a complete calendar sync.
 
 ## Developers
 
@@ -82,3 +82,13 @@ Build the universal reader with `scripts/build_readers.sh` and the Mac app with 
 For isolated tests, set `OUTLOOK_ASSISTANT_DATA_DIR` and `OUTLOOK_ASSISTANT_PROFILE_ROOT`. Never use real mail or credentials as fixtures. Legacy Outlook tests require explicit `OUTLOOK_LEGACY_E2E=1`.
 
 See `vendor/hxmail/UPSTREAM.md`, `LICENSE`, and `THIRD_PARTY_NOTICES.md` for provenance and licenses.
+
+## Tasks and calendar in 2.16
+
+Open a project to work on its board. New tasks inherit that project. Choose **Open task** for details, subtasks, updates, waiting-on and next steps in one panel. Project progress counts completed tasks; subtasks track the steps inside each task. Use **Export task** / **Import task** for an explicit coworker handoff. Files contain task descriptions and source links; review them before sharing.
+
+**Calendar** shows upcoming cached Teams instances. Open Teams Calendar to refresh coverage. **Meeting emails** also checks Deleted Items for invitations and responses; these are evidence, not a confirmed calendar. Missing events never establish availability.
+
+**Settings → Startup & storage → Archive downloaded mail** saves EML files and available attachments, with size limits and missing-content counts. It cannot recover cloud-only content.
+
+The desktop app menu offers **Float Assistant Above Other Apps** (Cmd+J). This requires the new desktop bundle. Reply drafting now runs a bounded writer/reviewer/editor workflow and uses three Bob requests per draft.
