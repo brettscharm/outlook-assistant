@@ -30,6 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         NSApp.mainMenu = menu
         let configuration = WKWebViewConfiguration()
         configuration.userContentController.add(self,name:"saveBackup")
+        configuration.userContentController.addUserScript(WKUserScript(source:"window.nativeFilePickerReady=true;", injectionTime:.atDocumentStart, forMainFrameOnly:true))
         web = WKWebView(frame: .zero, configuration: configuration)
         web.navigationDelegate = self; web.uiDelegate = self
         window = NSWindow(contentRect: NSRect(x:0,y:0,width:1240,height:840), styleMask:[.titled,.closable,.miniaturizable,.resizable], backing:.buffered, defer:false)
@@ -80,6 +81,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
             if response == .OK, let url=panel.url {do {try body.write(to:url,atomically:true,encoding:.utf8);try FileManager.default.setAttributes([.posixPermissions:0o600],ofItemAtPath:url.path);saved=true}catch{}}
             self.web.evaluateJavaScript("window.nativeBackupDone?.(\(saved ? "true" : "false"));",completionHandler:nil)
         }
+    }
+    func webView(_ webView: WKWebView, runOpenPanelWith parameters: WKOpenPanelParameters, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping ([URL]?) -> Void) {
+        guard frame.securityOrigin.host == "localhost", frame.securityOrigin.port == port else { completionHandler(nil); return }
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = parameters.allowsMultipleSelection
+        panel.beginSheetModal(for: window) { result in completionHandler(result == .OK ? panel.urls : nil) }
+    }
+    func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) {
+        let alert = NSAlert(); alert.messageText = message
+        alert.addButton(withTitle: "Confirm"); alert.addButton(withTitle: "Cancel")
+        alert.beginSheetModal(for: window) { response in completionHandler(response == .alertFirstButtonReturn) }
     }
     func applicationWillTerminate(_ notification:Notification) { timer?.invalidate();if service?.isRunning == true {service?.interrupt()} }
     func checkService() {

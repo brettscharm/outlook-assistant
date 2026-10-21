@@ -32,7 +32,7 @@ def normalize(rows,now,days):
     for key,(_,row,start,end) in entries.items():
         if row.get('isCancelled') is True or row.get('isDraft') is True:continue
         if end<now or start>now+timedelta(days=days):continue
-        result.append({'id':key,'subject':str(row.get('subject') or 'Untitled meeting')[:2000],
+        result.append({'id':key,'meeting_id':hashlib.sha256(json.dumps([row.get('account'),row.get('objectId') or [identity,start.isoformat()]]).encode()).hexdigest(),'subject':str(row.get('subject') or 'Untitled meeting')[:2000],
           'start_time':start.isoformat(),'end_time':end.isoformat(),'organizer':str(row.get('organizerName') or '')[:500],
           'location':str(row.get('location') or '')[:2000],'join_url':str(row.get('skypeTeamsMeetingUrl') or '')[:8000],
           'all_day':row.get('isAllDayEvent') is True,'source':str(row.get('source') or 'Teams cache'),'response':str(row.get('responseType') or '')})

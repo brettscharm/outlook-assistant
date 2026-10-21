@@ -85,6 +85,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         if path=='/api/bob-status': return self._send_json(bob_status.current(get_bob_api_key()))
         if path=='/api/usage': return self._send_json(usage.snapshot())
         if path=='/api/storage': return self._send_json({'directory':str(drafts.DRAFTS_FILE.parent),'backup_directory':str(storage.backups(drafts.DRAFTS_FILE)[0].parent),'recoveries':storage.RECOVERIES})
+        if path=='/api/source-status':return self._send_json(outlook_status.sources())
         if path=='/api/setup': return self._send_json(setup_check.check())
         if path=='/api/startup': return self._send_json(workspace.startup_status())
         if path=='/api/backup': return self._send_json(workspace.export_data())
@@ -92,7 +93,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         if path=='/api/task-review':
             return self._send_json(task_workflow.snapshot(q.get('email_id',[None])[0]))
         if path=='/api/health':
-            return self._send_json({'version':__version__,'instance':INSTANCE,'outlook_running':outlook_status.running()})
+            return self._send_json({'version':__version__,'instance':INSTANCE,'outlook_running':outlook_status.running(),'teams_running':outlook_status.teams_running()})
         if path=='/api/status':
             try: status = self.engine.get_status()
             except (RuntimeError, OSError) as exc: status = {'active_backend':'local_cache','mail_error':str(exc)}
@@ -132,7 +133,10 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             return self._send_json(item if item else {'error':'Message not found.'},200 if item else 404)
         if path=='/api/meeting-mail':return self._send_json(meeting_mail.discover(self.engine))
         if path=='/api/calendar':
-            return self._send_json(calendar_cache.snapshot(force=q.get('refresh',[''])[0]=='1'))
+            data=calendar_cache.snapshot(force=q.get('refresh',[''])[0]=='1')
+            from .tasks import refresh_meeting_deadlines
+            refresh_meeting_deadlines(data['events'])
+            return self._send_json(data)
         if path.startswith('/api/'):
             return self._send_json({'error':'Unknown endpoint.'},404)
         if path not in ('/','/index.html','/app.js','/tasks-ui.js','/task-files.js','/chat-ui.js','/workspace-ui.js','/organize-ui.js','/rich-editor.js','/style.css','/app-icon.png'):
@@ -209,6 +213,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
                 changes['user_context']={k:str(ctx.get(k,''))[:12000] for k in ('full_name','email_addresses','role','accounts','priorities','writing_style')}
             update_config(changes)
             return self._send_json({'status':'saved'})
+        if path=='/api/open-teams':return self._send_json(outlook_status.open_teams())
         if path=='/api/open-outlook':return self._send_json(outlook_status.open_outlook())
         if path=='/api/bob-test':
             answer=self.ai._call_llm('Respond with exactly BOB_CONNECTION_OK.')
@@ -216,7 +221,12 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         if path=='/api/sync':
             backend=self.engine.get_active_backend()
             if isinstance(backend,LocalStoreBridge): backend._load(force=True)
-            return self._send_json({'status':'synced','tasks':task_workflow.sync_tasks(self.engine,automatic=data.get('automatic') is True)})
+            from .tasks import refresh_meeting_deadlines
+            calendar_error=''
+            if any(t.get('deadline',{}).get('kind')=='meeting' for rows in load_tasks().values() for t in rows if not t.get('completed')):
+                try:refresh_meeting_deadlines(calendar_cache.snapshot(force=True)['events'])
+                except Exception:calendar_error='Mail synced, but meeting deadlines could not refresh. Open Calendar to retry.'
+            return self._send_json({'status':'synced','calendar_error':calendar_error,'tasks':task_workflow.sync_tasks(self.engine,automatic=data.get('automatic') is True)})
         if path=='/api/briefing':
             emails=self.engine.get_emails(folder='inbox',limit=40,unread_only=True)
             briefing=self.ai.generate_ai_briefing([],emails)
@@ -265,8 +275,8 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
                 if due:
                     from datetime import date
                     date.fromisoformat(due)
-                tasks=add_task(data.get('type','my'),text,str(data.get('owner',''))[:200],due,source=source,description=str(data.get('description','')),source_type=data.get('source_type'),source_url=data.get('source_url',''),priority=data.get('priority','none'),project_id=data.get('project_id',''))
-            elif action=='edit':tasks=edit_task(str(data.get('id','')),str(data.get('text','')),str(data.get('owner','')),data.get('type','my'),str(data.get('due_date','')),description=data.get('description'),source_type=data.get('source_type'),source_url=data.get('source_url'),priority=data.get('priority'),project_id=data.get('project_id'))
+                tasks=add_task(data.get('type','my'),text,str(data.get('owner',''))[:200],due,source=source,description=str(data.get('description','')),source_type=data.get('source_type'),source_url=data.get('source_url',''),priority=data.get('priority','none'),project_id=data.get('project_id',''),color=data.get('color','none'),deadline=data.get('deadline'))
+            elif action=='edit':tasks=edit_task(str(data.get('id','')),str(data.get('text','')),str(data.get('owner','')),data.get('type','my'),str(data.get('due_date','')),description=data.get('description'),source_type=data.get('source_type'),source_url=data.get('source_url'),priority=data.get('priority'),project_id=data.get('project_id'),color=data.get('color'),deadline=data.get('deadline'))
             elif action=='move':tasks=move_task(str(data.get('id','')),str(data.get('lane_id','')))
             elif action=='toggle': tasks=toggle_task(data.get('id'))
             elif action=='delete': tasks=delete_task(data.get('id'))

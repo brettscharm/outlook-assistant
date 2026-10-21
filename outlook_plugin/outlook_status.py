@@ -29,3 +29,27 @@ def open_outlook():
     if result.returncode:raise ValueError('Could not open Outlook. Check that it is installed in Applications.')
     with _LOCK:_CHECKED=None
     return {'opened':True}
+
+def teams_running():
+    if sys.platform!='darwin':return None
+    try:
+        result=subprocess.run(['/usr/bin/pgrep','-x','MSTeams'],capture_output=True,timeout=3)
+        return True if result.returncode==0 else False if result.returncode==1 else None
+    except (OSError,subprocess.TimeoutExpired):return None
+
+def open_teams():
+    if sys.platform!='darwin':raise ValueError('Open Teams on your Mac to update meetings.')
+    try:result=subprocess.run(['/usr/bin/open','-b','com.microsoft.teams2'],capture_output=True,timeout=10)
+    except (OSError,subprocess.TimeoutExpired):raise ValueError('Could not open Teams. Open it from Applications.') from None
+    if result.returncode:raise ValueError('Install Microsoft Teams, sign in, and open Calendar.')
+    return {'opened':True}
+
+def sources():
+    from pathlib import Path
+    from .local_store import profiles
+    try:mail=bool(profiles())
+    except OSError:mail=False
+    root=Path.home()/'Library/Containers/com.microsoft.teams2/Data/Library/Application Support/Microsoft/MSTeams/EBWebView'
+    try:calendar=root.is_dir()
+    except OSError:calendar=False
+    return {'outlook':{'running':running(),'cache_available':mail},'teams':{'running':teams_running(),'cache_available':calendar}}

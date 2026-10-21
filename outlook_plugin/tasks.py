@@ -43,12 +43,15 @@ def add_task(
     source_url: str = "",
     priority: str = "none",
     project_id: str = "",
+    color: str = "none",
+    deadline=None,
 ) -> Dict[str, List[Dict[str, Any]]]:
     """Add a new task and return all updated tasks."""
     source_type,source_url=validate_source(source_type or ("email" if source and source.get("email_id") else "other"),source_url)
     from .projects import validate_id
     project_id=validate_id(project_id)
     priority=validate_priority(priority)
+    extras=validate_task_details(color,deadline)
     tasks = load_tasks()
     if request_id and any(t.get("id")==request_id for rows in tasks.values() for t in rows):return tasks
     key = "my_tasks" if task_type == "my" else "others_tasks"
@@ -72,6 +75,7 @@ def add_task(
         "created_at": datetime.now().isoformat(),
     }
 
+    new_item.update(extras)
     if source:
         new_item.update(source)
     tasks[key].insert(0, new_item)
@@ -113,7 +117,7 @@ delete_task = _serialized(delete_task)
 
 
 @_serialized
-def edit_task(task_id, text, owner, kind, due_date, description=None, source_type=None, source_url=None, priority=None, project_id=None):
+def edit_task(task_id, text, owner, kind, due_date, description=None, source_type=None, source_url=None, priority=None, project_id=None, color=None, deadline=None):
     from datetime import date
     if not text.strip(): raise ValueError('Enter a task.')
     if kind not in ('my','others','unclear'): raise ValueError('Choose an owner group.')
@@ -126,10 +130,12 @@ def edit_task(task_id, text, owner, kind, due_date, description=None, source_typ
     for group in ('my_tasks','others_tasks'):
         for item in data[group]:
             if item['id']==task_id:
+                extras=validate_task_details(color,deadline,item.get('deadline'))
                 item.update(text=text.strip()[:2000],assignee=current_user_name() if kind=='my' else owner.strip()[:200] or 'Owner unclear',type=kind,due_date=due_date)
                 if source_type is not None or source_url is not None:
                     platform,url=validate_source(source_type if source_type is not None else item.get('source_type','email' if item.get('email_id') else 'other'),source_url if source_url is not None else item.get('source_url',''))
                     item.update(source_type=platform,source_url=url)
+                item.update(extras)
                 if priority is not None:item['priority']=priority
                 if project_id is not None:item['project_id']=project_id
                 if description is not None:item['description']=str(description).strip()[:4000]
@@ -197,3 +203,50 @@ def validate_priority(value):
 def current_user_name():
     from .config import read_config
     return read_config().get('user_context',{}).get('full_name','').strip() or 'Me'
+
+
+TASK_COLORS=('none','blue','purple','green','orange','pink')
+def validate_task_details(color=None,deadline=None,current=None):
+    result={}
+    if color is not None:
+        if color not in TASK_COLORS:raise ValueError('Choose a supported task color.')
+        result['color']=color
+    if deadline is not None:
+        if not isinstance(deadline,dict) or deadline.get('kind') not in ('date','meeting'):raise ValueError('Choose a date or meeting deadline.')
+        if deadline['kind']=='date':result['deadline']={'kind':'date'}
+        else:
+            offset=deadline.get('offset_minutes',0)
+            if type(offset)!=int or offset not in (0,15,30,60,1440):raise ValueError('Choose a supported time before the meeting.')
+            from .calendar_cache import snapshot
+            try:events=snapshot()['events']
+            except (RuntimeError,OSError):
+                if not current or current.get('meeting_id')!=deadline.get('meeting_id'):raise ValueError('Calendar unavailable. Refresh Calendar before linking a meeting.')
+                events=[]
+            event=next((e for e in events if e.get('meeting_id')==deadline.get('meeting_id')),None)
+            if not event:
+                if current and current.get('meeting_id')==deadline.get('meeting_id') and current.get('offset_minutes')==offset:
+                    result['deadline']=dict(current,availability='unavailable')
+                else:raise ValueError('This meeting is no longer available. Refresh Calendar and choose a meeting.')
+            else:result['deadline']=meeting_deadline(event,offset)
+    return result
+
+def meeting_deadline(event,offset):
+    from datetime import timedelta
+    from .calendar_cache import instant
+    return {'kind':'meeting','meeting_id':event['meeting_id'],'subject':event['subject'],
+            'start_time':event['start_time'],'offset_minutes':offset,
+            'due_at':(instant(event['start_time'])-timedelta(minutes=offset)).isoformat(),'availability':'current'}
+
+@_serialized
+def refresh_meeting_deadlines(events):
+    lookup={e['meeting_id']:e for e in events if e.get('meeting_id')}
+    data=load_tasks();changed=False
+    for rows in data.values():
+        for task in rows:
+            old=task.get('deadline',{})
+            if task.get('completed') or old.get('kind')!='meeting':continue
+            event=lookup.get(old.get('meeting_id'))
+            new=meeting_deadline(event,old.get('offset_minutes',0)) if event else dict(old,availability='unavailable')
+            if old!=new:task['deadline']=new;changed=True
+    if changed:save_tasks(data)
+    return changed

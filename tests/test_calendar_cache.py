@@ -21,3 +21,10 @@ class CalendarTests(unittest.TestCase):
   row=dict(account='user@example.com',iCalUID='instance',startTime='2026-10-22T12:00:00.000Z',endTime='2026-10-22T13:00:00.000Z',eventType='Exception',source='Teams calendar',responseType='Accept')
   events,skipped=normalize([row,dict(row,iCalUID='draft',isDraft=True)],now,30)
   self.assertEqual(len(events),1);self.assertEqual(events[0]['response'],'Accept');self.assertEqual(events[0]['source'],'Teams calendar');self.assertEqual(skipped,0)
+
+ def test_meeting_link_survives_reschedule(self):
+  now=datetime(2026,10,21,tzinfo=timezone.utc)
+  event=dict(account='a',objectId='stable-id',iCalUID='uid',startTime='2026-10-22T12:00:00Z',endTime='2026-10-22T13:00:00Z')
+  first,_=normalize([event],now,30)
+  later,_=normalize([dict(event,startTime='2026-10-23T14:00:00Z',endTime='2026-10-23T15:00:00Z')],now,30)
+  self.assertEqual(first[0]['meeting_id'],later[0]['meeting_id'])

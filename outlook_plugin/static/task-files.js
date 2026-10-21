@@ -6,6 +6,7 @@ window.mountTaskFiles=function(parent,kind,owner){
  const list=text('div','','file-list'),status=text('p','','muted small');status.setAttribute('role','status');
  const label=text('label','Attach files','file-picker');const input=document.createElement('input');input.type='file';input.multiple=true;input.accept='.doc,.docx,.xls,.xlsx,.ppt,.pptx,.pdf,.txt,.csv,.rtf,.png,.jpg,.jpeg';input.setAttribute('aria-label','Attach files to '+kind);label.append(input);
  section.append(label,text('p','Saved on this Mac · Up to 25 MB per file','muted small'),list,status);
+ if(window.webkit?.messageHandlers?.saveBackup&&!window.nativeFilePickerReady){label.hidden=true;const update=text('a','Update the Mac app to attach files','feedback-link');update.href='https://github.com/brettscharm/outlook-assistant/releases/tag/v2.17.0';update.target='_blank';update.rel='noopener noreferrer';section.prepend(update);}
  async function render(){
   const rows=await api('/api/task-files?'+new URLSearchParams({kind,owner}));list.replaceChildren();
   if(!rows.length)list.append(text('p','No files attached.','muted small'));

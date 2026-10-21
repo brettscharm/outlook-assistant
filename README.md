@@ -16,7 +16,7 @@ The Mac app includes Python and the mail reader. You do not need Git, Xcode, Pyt
 
 **Requirements:** macOS 13 or later, Apple silicon or Intel, and New Outlook with a supported local cache. Compatibility with every Mac, Outlook version, and company-managed device is not guaranteed. The current downloadable app is ad-hoc signed, **not Developer ID signed or notarized**. macOS or company policy may block it; do not disable security controls.
 
-**Download versus app version:** the latest packaged desktop release is currently **2.16.0**. Newer application features are delivered by the in-app updater. See the [feature status](docs/FEATURE_STATUS.md) for implemented features and remaining integrations. Keep the app open and connected to the internet; installation waits for a safe idle period and for active Bob work to finish. The displayed version changes after the update restarts the service. A package update does not replace the bundled runtime or Finder/Dock icon; those require a newer desktop download.
+**Download versus app version:** the latest packaged desktop release is currently **2.17.0**. Newer application features are delivered by the in-app updater. See the [feature status](docs/FEATURE_STATUS.md) for implemented features and remaining integrations. Keep the app open and connected to the internet; installation waits for a safe idle period and for active Bob work to finish. The displayed version changes after the update restarts the service. A package update does not replace the bundled runtime or Finder/Dock icon; those require a newer desktop download.
 
 ## Everyday use
 
@@ -104,3 +104,19 @@ Files live in `~/Library/Application Support/Outlook Assistant/attachments`, out
 the application and update folders. They survive app updates and restarts. Include
 that folder in your Mac backup; downloadable JSON workspace backups and task
 exports do not include attachment files. Attachments are not sent to Bob.
+
+
+### Task cards and meeting deadlines
+Task cards show due time, priority, owner, project, and next step. Choose an optional
+color edge in the task editor. Under **Due**, choose **Before a meeting**, select a
+cached meeting, and choose when the task must be ready. Sync checks for rescheduling;
+unavailable meetings retain their last deadline with a notice. Meeting deadlines
+use the Mac's current time zone, including daylight saving changes. Date-only tasks
+remain due on the selected local calendar day.
+
+Version 2.17.0 adds the native macOS file picker. Older desktop windows need the new
+Mac application download even after their page updates. **Mail & calendar** shows
+local source availability and buttons to open Outlook and Teams. Both apps must be
+signed in and have downloaded their data. Supported desktop builds target macOS 13+
+on Apple Silicon and Intel. Cache formats and organization permissions can vary;
+installation alone does not guarantee readable or complete mail/calendar data.
