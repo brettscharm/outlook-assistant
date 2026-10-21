@@ -157,7 +157,7 @@ function renderTaskBoard(){
 $('boardSearch').oninput=()=>{boardFingerprint='';renderTaskBoard();};
 
 function taskLane(t){return t.completed?'done':t.lane_id&&t.lane_id!=='done'?t.lane_id:'todo';}
-async function moveBoardTask(id,lane){const wasDone=taskSaved.find(t=>t.id===id)?.completed;try{await api('/api/tasks',{action:'move',id,lane_id:lane});if(lane==='done'&&!wasDone)celebrateTaskDone();if(taskLoading)await taskLoading;await loadTaskWorkspace();notice('Moved to '+(boardLanes.find(l=>l.id===lane)?.name||'lane')+'.');}catch(e){notice(e.message,'error');boardFingerprint='';renderTaskBoard();}}
+async function moveBoardTask(id,lane){const wasDone=taskSaved.find(t=>t.id===id)?.completed;try{await api('/api/tasks',{action:'move',id,lane_id:lane});if(lane==='done'&&!wasDone)celebrateTaskDone();if(taskLoading)await taskLoading;await loadTaskWorkspace();}catch(e){notice(e.message,'error');boardFingerprint='';renderTaskBoard();}}
 function renderLaneEditor(){
  const root=$('laneRows');root.replaceChildren();
  laneDraft.forEach((lane,index)=>{const row=text('div','','lane-config-row');const name=document.createElement('input');name.value=lane.name;name.maxLength=60;name.required=true;name.setAttribute('aria-label','Lane '+(index+1)+' name');name.oninput=()=>lane.name=name.value;row.append(name);
