@@ -6,7 +6,7 @@ from . import __version__
 
 
 def tool(name, description, properties=None, required=None,write=False):
-    return {'name':name,'description':description,'inputSchema':{'type':'object','properties':properties or {},'required':required or [],'additionalProperties':False},'annotations':{'readOnlyHint':not write,'destructiveHint':write,'idempotentHint':name not in ('add_attachment','start_task_scan'),'openWorldHint':False}}
+    return {'name':name,'description':description,'inputSchema':{'type':'object','properties':properties or {},'required':required or [],'additionalProperties':False},'annotations':{'readOnlyHint':not write,'destructiveHint':write,'idempotentHint':name not in ('add_attachment','start_task_scan'),'openWorldHint':name=='start_task_scan'}}
 
 PAGE={'limit':{'type':'integer','minimum':1,'maximum':100,'default':25},'offset':{'type':'integer','minimum':0,'default':0}}
 TOOLS_DEFINITION=[

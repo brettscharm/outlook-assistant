@@ -79,5 +79,8 @@ class WorkspaceTests(unittest.TestCase):
   with patch('outlook_plugin.calendar_cache.snapshot',return_value={'events':[{'id':'meeting','url':'https://teams.microsoft.com/example'}],'checked':1}) as snapshot:
    data=self.call('get_calendar_range',start='2026-10-21T00:00:00-04:00',end='2026-10-22T00:00:00-04:00')
    self.assertEqual(data['items'][0]['id'],'meeting');self.assertNotIn('events',data)
+  scan=next(t for t in m.TOOLS_DEFINITION if t['name']=='start_task_scan')
+  self.assertTrue(scan['annotations']['openWorldHint'])
+  self.assertFalse(scan['annotations']['idempotentHint'])
   names=[t['name'] for t in m.TOOLS_DEFINITION];self.assertEqual(len(names),len(set(names)))
   for tool in m.TOOLS_DEFINITION:self.assertFalse(tool['inputSchema']['additionalProperties'])
