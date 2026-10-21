@@ -106,7 +106,7 @@ Chat history is saved in `~/.outlook_assistant_chat.json` with owner-only permis
 
 The desktop app does not automatically fall back to AppleScript if the cache is missing. It reports what setup is needed without prompting to automate Outlook. These checks identify prerequisites; they cannot override company policy or prove a cache format is supported until it is read.
 
-Builds default to `--target-arch universal2` and require universal Python and compatible libraries. The build declares macOS 13 as its minimum, stamps the app version, and verifies its signature. `SIGNING_IDENTITY` can select an available developer identity; notarization still requires a separate Apple-authorized release step.
+Builds default to `--target-arch universal2` and require universal Python and compatible libraries. The build declares macOS 13 as its minimum, stamps the app version, and verifies its signature. For Developer ID signing, notarization, stapling and Gatekeeper validation, run `scripts/notarize_mac.sh` with your signing identity and Keychain notary profile. See [Mac release checklist](docs/MAC_RELEASE_CHECKLIST.md) for the uncompleted clean-machine acceptance tests and signed-update requirement. Bob version checks now reject unsupported or unreadable versions before inference.
 
 For isolated testing, `OUTLOOK_ASSISTANT_DATA_DIR` puts settings and runtime code in a separate directory, and `OUTLOOK_ASSISTANT_PROFILE_ROOT` selects a separate cache search location. Defaults preserve existing users’ files and profile discovery.
 

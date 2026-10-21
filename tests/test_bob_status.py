@@ -22,6 +22,7 @@ class BobStatusTests(unittest.TestCase):
         config.update_config({'bob_team_id':'different'})
         self.assertEqual(bob_status.current('old-secret')['state'],'unchecked')
     @patch('outlook_plugin.ai_agent.usage.record')
+    @patch('outlook_plugin.ai_agent.bob_compatibility',return_value={'ready':True})
     @patch('outlook_plugin.ai_agent.node_executable',return_value='/tmp/node')
     @patch('outlook_plugin.ai_agent.bob_executable',return_value='/tmp/bob')
     @patch('outlook_plugin.ai_agent.subprocess.run')

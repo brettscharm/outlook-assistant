@@ -60,6 +60,31 @@ def node_executable(bob=None):
     return None
 
 
+def bob_compatibility(executable=None, node=None):
+    """Probe the CLI locally, without credentials, prompts, or inference calls."""
+    import re
+    executable = executable or bob_executable()
+    if not executable:
+        return {'ready': False, 'detail': 'Bob Shell is not installed. Open Settings → Setup for IBM’s installer.'}
+    node = node or node_executable(executable)
+    if not node:
+        return {'ready': False, 'detail': 'Bob Shell needs Node.js 24 or later. Open Settings → Setup for installation instructions.'}
+    env = {k: v for k, v in os.environ.items() if k not in ('BOB_API_KEY', 'BOB_TEAM_ID')}
+    env['PATH'] = str(Path(node).parent) + ':' + env.get('PATH', '')
+    try:
+        result = subprocess.run([executable, '--version'], capture_output=True, text=True,
+                                env=env, timeout=8)
+        match = re.search(r'(?im)^\s*(?:(?:IBM\s+)?Bob(?:\s+Shell)?[ :/]+)?v?(\d+)\.(\d+)\.(\d+)(?:[-+][\w.-]+)?\s*$', result.stdout)
+        if result.returncode or not match:
+            return {'ready': False, 'detail': 'Could not verify Bob Shell’s version. Repair or reinstall Bob through IBM’s installer.'}
+        version = '.'.join(match.groups())
+        if int(match[1]) != 2:
+            return {'ready': False, 'version': version, 'detail': f'Bob Shell {version} is not supported by this app. This release requires Bob Shell 2.x.'}
+        return {'ready': True, 'version': version, 'detail': f'Bob Shell {version} detected with Node.js 24 or later.'}
+    except (OSError, subprocess.TimeoutExpired):
+        return {'ready': False, 'detail': 'Bob Shell did not respond to its version check. Repair its installation and retry.'}
+
+
 class BobAIAgent:
     """Run bounded IBM Bob Shell sessions using the user's Bob subscription key."""
     def __init__(self, api_key=None):
@@ -78,6 +103,9 @@ class BobAIAgent:
         node = node_executable(executable)
         if not node:
             raise RuntimeError("IBM Bob Shell needs Node.js 24 or later. Install it through IBM’s setup instructions, then retry.")
+        compatibility = bob_compatibility(executable, node)
+        if not compatibility["ready"]:
+            raise RuntimeError(compatibility["detail"])
         if not _BOB_LOCK.acquire(blocking=False):
             raise RuntimeError("Bob is working on another request. Please wait and retry.")
         success=False;reported_stats={};attempted=False
