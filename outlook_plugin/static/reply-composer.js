@@ -1,6 +1,6 @@
 'use strict';
 function mountReplyComposer(id,message,root){
- const section=text('section','','draft');section.append(text('h3','Reply'));
+ const section=text('details','','draft reply-disclosure');section.append(text('summary','Draft a reply'));
  const controls=text('div','','actions reply-controls');const tone=document.createElement('select');tone.setAttribute('aria-label','Reply tone');
  for(const [value,label] of [['friendly','Friendly'],['professional','Professional'],['direct','Direct'],['firm','Firm'],['casual','Casual']]){const option=text('option',label);option.value=value;tone.append(option);}
  const intent=document.createElement('input');intent.placeholder='Optional instructions';intent.setAttribute('aria-label','Reply instructions');intent.maxLength=3000;intent.value=state.intents[id]||'';intent.oninput=()=>{state.intents[id]=intent.value;persistDrafts();};controls.append(tone,intent);
