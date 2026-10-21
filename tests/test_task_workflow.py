@@ -115,6 +115,7 @@ class WorkflowTests(unittest.TestCase):
    w.scheduler(Engine([]),shutdown);start.assert_not_called()
 
 class SyncTests(unittest.TestCase):
+ setUp = WorkflowTests.setUp
  def test_manual_sync_starts_without_changing_paused_preference(self):
   from unittest.mock import Mock
   engine=Mock()

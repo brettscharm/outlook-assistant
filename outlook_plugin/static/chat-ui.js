@@ -8,7 +8,26 @@ function renderChat(data){
 }
 $('chatQuestion').value=(()=>{try{return localStorage.getItem('outlook-chat-draft')||'';}catch{return '';}})();
 $('chatQuestion').oninput=()=>{try{localStorage.setItem('outlook-chat-draft',$('chatQuestion').value);}catch{}};
-$('chatForm').onsubmit=async e=>{e.preventDefault();if(chatSending)return;const question=$('chatQuestion').value.trim();if(!question)return;chatSending=true;$('clearChat').disabled=true;$('chatQuestion').readOnly=true;$('chatStatus').textContent='Working…';await busy($('sendChat'),async()=>{try{renderChat(await api('/api/assistant',{question,context:{page:assistantPreviousView,email_id:assistantPreviousView==='mail'?state.selected:null}}));$('chatQuestion').value='';try{localStorage.removeItem('outlook-chat-draft');}catch{}$('chatStatus').textContent='';}catch(error){$('chatStatus').textContent=error.message;throw error;}});chatSending=false;$('clearChat').disabled=false;$('chatQuestion').readOnly=false;};
+$('chatQuestion').addEventListener('keydown',event=>{
+ if(event.key!=='Enter'||event.shiftKey||event.isComposing||event.keyCode===229)return;
+ event.preventDefault();
+ if(!event.repeat&&!chatSending)$('chatForm').requestSubmit();
+});
+$('chatForm').onsubmit=async e=>{
+ e.preventDefault();if(chatSending)return;
+ const question=$('chatQuestion').value.trim();if(!question)return;
+ chatSending=true;$('clearChat').disabled=true;$('chatQuestion').readOnly=true;
+ $('chatStatus').textContent='Waiting for Bob, then preparing your reply…';
+ try{
+  await busy($('sendChat'),async()=>{
+   try{
+    renderChat(await api('/api/assistant',{question,context:{page:assistantPreviousView,email_id:assistantPreviousView==='mail'?state.selected:null}}));
+    $('chatQuestion').value='';try{localStorage.removeItem('outlook-chat-draft');}catch{}
+    $('chatStatus').textContent='';
+   }catch(error){$('chatStatus').textContent=error.message;throw error;}
+  });
+ }finally{chatSending=false;$('clearChat').disabled=false;$('chatQuestion').readOnly=false;$('chatQuestion').focus();}
+};
 $('clearChat').onclick=()=>busy($('clearChat'),async()=>{renderChat(await api('/api/chat-clear',{}));$('chatStatus').textContent='Conversation cleared. Your emails and tasks are unchanged.';});
 window.refreshChatHistory=async()=>{if(chatSending)return;const data=await api('/api/chat');if(!chatSending)renderChat(data);};
 window.refreshChatHistory().catch(e=>{$('chatStatus').textContent=e.message;});
@@ -17,7 +36,7 @@ let assistantPreviousView='tasks',assistantDocked=false;
 window.assistantViewChanged=id=>{if(id!=='chat'){assistantPreviousView=id;$('assistantContext').textContent='Viewing '+({'task-review':'tasks to review'}[id]||id);}else{$('chat').classList.remove('assistant-docked');assistantDocked=false;$('assistantExpand').textContent='Compact';$('assistantOpen').setAttribute('aria-expanded','true');}};
 function openAssistant(){
  if($('chat').classList.contains('active')||assistantDocked){closeAssistant();return;}
- assistantDocked=true;$('assistantContext').textContent='Viewing '+assistantPreviousView;$('chat').classList.add('assistant-docked');$('assistantExpand').textContent='Expand';$('assistantOpen').setAttribute('aria-expanded','true');$('chatQuestion').focus();window.refreshChatHistory();
+ assistantDocked=true;$('assistantContext').textContent='Viewing '+assistantPreviousView;$('chat').classList.add('assistant-docked');$('assistantExpand').textContent='Expand';$('assistantOpen').setAttribute('aria-expanded','true');$('chatQuestion').focus();window.refreshChatHistory().catch(e=>{$('chatStatus').textContent=e.message;});
 }
 function closeAssistant(){const full=$('chat').classList.contains('active');assistantDocked=false;$('chat').classList.remove('assistant-docked');$('assistantOpen').setAttribute('aria-expanded','false');if(full)view(assistantPreviousView);$('assistantOpen').focus();}
 $('assistantOpen').onclick=openAssistant;

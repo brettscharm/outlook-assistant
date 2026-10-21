@@ -108,7 +108,11 @@ class BobAIAgent:
         compatibility = bob_compatibility(executable, node)
         if not compatibility["ready"]:
             raise RuntimeError(compatibility["detail"])
-        if not _BOB_LOCK.acquire(blocking=False):
+        # Interactive chat waits for the current scan instead of failing immediately.
+        acquired = _BOB_LOCK.acquire(timeout=180) if profile == "assistant" else _BOB_LOCK.acquire(blocking=False)
+        if not acquired:
+            if profile == "assistant":
+                raise RuntimeError("Bob is still busy. Your message is saved in the composer; please send it again shortly.")
             raise RuntimeError("Bob is working on another request. Please wait and retry.")
         from . import ai_profiles
         activity_id=ai_profiles.begin(profile)
