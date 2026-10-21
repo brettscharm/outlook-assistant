@@ -58,6 +58,7 @@ def ask(engine, question, ai=None):
         previous = data['messages'][-8:]
         messages, searched, matched = retrieve(engine,question,previous)
         sources = []
+        source_kind = "supporting"
         if not messages:
             answer = 'I could not find matching messages in the local cache. Try a person’s name, company, or specific topic. This does not mean the email does not exist in Outlook.'
         else:
@@ -72,10 +73,22 @@ def ask(engine, question, ai=None):
             if not isinstance(ids,list) or any(not isinstance(i,str) for i in ids): raise ValueError('Bob returned invalid sources. Please retry.')
             available = {m['id']:m for m in messages}
             if any(i not in available for i in ids): raise ValueError('Bob cited an unavailable email. Please retry.')
-            if not ids: raise ValueError('Bob did not provide supporting emails. Try a more specific question.')
+            if not ids:
+                # One bounded repair using the same evidence; never label guessed links as citations.
+                repair=(ai or BobAIAgent())._call_llm(prompt+'\nYour previous reply omitted source_ids. Recheck the supplied emails and return a supported answer with their exact IDs. If none supports an answer, return an empty source_ids list.')
+                try:
+                    fixed=json.loads(re.sub(r'^```(?:json)?\s*|\s*```$', '', repair.strip()))
+                    fixed_ids=fixed.get('source_ids',[]) if isinstance(fixed,dict) else []
+                    if isinstance(fixed_ids,list) and fixed_ids and all(isinstance(i,str) and i in available for i in fixed_ids) and isinstance(fixed.get('answer'),str) and fixed['answer'].strip():
+                        result=fixed;ids=fixed_ids
+                except (ValueError,TypeError):pass
+                if not ids:
+                    source_kind='possible'
+                    result={'answer':"I found possible matches, but couldn't verify an answer from them. Open an email below to check the details, or tell me which person or topic to focus on."}
+                    ids=[m['id'] for m in messages[:5]]
             answer = result['answer'][:20000]
             sources = [{k:v for k,v in available[i].items() if k!='content'} for i in dict.fromkeys(ids)]
-        data['messages'].extend([{'role':'user','text':question.strip()}, {'role':'assistant','text':answer,'sources':sources,'searched':searched,'matched':matched,'used':len(messages)}])
+        data['messages'].extend([{'role':'user','text':question.strip()}, {'role':'assistant','text':answer,'sources':sources,'searched':searched,'matched':matched,'used':len(messages),'source_kind':source_kind}])
         save(data)
         return data
     finally:

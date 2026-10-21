@@ -24,3 +24,13 @@ class ChatTests(unittest.TestCase):
         result=chat.ask(Engine(),'zzzzzz',AI());self.assertEqual(result['messages'][1]['used'],0);self.assertEqual(chat.clear()['messages'],[])
     def test_followup_retrieves_previous_topic(self):
         messages,_,_=chat.retrieve(Engine(),'when is it due',[{'role':'user','text':'Acme renewal'}]);self.assertEqual(messages[0]['id'],'1')
+
+    def test_missing_sources_repair(self):
+        with patch.object(AI,'_call_llm',side_effect=['{"answer":"Unsupported","source_ids":[]}','{"answer":"Renew by November 12","source_ids":["1"]}']) as call:
+            answer=chat.ask(Engine(),'Acme renewal',AI())['messages'][-1]
+            self.assertEqual(call.call_count,2);self.assertEqual(answer['source_kind'],'supporting')
+    def test_missing_sources_shows_matches_without_unsupported_claim(self):
+        with patch.object(AI,'_call_llm',return_value='{"answer":"Invented claim","source_ids":[]}') as call:
+            answer=chat.ask(Engine(),'Acme renewal',AI())['messages'][-1]
+            self.assertEqual(call.call_count,2);self.assertEqual(answer['source_kind'],'possible')
+            self.assertNotIn('Invented claim',answer['text']);self.assertEqual(answer['sources'][0]['id'],'1')
