@@ -2,7 +2,6 @@
 let chatSending=false;
 function renderChat(data){
  const root=$('chatMessages');root.replaceChildren();
- if(!data.messages.length){const empty=text('div','','chat-empty');empty.append(text('h3','Start with a question.'),text('p','Try “What are the next steps for Acme?” or “Find the email about the renewal deadline.”','muted'));root.append(empty);}
  for(const m of data.messages){const item=text('article','',`chat-message chat-${m.role}`);item.append(text('strong',m.role==='user'?'You':'Bob'),text('div',m.text,'chat-answer'));
  if(m.role==='assistant'){item.append(text('p',`${m.searched} cached messages searched · ${m.used} excerpts provided to Bob`,'muted small'));const sources=text('div','','chat-sources');for(const source of m.sources||[]){const b=text('button',`${source.subject||'(No subject)'} · ${date(source.received_time)}`);b.title=source.sender;b.onclick=()=>{view('mail');selectEmail(source.id).catch(e=>notice(e.message));};sources.append(b);}item.append(sources);}root.append(item);}
 }
