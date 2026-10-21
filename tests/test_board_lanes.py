@@ -42,3 +42,14 @@ class BoardTests(unittest.TestCase):
  def test_task_source_rejects_unsafe_urls(self):
   for value in ['javascript:alert(1)','file:///etc/passwd','https://example.com/a b']:
    with self.assertRaises(ValueError):tasks.add_task('my','Bad link',source_type='other',source_url=value)
+ def test_priority_persists_preserves_and_clears(self):
+  task=tasks.add_task('my','Send quote',priority='high')['my_tasks'][0]
+  edited=tasks.edit_task(task['id'],'Send final quote','Me','my','')['my_tasks'][0]
+  self.assertEqual(edited['priority'],'high')
+  tasks.move_task(task['id'],'progress')
+  self.assertEqual(tasks.load_tasks()['my_tasks'][0]['priority'],'high')
+  tasks.edit_task(task['id'],'Send final quote','Me','my','',priority='none')
+  self.assertEqual(tasks.load_tasks()['my_tasks'][0]['priority'],'none')
+  with self.assertRaises(ValueError):tasks.edit_task(task['id'],'Bad edit','Me','my','',priority='urgent')
+  self.assertEqual(tasks.load_tasks()['my_tasks'][0]['text'],'Send final quote')
+  with self.assertRaises(ValueError):tasks.add_task('my','Bad task',priority='urgent')

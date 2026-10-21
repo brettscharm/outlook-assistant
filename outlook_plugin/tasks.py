@@ -41,9 +41,11 @@ def add_task(
     request_id: Optional[str] = None,
     source_type: Optional[str] = None,
     source_url: str = "",
+    priority: str = "none",
 ) -> Dict[str, List[Dict[str, Any]]]:
     """Add a new task and return all updated tasks."""
     source_type,source_url=validate_source(source_type or ("email" if source and source.get("email_id") else "other"),source_url)
+    priority=validate_priority(priority)
     tasks = load_tasks()
     if request_id and any(t.get("id")==request_id for rows in tasks.values() for t in rows):return tasks
     key = "my_tasks" if task_type == "my" else "others_tasks"
@@ -59,7 +61,7 @@ def add_task(
         "id": request_id or str(uuid.uuid4()),
         "text": text.strip(),
         "description": str(description).strip()[:4000],
-        "source_type":source_type,"source_url":source_url,
+        "source_type":source_type,"source_url":source_url,"priority":priority,
         "assignee": assignee.strip() if assignee else default_owner,
         "completed": False,
         "due_date": due_date or "",
@@ -108,11 +110,12 @@ delete_task = _serialized(delete_task)
 
 
 @_serialized
-def edit_task(task_id, text, owner, kind, due_date, description=None, source_type=None, source_url=None):
+def edit_task(task_id, text, owner, kind, due_date, description=None, source_type=None, source_url=None, priority=None):
     from datetime import date
     if not text.strip(): raise ValueError('Enter a task.')
     if kind not in ('my','others','unclear'): raise ValueError('Choose an owner group.')
     if due_date: date.fromisoformat(due_date)
+    if priority is not None:priority=validate_priority(priority)
     data=load_tasks()
     for group in ('my_tasks','others_tasks'):
         for item in data[group]:
@@ -121,6 +124,7 @@ def edit_task(task_id, text, owner, kind, due_date, description=None, source_typ
                 if source_type is not None or source_url is not None:
                     platform,url=validate_source(source_type if source_type is not None else item.get('source_type','email' if item.get('email_id') else 'other'),source_url if source_url is not None else item.get('source_url',''))
                     item.update(source_type=platform,source_url=url)
+                if priority is not None:item['priority']=priority
                 if description is not None:item['description']=str(description).strip()[:4000]
                 data[group].remove(item)
                 data['my_tasks' if kind=='my' else 'others_tasks'].insert(0,item)
@@ -176,3 +180,8 @@ def validate_source(source_type,source_url):
         except ValueError:valid=False
         if not valid:raise ValueError('Use a complete http:// or https:// link, such as a Slack message link.')
     return source_type,value
+
+
+def validate_priority(value):
+    if value not in ('none','low','medium','high'):raise ValueError('Choose None, Low, Medium, or High priority.')
+    return value

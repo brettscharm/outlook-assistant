@@ -74,7 +74,7 @@ def snapshot(email_id=None):
     for item in items:
         if item['status']=='accepted' and item['id'] in linked:
             task=linked[item['id']]
-            item.update(text=task['text'],description=task.get('description',''),source_type=task.get('source_type','email'),source_url=task.get('source_url',''),owner=task.get('assignee','Owner unclear'),type=task.get('type',item['type']),due_date=task.get('due_date',''),completed=task.get('completed',False))
+            item.update(priority=task.get('priority','none'),text=task['text'],description=task.get('description',''),source_type=task.get('source_type','email'),source_url=task.get('source_url',''),owner=task.get('assignee','Owner unclear'),type=task.get('type',item['type']),due_date=task.get('due_date',''),completed=task.get('completed',False))
     if email_id:items=[t for t in items if t['email_id']==email_id]
     return {'suggestions':items,'job':job,'options':options(),'last_check':data.get('last_check'),
             'identity_ready':identity_ready(),'automatic_state':automatic_state(),'reasons':REASONS,
@@ -104,7 +104,7 @@ def action(data):
             # Preserve idempotence even if an accepted suggestion is retried with an edited title.
             existing=load_tasks()
             if not any(t.get('suggestion_id')==item['id'] for group in existing.values() for t in group):
-                add_task(kind,title,owner,due,source,source_type=data.get('source_type','email'),source_url=data.get('source_url',''))
+                add_task(kind,title,owner,due,source,source_type=data.get('source_type','email'),source_url=data.get('source_url',''),priority=data.get('priority','none'))
             item.update(status='accepted',description=source['description'],text=title,owner=owner,type=kind,due_date=due)
         else:raise ValueError('Unknown review action.')
         save(store)
