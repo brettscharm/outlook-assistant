@@ -14,7 +14,7 @@ from .engine import OutlookEngine
 from .local_store import profiles, LocalStoreBridge
 from .contacts import group_contacts, link_company, link_companies, suggest_company
 from .tasks import board_lanes, save_board_lanes, move_task, load_tasks, add_task, toggle_task, delete_task, edit_task
-from . import task_workflow, email_chat, workspace, setup_check, drafts, storage, usage, bob_status, outlook_status
+from . import assistant, task_workflow, email_chat, workspace, setup_check, drafts, storage, usage, bob_status, outlook_status
 from .updater import check_and_apply_update
 
 PORT = 8484
@@ -159,6 +159,8 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         if path=='/api/startup': return self._send_json(workspace.set_startup(data.get('enabled')))
         if path=='/api/writing-learn': return self._send_json(workspace.learn_style(self.ai,data.get('examples')))
         if path=='/api/writing-style': return self._send_json(workspace.save_style(data.get('guide')))
+        if path=='/api/assistant':return self._send_json(assistant.ask(self.engine,data.get('question'),data.get('context')))
+        if path=='/api/assistant-apply':return self._send_json(assistant.apply(data.get('action_id')))
         if path=='/api/chat': return self._send_json(email_chat.ask(self.engine,data.get('question')))
         if path=='/api/chat-clear': return self._send_json(email_chat.clear())
         if path=='/api/task-scan-settings':return self._send_json(task_workflow.settings(data))

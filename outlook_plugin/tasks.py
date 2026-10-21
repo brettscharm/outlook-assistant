@@ -38,9 +38,11 @@ def add_task(
     due_date: Optional[str] = None,
     source: Optional[Dict[str, Any]] = None,
     description: str = "",
+    request_id: Optional[str] = None,
 ) -> Dict[str, List[Dict[str, Any]]]:
     """Add a new task and return all updated tasks."""
     tasks = load_tasks()
+    if request_id and any(t.get("id")==request_id for rows in tasks.values() for t in rows):return tasks
     key = "my_tasks" if task_type == "my" else "others_tasks"
 
     if source:
@@ -51,7 +53,7 @@ def add_task(
     from .config import read_config
     default_owner=(read_config().get("user_context",{}).get("full_name","").strip() or "Me") if key=="my_tasks" else "Owner unclear"
     new_item = {
-        "id": str(uuid.uuid4()),
+        "id": request_id or str(uuid.uuid4()),
         "text": text.strip(),
         "description": str(description).strip()[:4000],
         "assignee": assignee.strip() if assignee else default_owner,
