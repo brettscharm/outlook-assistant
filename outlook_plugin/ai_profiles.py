@@ -7,7 +7,6 @@ DEFAULTS={
  'reviewer':{'name':'Grounding reviewer','instructions':'Independently check source facts, requests, uncertainty and commitments. Never invent availability.','examples':''},
  'editor':{'name':'Reply editor','instructions':'Reconcile the draft with source evidence and the independent review. Preserve the user’s writing style and required HTML format.','examples':''},
  'writer':{'name':'Email writer','instructions':'Write clear, concise replies in the saved writing style. Do not invent facts or commitments. Preserve requested formatting.','examples':''},
- 'assistant':{'name':'Workspace assistant','instructions':'Help with tasks, contacts, projects, and email. Explain uncertainty and propose changes for review.','examples':''},
  'briefing':{'name':'Email summary','instructions':'Summarize important unread mail and pending decisions. State the limits of the supplied snapshot.','examples':''},
  'style':{'name':'Writing coach','instructions':'Extract reusable writing preferences from examples without copying private business facts.','examples':''}}
 _ACTIVITY_LOCK=threading.Lock()

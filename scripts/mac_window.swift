@@ -19,7 +19,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         let appMenu = NSMenu()
         let item = NSMenuItem(); item.submenu = appMenu; menu.addItem(item)
         appMenu.addItem(withTitle: "Show Outlook Assistant", action: #selector(showWindow), keyEquivalent: "0").target = self
-        appMenu.addItem(withTitle: "Float Assistant Above Other Apps", action: #selector(toggleFloating), keyEquivalent: "j").target = self
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Quit Outlook Assistant", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         let edit = NSMenu(title: "Edit")
@@ -42,24 +41,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         web.loadHTMLString("<html><body style='font:17px -apple-system;padding:60px;color:#18366d'><h1>Outlook Assistant</h1><p>Opening your saved workspace…</p></body></html>", baseURL:nil)
         checkService()
         timer = Timer.scheduledTimer(withTimeInterval:3,repeats:true) { [weak self] _ in self?.checkService() }
-    }
-    @objc func toggleFloating() {
-        floating.toggle()
-        if floating {
-            regularFrame = window.frame
-            window.level = .floating
-            window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-            window.minSize = NSSize(width:420,height:540)
-            window.setContentSize(NSSize(width:480,height:700))
-            web.evaluateJavaScript("document.body.classList.add('native-assistant-panel');view('chat');",completionHandler:nil)
-        } else {
-            window.level = .normal
-            window.collectionBehavior = []
-            window.minSize = NSSize(width:760,height:600)
-            if let frame=regularFrame {window.setFrame(frame,display:true)}
-            web.evaluateJavaScript("document.body.classList.remove('native-assistant-panel');view('tasks');",completionHandler:nil)
-        }
-        showWindow()
     }
     @objc func showWindow() { window?.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true) }
     func applicationShouldHandleReopen(_ sender:NSApplication,hasVisibleWindows flag:Bool)->Bool { showWindow();return true }
@@ -118,7 +99,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         }.resume()
     }
     func webView(_ webView:WKWebView,didFinish navigation:WKNavigation!) {
-        if floating {webView.evaluateJavaScript("document.body.classList.add('native-assistant-panel');view('chat');",completionHandler:nil)}
+
     }
     func webView(_ webView:WKWebView,decidePolicyFor action:WKNavigationAction,decisionHandler:@escaping(WKNavigationActionPolicy)->Void) {
         guard let url=action.request.url else {decisionHandler(.cancel);return}

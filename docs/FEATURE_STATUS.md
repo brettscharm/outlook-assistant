@@ -53,3 +53,8 @@ Task review and local persistence, custom lanes, task details and email previews
 Do not turn any unchecked item into a working-feature claim in the README or UI.
 
 True model fine-tuning is not implemented; Bob profile instructions/examples are prompt customization. Automatic progress updates from email are not yet generated; users or reviewed Assistant proposals can add updates. Slack local-cache monitoring, automated Outlook Reply All insertion, automatic shared assignments, Focused/Other classification, signed updates and Apple signing/notarization remain unfinished.
+
+
+## External AI clients
+
+The general in-app chat is removed as of 2.18.0. Read-only local MCP tools expose mail, tasks, projects, contacts, and cached calendar data. Settings → Connect AI apps provides a configuration for desktop clients. No cloud endpoint or tunnel is enabled. Bob task discovery and reply drafting remain.

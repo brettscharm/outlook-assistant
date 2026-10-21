@@ -34,7 +34,7 @@ function notice(value,kind='info'){document.querySelectorAll('[data-notice-actio
 $('dismissNotice').onclick=()=>notice('');
 async function api(path,data){let r;try{r=await fetch(path,data===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});}catch{throw Error('Cannot connect to Outlook Assistant. Reopen the Mac app, then try Sync now again. Your saved data is still on this Mac.');}const value=await r.json();if(!r.ok)throw Error(value.error||'Request failed');return value;}
 async function busy(button,fn){const old=button.textContent;state.pending++;button.disabled=true;button.textContent='Working…';try{await fn();}catch(e){notice(e.message,'error');}finally{state.pending--;button.disabled=false;button.textContent=old;}}
-function view(id){window.assistantViewChanged?.(id);const selected=document.querySelector('[data-view="'+id+'"]');const more=selected?.closest('details');if(more)more.open=!matchMedia('(max-width:760px)').matches;else $('moreNavigation').open=false;$('folderLabel').hidden=id!=='mail';$('folders').hidden=id!=='mail';document.querySelectorAll('.view').forEach(e=>e.classList.toggle('active',e.id===id));document.querySelectorAll('[data-view]').forEach(e=>e.classList.toggle('active',e.dataset.view===id));$('pageTitle').textContent=({'task-review':'Tasks to review',drafts:'Drafts',writing:'Writing style',chat:'Assistant',mail:'Mail',calendar:'Calendar',tasks:'Tasks',briefing:'Briefing',context:'My context',contacts:'Contacts & companies',projects:'Projects',usage:'Usage'})[id];if(id==='calendar')window.loadCalendar?.();if(id==='projects')window.loadProjects?.();if(id==='drafts'){window.renderDrafts?.();hydrateDrafts();}if(id==='writing')window.loadWriting?.();if(id==='usage')window.loadUsage?.();if(id==='tasks'||id==='task-review'){window.openTaskPage?.(id);tasks().catch(e=>notice(e.message));}if(id==='contacts')loadContacts().catch(e=>notice(e.message));}
+function view(id){if(id==='chat')id='tasks';document.body.classList.remove('native-assistant-panel');const selected=document.querySelector('[data-view="'+id+'"]');const more=selected?.closest('details');if(more)more.open=!matchMedia('(max-width:760px)').matches;else $('moreNavigation').open=false;$('folderLabel').hidden=id!=='mail';$('folders').hidden=id!=='mail';document.querySelectorAll('.view').forEach(e=>e.classList.toggle('active',e.id===id));document.querySelectorAll('[data-view]').forEach(e=>e.classList.toggle('active',e.dataset.view===id));$('pageTitle').textContent=({'task-review':'Tasks to review',drafts:'Drafts',writing:'Writing style',chat:'Assistant',mail:'Mail',calendar:'Calendar',tasks:'Tasks',briefing:'Briefing',context:'My context',contacts:'Contacts & companies',projects:'Projects',usage:'Usage'})[id];if(id==='calendar')window.loadCalendar?.();if(id==='projects')window.loadProjects?.();if(id==='drafts'){window.renderDrafts?.();hydrateDrafts();}if(id==='writing')window.loadWriting?.();if(id==='usage')window.loadUsage?.();if(id==='tasks'||id==='task-review'){window.openTaskPage?.(id);tasks().catch(e=>notice(e.message));}if(id==='contacts')loadContacts().catch(e=>notice(e.message));}
 function date(v,full=false){const d=new Date(v);return isNaN(d)?'Date unavailable':d.toLocaleString(undefined,full?{dateStyle:'medium',timeStyle:'short'}:{month:'short',day:'numeric'});}
 async function loadEmails(append=false,preserveCount=false){
  const serial=++state.request;const count=preserveCount?Math.max(50,state.emails.length):50;const start=append?state.emails.length:0;let rows=[],lastBatch=[];
@@ -88,7 +88,7 @@ $('mobileFolder').onchange=()=>{state.folder=$('mobileFolder').value;$('mail').c
 
 let lastInteraction=Date.now(),updateChecking=false;
 for(const event of ['pointerdown','keydown','input'])document.addEventListener(event,()=>{lastInteraction=Date.now();},{passive:true});
-function updateIsIdle(){return !$('taskProgress')?.open&&!window.agentDirty&&!$('projectEditor')?.open&&!window.contextDirty&&!Object.keys(draftDirty).length&&!draftSaving&&!window.writingDirty&&!$('chatQuestion')?.value.trim()&&!Object.keys(contactDrafts).length&& !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)&& !document.hidden&&!state.pending&&!state.busy&&!$('settings').open&&!$('laneEditor').open&&!$('taskEditor').open&&!$('savedDraftEditor').open&&!window.taskScanRunning&&!window.taskFormDirty&&Date.now()-lastInteraction>30000;}
+function updateIsIdle(){return !$('taskProgress')?.open&&!window.agentDirty&&!$('projectEditor')?.open&&!window.contextDirty&&!Object.keys(draftDirty).length&&!draftSaving&&!window.writingDirty&&!Object.keys(contactDrafts).length&& !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)&& !document.hidden&&!state.pending&&!state.busy&&!$('settings').open&&!$('laneEditor').open&&!$('taskEditor').open&&!$('savedDraftEditor').open&&!window.taskScanRunning&&!window.taskFormDirty&&Date.now()-lastInteraction>30000;}
 async function autoUpdate(){
  if(updateChecking||!updateIsIdle())return;
  updateChecking=true;
@@ -219,7 +219,7 @@ async function refreshSyncedViews(){
  if(active==='drafts'&&!$('savedDraftEditor').open)jobs.push(hydrateDrafts());
  if(active==='calendar')jobs.push(window.loadCalendar?.(true));
  if(active==='usage')jobs.push(window.loadUsage?.());
- if(active==='chat')jobs.push(window.refreshChatHistory?.());
+
  const results=await Promise.allSettled(jobs);
  const failed=results.find(r=>r.status==='rejected');
  if(failed)notice('Mail synced, but a view could not refresh: '+failed.reason.message,'error');
@@ -244,3 +244,5 @@ $('outlookStatus').onclick=async()=>{
  const open=text('button','Open '+(key==='teams'?'Teams':'Outlook'));open.onclick=()=>busy(open,async()=>{await api(endpoint,{});notice(key==='teams'?'Open Calendar in Teams to download meetings.':'Outlook is opening. Let it finish downloading mail.');});row.append(open);root.append(row);
  }}catch(e){root.replaceChildren(text('p',e.message));}
 };
+
+$('copyMcpConfig').onclick=()=>busy($('copyMcpConfig'),async()=>{const data=await api('/api/mcp-config');$('mcpConfig').value=JSON.stringify(data.config,null,2);try{await navigator.clipboard.writeText($('mcpConfig').value);$('mcpConnectionStatus').textContent='Copied. Add this server to your AI app’s local MCP settings.';}catch{$('mcpConfig').parentElement.open=true;$('mcpConfig').select();$('mcpConnectionStatus').textContent='Select and copy the connection settings below.';}});

@@ -14,7 +14,7 @@ from .engine import OutlookEngine
 from .local_store import profiles, LocalStoreBridge
 from .contacts import group_contacts, link_company, link_companies, suggest_company
 from .tasks import board_lanes, save_board_lanes, move_task, load_tasks, add_task, toggle_task, delete_task, edit_task
-from . import task_files, meeting_mail, calendar_cache, mail_archive, task_progress, bob_install, projects, ai_profiles, assistant, task_workflow, email_chat, workspace, setup_check, drafts, storage, usage, bob_status, outlook_status
+from . import task_files, meeting_mail, calendar_cache, mail_archive, task_progress, bob_install, projects, ai_profiles, task_workflow, email_chat, workspace, setup_check, drafts, storage, usage, bob_status, outlook_status
 from .updater import check_and_apply_update
 
 PORT = 8484
@@ -89,7 +89,9 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         if path=='/api/setup': return self._send_json(setup_check.check())
         if path=='/api/startup': return self._send_json(workspace.startup_status())
         if path=='/api/backup': return self._send_json(workspace.export_data())
-        if path=='/api/chat': return self._send_json(email_chat.history())
+        if path=='/api/mcp-config':
+            from .mcp_server import connection_info
+            return self._send_json(connection_info())
         if path=='/api/task-review':
             return self._send_json(task_workflow.snapshot(q.get('email_id',[None])[0]))
         if path=='/api/health':
@@ -140,7 +142,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             return self._send_json(data)
         if path.startswith('/api/'):
             return self._send_json({'error':'Unknown endpoint.'},404)
-        if path not in ('/','/index.html','/app.js','/tasks-ui.js','/task-files.js','/chat-ui.js','/workspace-ui.js','/organize-ui.js','/calendar-ui.js','/rich-editor.js','/style.css','/app-icon.png'):
+        if path not in ('/','/index.html','/app.js','/tasks-ui.js','/task-files.js','/workspace-ui.js','/organize-ui.js','/calendar-ui.js','/rich-editor.js','/style.css','/app-icon.png'):
             return self._send_json({'error':'Not found.'},404)
         return super().do_GET()
 
@@ -183,10 +185,9 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         if path=='/api/startup': return self._send_json(workspace.set_startup(data.get('enabled')))
         if path=='/api/writing-learn': return self._send_json(workspace.learn_style(self.ai,data.get('examples')))
         if path=='/api/writing-style': return self._send_json(workspace.save_style(data.get('guide')))
-        if path=='/api/assistant':return self._send_json(assistant.ask(self.engine,data.get('question'),data.get('context')))
-        if path=='/api/assistant-apply':return self._send_json(assistant.apply(data.get('action_id')))
-        if path=='/api/chat': return self._send_json(email_chat.ask(self.engine,data.get('question')))
-        if path=='/api/chat-clear': return self._send_json(email_chat.clear())
+        if path=='/api/mcp':
+            from .mcp_server import dispatch
+            return self._send_json(dispatch(data,self.engine))
         if path=='/api/task-scan-settings':return self._send_json(task_workflow.settings(data))
         if path=='/api/task-scan':return self._send_json(task_workflow.start(self.engine,data,email_id=data.get('email_id')))
         if path=='/api/task-scan-stop':return self._send_json(task_workflow.stop())

@@ -69,3 +69,7 @@ For help, use Settings → Feedback or [open a repository issue](https://github.
 [Back to the README](../README.md)
 
 When Node is missing, **Install / update Bob** now downloads a private Node 24 runtime from nodejs.org and checks its published checksum. No sudo is used. Company installation restrictions still apply.
+
+## Connect a desktop AI client
+
+Open Settings → Connect AI apps and copy the connection settings. Merge the server entry into the local MCP configuration of a compatible desktop client, then restart that client. Keep Outlook Assistant running. The bundled bridge requires macOS 13+ and supports Apple silicon and Intel; it needs no Bob or separate language runtime. It is read-only. ChatGPT cloud connections require a supported remote endpoint or Secure MCP Tunnel and are not automatically configured by this app.

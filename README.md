@@ -1,6 +1,6 @@
 # Outlook Assistant for Mac
 
-A desktop workspace for mail cached by Outlook, tasks, contacts, and an IBM Bob-powered assistant. Opens in its own Mac window—no browser or Terminal needed for everyday use.
+A desktop workspace for mail cached by Outlook, tasks, contacts, projects, and optional IBM Bob task discovery and email drafting. Opens in its own Mac window—no browser or Terminal needed for everyday use.
 
 ## Install on a Mac
 
@@ -25,7 +25,6 @@ The Mac app includes Python and the mail reader. You do not need Git, Xcode, Pyt
 - **Mail:** browse cached mail and folders, search, preview source emails, and draft replies. Outlook must download new mail before this app can read it.
 - **Drafts:** drafts save locally. Copy a draft into Outlook, review it, and send it there. The app does not send mail or insert Reply All drafts into Outlook.
 - **Contacts:** browse cached senders by domain and link multiple domains to one company. This is not an Outlook address-book sync.
-- **Assistant:** open it from the bottom left, or expand it. Ask about mail, tasks, and contacts. Supported changes appear as proposals for you to review and apply.
 - **Projects:** group related tasks, filter the board, and see completion counts.
 - **Settings → AI assistants:** edit instructions and examples, restore defaults, and test sample content. **AI activity** shows real request status.
 - **Settings → Profile & writing:** your identity, role, writing style, and usage details. Calendar reads cached Teams meetings.
@@ -135,3 +134,15 @@ Tasks have an owner and optional co-owners (one name or email per line). These a
 Use **×** to dismiss a suggestion without providing feedback, or **Dismiss with feedback** to give a reason that guides later task checks. This is prompt context, not model training. Restore a dismissed suggestion to withdraw that feedback. Under **Email task options**, exclude sender domains from future task checks while keeping those messages in Mail. Existing tasks and suggestions are kept.
 
 Drag files from Finder into the **Files** drop area on a saved task or project, or use the file picker. Multiple files are supported, up to 25 MB each. Supported types: Word, Excel, PowerPoint, PDF, text/CSV/RTF, PNG and JPEG. Unsupported files are reported without preventing other valid files from being saved.
+
+## Connect another AI app with MCP
+
+The general in-app chat has been removed. Task discovery and email drafting remain. Existing chat history is retained in local backups.
+
+Open **Settings → Connect AI apps → Copy connection settings**. Add the `outlook-assistant` entry to your desktop AI client’s local MCP configuration (merge with existing servers rather than replacing them). Keep Outlook Assistant running. Claude Desktop supports local MCP configuration; restart it after adding the server. This uses a bundled universal Mac executable, so no separate Python, Node, or Bob installation is required for MCP.
+
+The connection exposes read-only tools for searching mail, reading an email, listing tasks and projects, contacts/companies, and cached Teams meetings. Results are paginated, mail exclusions are respected, and no API keys are returned. It does not send emails, change tasks, run Bob, or expose attachment contents. Your chosen AI client may send requested content to its provider under that client’s settings.
+
+This is a local stdio connection, not a public link. ChatGPT’s custom MCP setup requires a supported remote endpoint or Secure MCP Tunnel; a localhost URL pasted into chat does not grant access. This app does not publish your mailbox or configure a tunnel.
+
+For source installations, `python3 -m outlook_plugin.mcp_server` runs the same read-only tools over stdio. The bundled bridge forwards stdio to the running app’s local API; `/api/mcp` is an internal bridge endpoint, not a Streamable HTTP transport URL. If using a nondefault app port, set `OUTLOOK_ASSISTANT_PORT` in the MCP client’s server environment.

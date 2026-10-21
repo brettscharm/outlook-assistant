@@ -3,6 +3,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 : "${PYTHON:=python3}"
 : "${OUTPUT:=$ROOT/dist}"
+bash "$ROOT/scripts/build_mcp.sh"
 "$PYTHON" -m PyInstaller --noconfirm --clean --windowed --onedir --target-arch "${TARGET_ARCH:-universal2}" \
  --icon "$ROOT/assets/OutlookAssistant.icns" \
  --name 'Outlook Assistant' --osx-bundle-identifier com.brettscharm.outlookassistant \
