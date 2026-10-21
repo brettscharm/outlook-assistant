@@ -6,7 +6,13 @@ window.taskScanRunning=false;
 const localToday=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
 function taskDeadline(t){const due=/^\d{4}-\d{2}-\d{2}$/.test(t.due_date||'')?t.due_date:'';return {due,label:due?new Date(due+'T12:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}):'No deadline stated',overdue:!!due&&due<localToday()&&!t.completed};}
 function taskSource(t){const b=text('button',t.email_subject||'Open source email','source-email');b.onclick=()=>{view('mail');selectEmail(t.email_id).catch(e=>notice(e.message));};return b;}
-function setTaskView(name){taskViewChosen=true;taskPage=1;taskView=name;if(['done','dismissed'].includes(name))$('taskDueFilter').value='all';document.querySelectorAll('[data-task-view]').forEach(b=>b.classList.toggle('selected',b.dataset.taskView===name));taskFingerprint='';renderTaskList();}
+function setTaskView(name){
+ taskViewChosen=true;taskPage=1;
+ if(!['review','dismissed'].includes(name)){view('tasks');renderTaskBoard();return;}
+ taskView=name;if(name==='dismissed')$('taskDueFilter').value='all';
+ if(!$('task-review').classList.contains('active'))view('task-review');
+ document.querySelectorAll('[data-task-view]').forEach(b=>b.classList.toggle('selected',b.dataset.taskView===name));taskFingerprint='';renderTaskList();
+}
 function editTask(item,origin){taskEditor={item,origin};$('taskEditorTitle').textContent=origin==='review'?'Review before adding':origin==='new'?'Add a task':'Edit task';$('editTaskText').value=item.text||'';$('editTaskDescription').value=item.description||'';$('editTaskType').value=item.type||'my';$('editTaskOwner').value=item.owner||item.assignee||'';$('editTaskDue').value=taskDeadline(item).due;$('editTaskEvidence').textContent=item.evidence||'';$('editTaskEvidence').hidden=!item.evidence;$('editTaskDateNote').textContent=[item.due_evidence?'Deadline in email: “'+item.due_evidence+'”':'',item.due_note||''].filter(Boolean).join(' · ');$('saveTaskEdit').textContent=origin==='saved'?'Save changes':'Add task';$('taskEditor').showModal();}
 function dismissMenu(item){
  const details=document.createElement('details');details.className='dismiss-menu';
@@ -35,14 +41,14 @@ if(revealSavedTask){const index=items.findIndex(revealSavedTask);if(index>=0){ta
 taskPage=Math.min(taskPage,Math.max(1,Math.ceil(items.length/20)));
 const fingerprint=JSON.stringify([items,taskView,query,filter,taskPage]);if(fingerprint===taskFingerprint)return;taskFingerprint=fingerprint;listPager('taskPages',items.length,taskPage,20,page=>{taskPage=page;taskFingerprint='';renderTaskList();$('taskPages').scrollIntoView({block:'nearest'});});
 const root=$('taskList');root.replaceChildren();if(!items.length){const empty=text('div','','task-empty');empty.append(text('h3',taskView==='review'?'Nothing waiting for review.':'No tasks in this view.'),text('p',taskView==='review'?'New suggestions appear here automatically when task discovery is on.':'Try another filter or add a task.','muted'));root.append(empty);}for(const item of items.slice((taskPage-1)*20,taskPage*20))root.append(taskCard(item,origin));}
-window.loadTaskWorkspace=function(){if(taskLoading)return taskLoading;taskLoading=(async()=>{try{const [review,saved]=await Promise.all([api('/api/task-review'),api('/api/tasks')]);taskReview=review;taskSaved=[...(saved.my_tasks||[]).map(t=>({...t,type:t.type||'my'})),...(saved.others_tasks||[]).map(t=>({...t,type:t.type||'others'}))];if(!taskViewChosen){taskViewChosen=true;if(!review.suggestions.some(t=>t.status==='review')&&taskSaved.some(t=>!t.completed))setTaskView(taskSaved.some(t=>!t.completed&&t.type==='my')?'my':'others');}window.taskScanRunning=review.job.running;if(lastSuccessfulSync&&!state.busy){$('syncTime').textContent=syncTimeLabel()+(review.job.running?' · Checking tasks…':review.job.status==='error'?' · Task check failed':review.last_check?' · Tasks checked '+new Date(review.last_check).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):'');}$('identityPrompt').hidden=review.identity_ready;$('findTasks').disabled=review.job.running||state.pending>0;$('stopScan').hidden=!review.job.running;$('scanProgress').max=Math.max(1,review.job.total);$('scanProgress').value=review.job.scanned;$('scanProgress').hidden=!review.job.running;
+window.loadTaskWorkspace=function(){if(taskLoading)return taskLoading;taskLoading=(async()=>{try{const [review,saved]=await Promise.all([api('/api/task-review'),api('/api/tasks')]);taskReview=review;$('reviewBadge').textContent=review.suggestions.filter(t=>t.status==='review').length;taskSaved=[...(saved.my_tasks||[]).map(t=>({...t,type:t.type||'my'})),...(saved.others_tasks||[]).map(t=>({...t,type:t.type||'others'}))];window.taskScanRunning=review.job.running;if(lastSuccessfulSync&&!state.busy){$('syncTime').textContent=syncTimeLabel()+(review.job.running?' · Checking tasks…':review.job.status==='error'?' · Task check failed':review.last_check?' · Tasks checked '+new Date(review.last_check).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):'');}$('identityPrompt').hidden=review.identity_ready;$('findTasks').disabled=review.job.running||state.pending>0;$('stopScan').hidden=!review.job.running;$('scanProgress').max=Math.max(1,review.job.total);$('scanProgress').value=review.job.scanned;$('scanProgress').hidden=!review.job.running;
 const auto=review.automatic_state;
 $('scanScheduleLabel').textContent=auto==='paused'?'Task discovery paused':'Automatic task discovery';
 $('toggleTaskAuto').textContent=review.options.interval?'Pause automatic discovery':'Resume automatic discovery';
 const status=auto==='paused'?'Resume to find new tasks.':auto==='identity'?'Add your name and work email to start.':auto==='bob'?'Test your Bob connection in Settings to start.':'Watching for new email'+(review.last_check?' · Last checked '+new Date(review.last_check).toLocaleTimeString(): ' · No check completed yet');
 $('taskScanStatus').textContent=review.job.running?review.job.message:review.job.status==='error'?review.job.message:status;
 if(!scanFormReady){const initial=restored?.scanDraft||review.options;$('scanSince').value=initial.since;$('scanMode').value=initial.mode;$('scanInterval').value=initial.interval;window.taskFormDirty=!!restored?.scanDraft;scanFormReady=true;}if(!scanPanelSettled&&!review.job.running&&(review.suggestions.length||taskSaved.length)){document.querySelector('.scan-panel').open=false;scanPanelSettled=true;}
-const stats=[['To review',review.suggestions.filter(t=>t.status==='review').length,'review'],['My active tasks',taskSaved.filter(t=>!t.completed&&t.type==='my').length,'my'],['Others / unclear',taskSaved.filter(t=>!t.completed&&t.type!=='my').length,'others'],['Overdue',taskSaved.filter(t=>taskDeadline(t).overdue).length,'overdue']];const statsKey=JSON.stringify(stats);if($('taskStats').dataset.fingerprint!==statsKey){$('taskStats').dataset.fingerprint=statsKey;$('taskStats').replaceChildren();for(const [label,count,target] of stats){const b=text('button','','task-stat');b.append(text('span',label),text('strong',count));b.onclick=()=>{$('taskDueFilter').value=target==='overdue'?'overdue':'all';setTaskView(target==='overdue'?'all':target);};$('taskStats').append(b);}}renderTaskList();if(state.selected&&document.querySelector('.email-task-summary'))renderEmailSummary(state.selected,document.querySelector('.email-task-summary'));
+const stats=[['To review',review.suggestions.filter(t=>t.status==='review').length,'review'],['My active tasks',taskSaved.filter(t=>!t.completed&&t.type==='my').length,'my'],['Others / unclear',taskSaved.filter(t=>!t.completed&&t.type!=='my').length,'others'],['Overdue',taskSaved.filter(t=>taskDeadline(t).overdue).length,'overdue']];const statsKey=JSON.stringify(stats);if($('taskStats').dataset.fingerprint!==statsKey){$('taskStats').dataset.fingerprint=statsKey;$('taskStats').replaceChildren();for(const [label,count,target] of stats){const b=text('button','','task-stat');b.append(text('span',label),text('strong',count));b.onclick=()=>{$('taskDueFilter').value=target==='overdue'?'overdue':'all';setTaskView(target==='overdue'?'all':target);};$('taskStats').append(b);}}renderTaskList();renderTaskBoard();if(state.selected&&document.querySelector('.email-task-summary'))renderEmailSummary(state.selected,document.querySelector('.email-task-summary'));
 }finally{taskLoading=false;}})();return taskLoading;};
 function scanValues(){return {since:$('scanSince').value,mode:$('scanMode').value,interval:Number($('scanInterval').value)};}
 let scanSaveTimer;$('scanForm').oninput=()=>{window.taskFormDirty=true;clearTimeout(scanSaveTimer);scanSaveTimer=setTimeout(async()=>{if(!$('scanForm').checkValidity())return;try{await api('/api/task-scan-settings',scanValues());window.taskFormDirty=false;$('scanSaveStatus').textContent='Saved.';await loadTaskWorkspace();}catch(e){$('scanSaveStatus').textContent='Not saved: '+e.message;}},700);};
@@ -63,12 +69,12 @@ $('taskEditorForm').onsubmit=e=>{e.preventDefault();busy(e.submitter,async()=>{
  // Finish any earlier refresh before reading the newly committed task.
  if(taskLoading)await taskLoading;
  await loadTaskWorkspace();
- $('taskSearch').value='';$('taskDueFilter').value='all';
+ $('taskSearch').value='';$('boardSearch').value='';$('taskDueFilter').value='all';
  const target=origin==='review'?taskSaved.find(t=>t.suggestion_id===item.id):origin==='saved'?taskSaved.find(t=>t.id===item.id):taskSaved.find(t=>t.text===values.text.trim()&&t.type===values.type);
  revealSavedTask=t=>target?t.id===target.id:origin==='review'?t.suggestion_id===item.id:t.text===values.text.trim();
  view('tasks');setTaskView(target?.completed?'done':values.type==='my'?'my':'others');
- taskFingerprint='';renderTaskList();
- $('taskList').scrollIntoView({block:'start'});
+ taskFingerprint='';renderTaskBoard();
+ $('taskBoard').scrollIntoView({block:'start'});
  notice('Task saved in '+(target?.completed?'Completed':values.type==='my'?'My tasks':'Others / unclear')+'.');
 });};
 document.querySelectorAll('[data-task-view]').forEach(b=>b.onclick=()=>setTaskView(b.dataset.taskView));$('taskSearch').oninput=()=>{taskPage=1;renderTaskList();};$('taskDueFilter').onchange=()=>{taskPage=1;renderTaskList();};
@@ -78,3 +84,22 @@ loadTaskWorkspace().catch(e=>notice(e.message));setInterval(()=>{if(!document.hi
 
 let taskEditTimer;
 $('taskEditorForm').addEventListener('input',()=>{if(taskEditor?.origin!=='saved')return;clearTimeout(taskEditTimer);const id=taskEditor.item.id;taskEditTimer=setTimeout(async()=>{if(!taskEditor||taskEditor.item.id!==id||!$('taskEditorForm').checkValidity())return;try{await api('/api/tasks',{action:'edit',id,text:$('editTaskText').value,description:$('editTaskDescription').value,type:$('editTaskType').value,owner:$('editTaskOwner').value,due_date:$('editTaskDue').value});$('taskEditorTitle').textContent='Edit task · Saved';taskFingerprint='';}catch(e){$('taskEditorTitle').textContent='Edit task · Not saved';notice(e.message);}},650);});
+
+const boardLimits={my:20,others:20,done:20};
+let boardFingerprint='';
+window.openTaskPage=id=>{if(id==='tasks')renderTaskBoard();else{taskFingerprint='';renderTaskList();}};
+function renderTaskBoard(){
+ const query=$('boardSearch').value.trim().toLowerCase();
+ const items=taskSaved.filter(t=>!query||[t.text,t.description,t.owner,t.assignee,t.company,t.email_subject].filter(Boolean).join(' ').toLowerCase().includes(query));
+ items.sort((a,b)=>(taskDeadline(a).due||'9999').localeCompare(taskDeadline(b).due||'9999'));
+ const lanes=[['my','My tasks',items.filter(t=>!t.completed&&t.type==='my')],['others','Others / waiting',items.filter(t=>!t.completed&&t.type!=='my')],['done','Completed',items.filter(t=>t.completed)]];
+ if(revealSavedTask){for(const [key,,rows] of lanes){const index=rows.findIndex(revealSavedTask);if(index>=0){boardLimits[key]=Math.max(boardLimits[key],index+1);revealSavedTask=null;break;}}}
+ const fingerprint=JSON.stringify([lanes,boardLimits]);if(fingerprint===boardFingerprint)return;boardFingerprint=fingerprint;
+ const root=$('taskBoard');root.replaceChildren();
+ for(const [key,label,rows] of lanes){const lane=text('section','','task-lane');lane.setAttribute('aria-label',label);const heading=text('div','','lane-heading');heading.append(text('h2',label),text('span',rows.length,'nav-count'));lane.append(heading);
+ if(!rows.length)lane.append(text('p',query?'No matching tasks.':key==='done'?'Completed tasks appear here.':key==='my'?'Add a task or accept one from Tasks to review.':'Tasks owned by others or with an unclear owner appear here.','lane-empty'));
+ for(const task of rows.slice(0,boardLimits[key]))lane.append(taskCard(task,'saved'));
+ if(rows.length>boardLimits[key]){const more=text('button','Show more ('+(rows.length-boardLimits[key])+' remaining)');more.onclick=()=>{boardLimits[key]+=20;renderTaskBoard();};lane.append(more);}root.append(lane);
+ }
+}
+$('boardSearch').oninput=()=>{boardFingerprint='';renderTaskBoard();};
