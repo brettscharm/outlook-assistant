@@ -147,7 +147,7 @@ class SyncTests(unittest.TestCase):
  def test_manual_sync_starts_without_changing_paused_preference(self):
   from unittest.mock import Mock
   engine=Mock()
-  with patch.object(w,'identity_ready',return_value=True),patch.object(w,'get_bob_api_key',return_value='fake'),patch.object(w,'_RUN') as running,patch.object(w,'_BOB_LOCK') as bob,patch.object(w,'start') as start:
+  with patch('outlook_plugin.ai_agent.bob_compatibility',return_value={'ready':True}),patch.object(w,'identity_ready',return_value=True),patch.object(w,'get_bob_api_key',return_value='fake'),patch.object(w,'_RUN') as running,patch.object(w,'_BOB_LOCK') as bob,patch.object(w,'start') as start:
    running.locked.return_value=False;bob.locked.return_value=False
    self.assertEqual(w.sync_tasks(engine)['state'],'running');start.assert_called_once_with(engine)
  def test_wake_respects_pause(self):
