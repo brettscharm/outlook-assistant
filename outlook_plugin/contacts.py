@@ -79,3 +79,22 @@ def group_contacts(rows,links):
         groups.setdefault(domain,dict(domain=domain,company=company,contacts=[]))
     for group in groups.values():group['contacts'].sort(key=lambda p:(p['name'].casefold(),p['email']))
     return sorted(groups.values(),key=lambda g:(g['company'].casefold() or g['domain'],g['domain']))
+
+
+def favorite_key(domain, company=''):
+    return 'company:' + company.strip().lower() if company.strip() else 'domain:' + normalize_domain(domain)
+
+
+def set_favorite(domain, starred):
+    domain=normalize_domain(domain)
+    if type(starred) is not bool:raise ValueError('Choose whether to star this company.')
+    with _LOCK:
+        cfg=read_config()
+        key=favorite_key(domain,cfg.get('domain_companies',{}).get(domain,''))
+        favorites=set(cfg.get('favorite_companies',[]))
+        if starred:favorites.add(key)
+        else:favorites.discard(key)
+        if len(favorites)>2000:raise ValueError('Favorite limit reached.')
+        result=sorted(favorites)
+        update_config({'favorite_companies':result})
+        return result

@@ -103,16 +103,19 @@ function accountListCount(){const rows=$('accountList').value.split(/\r?\n/).fil
 $('accountList').addEventListener('input',accountListCount);
 $('tidyAccounts').onclick=()=>{const rows=$('accountList').value.split(/\r?\n/).map(row=>row.trimEnd()).filter(row=>row.trim());$('accountList').value=[...new Set(rows)].join('\n');accountListCount();notice('Blank and identical rows removed. Select Save my context to keep this list.');};
 
+let contactFavorites=new Set();
+function contactFavoriteKey(group){return group.company?'company:'+group.company.trim().toLowerCase():'domain:'+group.domain.toLowerCase();}
+function compareContactGroups(a,b){return Number(contactFavorites.has(contactFavoriteKey(b.group)))-Number(contactFavorites.has(contactFavoriteKey(a.group)))||(a.group.company||a.group.domain).localeCompare(b.group.company||b.group.domain)||a.group.domain.localeCompare(b.group.domain);}
 async function loadContacts(force=false){
  if(contactsLoading||(!force&&contactsLoaded))return;
  contactsLoading=true;$('contactCount').textContent='Reading cached senders…';
- try{const result=await api('/api/contacts');contactData=result.groups;contactsLoaded=true;
+ try{const result=await api('/api/contacts');contactData=result.groups;contactFavorites=new Set(result.favorites||[]);contactsLoaded=true;
  $('companyOptions').replaceChildren();for(const company of result.companies){const option=text('option',company);option.value=company;$('companyOptions').append(option);}renderContacts();
  }catch(e){$('contactCount').textContent='Contacts could not be loaded. Try Refresh contacts.';throw e;}finally{contactsLoading=false;}
 }
 function renderContacts(){
  const query=$('contactSearch').value.toLowerCase().trim();const root=$('contactGroups');root.replaceChildren();
- const matches=contactData.map(group=>{const groupMatch=(group.domain+' '+group.company).toLowerCase().includes(query);return {group,people:group.contacts.filter(p=>groupMatch||(p.name+' '+p.email).toLowerCase().includes(query)),groupMatch};}).filter(row=>row.people.length||row.groupMatch);
+ const matches=contactData.map(group=>{const groupMatch=(group.domain+' '+group.company).toLowerCase().includes(query);return {group,people:group.contacts.filter(p=>groupMatch||(p.name+' '+p.email).toLowerCase().includes(query)),groupMatch};}).filter(row=>row.people.length||row.groupMatch).sort(compareContactGroups);
  const pages=Math.max(1,Math.ceil(matches.length/contactPageSize));contactPage=Math.min(Math.max(1,contactPage),pages);
  const start=(contactPage-1)*contactPageSize,end=Math.min(start+contactPageSize,matches.length);
  const total=matches.reduce((sum,row)=>sum+row.people.length,0);
@@ -120,12 +123,14 @@ function renderContacts(){
  $('contactCount').textContent=total+' contacts · '+companies+' linked companies · '+matches.length+' domains'+(matches.length?' · Showing '+(start+1)+'–'+end:'');
  for(const {group,people} of matches.slice(start,end)){
   const card=document.createElement('details');card.className='contact-group';card.open=!!query;
-  const summary=text('summary','');summary.append(text('strong',group.company||group.domain),text('span',(group.company?group.domain+' · ':'')+people.length+(people.length===1?' contact':' contacts'),'muted small'));card.append(summary);
+  const summary=text('summary','');summary.append(text('strong',group.company||group.domain),text('span',(group.company?group.domain+' · ':'')+people.length+(people.length===1?' contact':' contacts'),'muted small'));const star=text('button','','company-star');star.type='button';
+  function refreshStar(){const starred=contactFavorites.has(contactFavoriteKey(group));star.textContent=starred?'★':'☆';star.classList.toggle('starred',starred);star.setAttribute('aria-pressed',String(starred));star.setAttribute('aria-label',(starred?'Unstar ':'Star ')+(group.company||group.domain));star.title=starred?'Unstar company':'Star company';}
+  refreshStar();star.onclick=async event=>{event.preventDefault();event.stopPropagation();star.disabled=true;state.pending++;try{const result=await api('/api/contact-favorite',{domain:group.domain,starred:!contactFavorites.has(contactFavoriteKey(group))});contactFavorites=new Set(result.favorites);contactPage=1;renderContacts();const button=[...$('contactGroups').querySelectorAll('.company-star')].find(b=>b.dataset.domain===group.domain);button?.focus();}catch(error){notice(error.message,'error');star.disabled=false;}finally{state.pending--;}};star.dataset.domain=group.domain;summary.append(star);card.append(summary);
   const form=document.createElement('form');form.className='company-link';
   const input=document.createElement('input');input.setAttribute('list','companyOptions');input.setAttribute('aria-label','Company for '+group.domain);input.placeholder='Choose or type a company';input.maxLength=200;input.value=contactDrafts[group.domain]??group.company;let companyTimer;input.oninput=()=>{contactDrafts[group.domain]=input.value;clearTimeout(companyTimer);companyTimer=setTimeout(()=>form.requestSubmit(),700);};
   const save=text('button','Save company','primary');save.type='submit';const unlink=text('button','Unlink');unlink.type='button';unlink.hidden=!group.company;
-  form.onsubmit=e=>{e.preventDefault();busy(save,async()=>{await api('/api/contact-company',{domain:group.domain,company:input.value});group.company=input.value.trim();delete contactDrafts[group.domain];const header=summary.querySelector('strong');header.textContent=group.company||group.domain;summary.querySelector('span').textContent=(group.company?group.domain+' · ':'')+people.length+(people.length===1?' contact':' contacts');unlink.hidden=!group.company;notice('Company link saved for '+group.domain+'.');});};
-  unlink.onclick=()=>busy(unlink,async()=>{await api('/api/contact-company',{domain:group.domain,company:''});input.value='';group.company='';delete contactDrafts[group.domain];summary.querySelector('strong').textContent=group.domain;summary.querySelector('span').textContent=people.length+(people.length===1?' contact':' contacts');unlink.hidden=true;notice('Company link removed.');});
+  form.onsubmit=e=>{e.preventDefault();busy(save,async()=>{await api('/api/contact-company',{domain:group.domain,company:input.value});group.company=input.value.trim();delete contactDrafts[group.domain];const header=summary.querySelector('strong');header.textContent=group.company||group.domain;summary.querySelector('span').textContent=(group.company?group.domain+' · ':'')+people.length+(people.length===1?' contact':' contacts');unlink.hidden=!group.company;refreshStar();notice('Company link saved for '+group.domain+'.');});};
+  unlink.onclick=()=>busy(unlink,async()=>{await api('/api/contact-company',{domain:group.domain,company:''});input.value='';group.company='';delete contactDrafts[group.domain];summary.querySelector('strong').textContent=group.domain;summary.querySelector('span').textContent=people.length+(people.length===1?' contact':' contacts');unlink.hidden=true;refreshStar();notice('Company link removed.');});
   form.append(input,save,unlink);card.append(form);
   if(group.suggestion){const suggestion=text('div','','company-link');const accept=text('button','Use '+group.suggestion.company);accept.type='button';suggestion.append(text('span',group.suggestion.reason,'muted small'),accept);accept.onclick=()=>{input.value=group.suggestion.company;contactDrafts[group.domain]=input.value;form.requestSubmit();suggestion.remove();};card.append(suggestion);}
   const related=contactData.filter(g=>group.company&&g.company.toLowerCase()===group.company.toLowerCase()).map(g=>g.domain);

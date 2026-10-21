@@ -12,7 +12,7 @@ from .ai_agent import BobAIAgent, bob_executable, get_bob_api_key, save_bob_api_
 from .config import read_config, update_config
 from .engine import OutlookEngine
 from .local_store import profiles, LocalStoreBridge
-from .contacts import group_contacts, link_company, link_companies, suggest_company
+from .contacts import group_contacts, link_company, link_companies, suggest_company, set_favorite
 from .tasks import board_lanes, save_board_lanes, move_task, load_tasks, add_task, toggle_task, delete_task, edit_task
 from . import task_files, meeting_mail, calendar_cache, mail_archive, task_progress, bob_install, projects, ai_profiles, task_workflow, email_chat, workspace, setup_check, drafts, storage, usage, bob_status, outlook_status, onboarding
 from .updater import check_and_apply_update
@@ -119,7 +119,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             companies=sorted(set([row.split('\t')[0].strip() for row in accounts.splitlines() if row.strip()]+list(cfg.get('domain_companies',{}).values())),key=str.casefold)
             for group in groups:
                 group['suggestion']=suggest_company(group['domain'],companies,cfg.get('domain_companies',{})) if not group['company'] else None
-            return self._send_json({'groups':groups,'companies':companies,'source':'Cached email senders'})
+            return self._send_json({'groups':groups,'companies':companies,'favorites':cfg.get('favorite_companies',[]),'source':'Cached email senders'})
         if path=='/api/folders': return self._send_json(self.engine.list_folders())
         if path=='/api/accounts': return self._send_json(self.engine.list_accounts())
         if path=='/api/task-lanes': return self._send_json(board_lanes())
@@ -197,6 +197,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             from .task_communication import open_draft
             return self._send_json(open_draft(data))
         if path=='/api/task-review':return self._send_json(task_workflow.action(data))
+        if path=='/api/contact-favorite':return self._send_json({'favorites':set_favorite(data.get('domain',''),data.get('starred'))})
         if path=='/api/contact-company':
             links=link_companies(data['domains'],data.get('company','')) if 'domains' in data else link_company(data.get('domain',''),data.get('company',''))
             return self._send_json({'saved':True,'domain_companies':links})

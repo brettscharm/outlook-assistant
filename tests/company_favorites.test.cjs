@@ -1,0 +1,3 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const source=fs.readFileSync('outlook_plugin/static/app.js','utf8'),ctx=vm.createContext({});vm.runInContext(source.slice(source.indexOf('let contactFavorites='),source.indexOf('async function loadContacts')),ctx);
+test('starred companies sort ahead of others before pagination',()=>{vm.runInContext("contactFavorites=new Set(['company:zebra'])",ctx);const rows=[{group:{company:'Acme',domain:'acme.com'}},{group:{company:'Zebra',domain:'zebra.org'}},{group:{company:'Zebra',domain:'zebra.com'}}];rows.sort(ctx.compareContactGroups);assert.deepEqual(rows.map(r=>r.group.domain),['zebra.com','zebra.org','acme.com']);});
