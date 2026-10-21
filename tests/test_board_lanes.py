@@ -31,7 +31,7 @@ class BoardTests(unittest.TestCase):
  def test_new_task_owner_defaults_to_saved_user(self):
   config.update_config({'user_context':{'full_name':'Test User'}})
   self.assertEqual(tasks.add_task('my','Review proposal')['my_tasks'][0]['assignee'],'Test User')
-  self.assertEqual(tasks.add_task('my','Call customer','Pat')['my_tasks'][0]['assignee'],'Pat')
+  self.assertEqual(tasks.add_task('my','Call customer','Pat')['my_tasks'][0]['assignee'],'Test User')
  def test_task_sources_persist_and_edits_preserve_them(self):
   task=tasks.add_task('my','Reply',source_type='slack',source_url='https://example.slack.com/archives/C1/p123')['my_tasks'][0]
   tasks.edit_task(task['id'],'Reply today','Me','my','',description='Read https://example.com/doc')
@@ -53,3 +53,10 @@ class BoardTests(unittest.TestCase):
   with self.assertRaises(ValueError):tasks.edit_task(task['id'],'Bad edit','Me','my','',priority='urgent')
   self.assertEqual(tasks.load_tasks()['my_tasks'][0]['text'],'Send final quote')
   with self.assertRaises(ValueError):tasks.add_task('my','Bad task',priority='urgent')
+
+ def test_selecting_my_task_uses_current_user(self):
+  config.update_config({'user_context':{'full_name':'Test User'}})
+  task=tasks.add_task('others','Call customer','Pat')['others_tasks'][0]
+  self.assertEqual(task['assignee'],'Pat')
+  edited=tasks.edit_task(task['id'],'Call customer','Pat','my','')['my_tasks'][0]
+  self.assertEqual(edited['assignee'],'Test User')

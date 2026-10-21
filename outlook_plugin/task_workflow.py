@@ -12,7 +12,7 @@ from pathlib import Path
 from .config import read_config, update_config
 from .ai_agent import BobAIAgent, get_bob_api_key, _BOB_LOCK
 from . import bob_status
-from .tasks import load_tasks, add_task
+from .tasks import load_tasks, add_task, current_user_name
 
 WORKFLOW_FILE=DATA_DIR/'.outlook_assistant_task_review.json'
 _LOCK=threading.RLock()
@@ -72,6 +72,8 @@ def snapshot(email_id=None):
     saved=load_tasks()
     linked={t.get('suggestion_id'):t for group in saved.values() for t in group if t.get('suggestion_id')}
     for item in items:
+        if item['status']=='review' and item.get('type') in ('unclear','my'):
+            item.update(type='my',owner=current_user_name())
         if item['status']=='accepted' and item['id'] in linked:
             task=linked[item['id']]
             item.update(priority=task.get('priority','none'),text=task['text'],description=task.get('description',''),source_type=task.get('source_type','email'),source_url=task.get('source_url',''),owner=task.get('assignee','Owner unclear'),type=task.get('type',item['type']),due_date=task.get('due_date',''),completed=task.get('completed',False))
@@ -94,9 +96,10 @@ def action(data):
         elif act=='accept':
             title=str(data.get('text',item['text'])).strip()[:2000]
             owner=str(data.get('owner',item['owner'])).strip()[:200]
-            kind=data.get('type',item['type']);due=str(data.get('due_date',item.get('due_date','')))
+            kind=data.get('type','my' if item['type']=='unclear' else item['type']);due=str(data.get('due_date',item.get('due_date','')))
             if not title:raise ValueError('Enter a task title.')
             if kind not in ('my','others','unclear'):raise ValueError('Choose an owner group.')
+            if kind=='my':owner=current_user_name()
             if due:date.fromisoformat(due)
             source={k:item.get(k,'') for k in ('email_id','email_subject','evidence','owner_evidence','due_evidence','due_note','company')}
             source['suggestion_id']=item['id']

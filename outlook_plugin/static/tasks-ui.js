@@ -46,7 +46,7 @@ function setTaskView(name){
  if(!$('task-review').classList.contains('active'))view('task-review');
  document.querySelectorAll('[data-task-view]').forEach(b=>b.classList.toggle('selected',b.dataset.taskView===name));taskFingerprint='';renderTaskList();
 }
-function editTask(item,origin){taskEditor={item,origin};$('taskEditorTitle').textContent=origin==='review'?'Review before adding':origin==='new'?'Add a task':'Edit task';$('editTaskText').value=item.text||'';$('editTaskDescription').value=item.description||'';$('editTaskSource').value=item.source_type||(item.email_id?'email':'other');$('editTaskSourceUrl').value=item.source_url||'';$('editTaskType').value=item.type||'my';$('editTaskOwner').value=item.owner||item.assignee||'';$('editTaskDue').value=taskDeadline(item).due;$('editTaskPriority').value=item.priority||'none';$('editTaskEvidence').textContent=item.evidence||'';$('editTaskEvidence').hidden=!item.evidence;$('editTaskDateNote').textContent=[item.due_evidence?'Deadline in email: “'+item.due_evidence+'”':'',item.due_note||''].filter(Boolean).join(' · ');$('saveTaskEdit').textContent=origin==='saved'?'Save changes':'Add task';$('ownerSuggestions').hidden=true;$('editTaskOwner').setCustomValidity('');$('taskEditor').showModal();loadOwnerContacts();}
+function editTask(item,origin){taskEditor={item,origin};$('taskEditorTitle').textContent=origin==='review'?'Review before adding':origin==='new'?'Add a task':'Edit task';$('editTaskText').value=item.text||'';$('editTaskDescription').value=item.description||'';$('editTaskSource').value=item.source_type||(item.email_id?'email':'other');$('editTaskSourceUrl').value=item.source_url||'';$('editTaskType').value=item.type||'my';$('editTaskOwner').value=$('editTaskType').value==='my'?currentOwnerName():item.owner||item.assignee||'';$('editTaskDue').value=taskDeadline(item).due;$('editTaskPriority').value=item.priority||'none';$('editTaskEvidence').textContent=item.evidence||'';$('editTaskEvidence').hidden=!item.evidence;$('editTaskDateNote').textContent=[item.due_evidence?'Deadline in email: “'+item.due_evidence+'”':'',item.due_note||''].filter(Boolean).join(' · ');$('saveTaskEdit').textContent=origin==='saved'?'Save changes':'Add task';$('ownerSuggestions').hidden=true;$('editTaskOwner').setCustomValidity('');$('taskEditor').showModal();loadOwnerContacts();}
 function dismissMenu(item){
  const details=document.createElement('details');details.className='dismiss-menu';
  details.append(text('summary','Dismiss…'));
@@ -215,3 +215,11 @@ for(const id of ['boardSort','reviewSort']){
  try{const saved=localStorage.getItem('outlook-'+id);if([...$(id).options].some(o=>o.value===saved))$(id).value=saved;}catch{}
  $(id).onchange=()=>{try{localStorage.setItem('outlook-'+id,$(id).value);}catch{}taskPage=1;boardFingerprint='';renderTaskBoard();renderTaskList();};
 }
+
+$('editTaskType').addEventListener('change',()=>{
+ if($('editTaskType').value==='my'){
+  $('editTaskOwner').value=currentOwnerName();
+  $('editTaskOwner').setCustomValidity('');$('ownerSuggestions').hidden=true;
+  $('editTaskOwner').dispatchEvent(new Event('input',{bubbles:true}));
+ }
+});

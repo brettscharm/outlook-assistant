@@ -62,7 +62,7 @@ def add_task(
         "text": text.strip(),
         "description": str(description).strip()[:4000],
         "source_type":source_type,"source_url":source_url,"priority":priority,
-        "assignee": assignee.strip() if assignee else default_owner,
+        "assignee": current_user_name() if task_type=="my" else assignee.strip() if assignee else default_owner,
         "completed": False,
         "due_date": due_date or "",
         "type": task_type,
@@ -120,7 +120,7 @@ def edit_task(task_id, text, owner, kind, due_date, description=None, source_typ
     for group in ('my_tasks','others_tasks'):
         for item in data[group]:
             if item['id']==task_id:
-                item.update(text=text.strip()[:2000],assignee=owner.strip()[:200] or 'Owner unclear',type=kind,due_date=due_date)
+                item.update(text=text.strip()[:2000],assignee=current_user_name() if kind=='my' else owner.strip()[:200] or 'Owner unclear',type=kind,due_date=due_date)
                 if source_type is not None or source_url is not None:
                     platform,url=validate_source(source_type if source_type is not None else item.get('source_type','email' if item.get('email_id') else 'other'),source_url if source_url is not None else item.get('source_url',''))
                     item.update(source_type=platform,source_url=url)
@@ -185,3 +185,8 @@ def validate_source(source_type,source_url):
 def validate_priority(value):
     if value not in ('none','low','medium','high'):raise ValueError('Choose None, Low, Medium, or High priority.')
     return value
+
+
+def current_user_name():
+    from .config import read_config
+    return read_config().get('user_context',{}).get('full_name','').strip() or 'Me'

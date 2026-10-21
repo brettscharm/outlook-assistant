@@ -252,7 +252,7 @@ Instructions:
         return self._call_llm(prompt)
 
     def extract_tasks(self, emails, mode='all', feedback=None):
-        """Require known sources and literal evidence; ambiguous ownership stays unassigned."""
+        """Require source evidence; default ambiguous ownership to the user."""
         if not emails: return []
         prompt = """Extract specific outstanding actions, not generic summaries, from the messages below.
 Use the user's full_name, email_addresses, role, and accounts in preferences to determine ownership.
@@ -299,6 +299,9 @@ Previous dismissal feedback is context about individual actions, not a blanket r
             if not owner_quote or ' '.join(owner_quote.split()) not in content:kind='unclear';owner_quote=''
             if kind=='my' and not any(token in (owner_quote+' '+source.get('sender','')).casefold() for token in identifiers):kind='unclear'
             owner=str(item.get('owner',''))[:200].strip() if kind!='unclear' else 'Owner unclear'
+            if kind=='unclear':
+                kind='my';owner_quote=''
+            if kind=='my':owner=profile.get('full_name','').strip() or 'Me'
             deadline=str(item.get('due_date','')).strip();due_quote=str(item.get('due_evidence',''))[:1200].strip()
             note=str(item.get('due_note',''))[:300]
             try:

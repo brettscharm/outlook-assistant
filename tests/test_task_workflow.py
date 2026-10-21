@@ -29,7 +29,7 @@ class WorkflowTests(unittest.TestCase):
  def test_accept_is_idempotent_with_dates_owner_source(self):
   with patch.object(BobAIAgent,'extract_tasks',return_value=[item()]):w.run(Engine([message()]),self.opts)
   sid=w.snapshot()['suggestions'][0]['id'];w.action({'action':'accept','id':sid});w.action({'action':'accept','id':sid,'text':'Edited duplicate'})
-  rows=tasks.load_tasks()['my_tasks'];self.assertEqual(len(rows),1);self.assertEqual(rows[0]['description'],'Send the proposal requested by Brett.');self.assertEqual(rows[0]['due_date'],'2026-10-30');self.assertEqual(rows[0]['assignee'],'Brett');self.assertEqual(rows[0]['email_id'],'1')
+  rows=tasks.load_tasks()['my_tasks'];self.assertEqual(len(rows),1);self.assertEqual(rows[0]['description'],'Send the proposal requested by Brett.');self.assertEqual(rows[0]['due_date'],'2026-10-30');self.assertEqual(rows[0]['assignee'],'Brett Scharmett');self.assertEqual(rows[0]['email_id'],'1')
   tasks.edit_task(rows[0]['id'],'Changed task','Jane','others','2026-11-01')
   summary=w.snapshot('1')['suggestions'][0]
   self.assertEqual(summary['due_date'],'2026-11-01');self.assertEqual(summary['owner'],'Jane')
@@ -45,7 +45,7 @@ class WorkflowTests(unittest.TestCase):
   model=BobAIAgent('fake')
   with patch.object(model,'_call_llm',return_value=json.dumps({'tasks':[item(),invalid]})):
    result=model.extract_tasks([dict(message(),content=message()['body'])])
-  self.assertEqual(result[0]['description'],'Send the proposal requested by Brett.');self.assertEqual(result[0]['type'],'my');self.assertEqual(result[0]['due_date'],'2026-10-30');self.assertEqual(result[1]['type'],'unclear');self.assertEqual(result[1]['due_date'],'')
+  self.assertEqual(result[0]['description'],'Send the proposal requested by Brett.');self.assertEqual(result[0]['type'],'my');self.assertEqual(result[0]['due_date'],'2026-10-30');self.assertEqual(result[1]['type'],'my');self.assertEqual(result[1]['owner'],config.read_config()['user_context']['full_name']);self.assertEqual(result[1]['owner_evidence'],'');self.assertEqual(result[1]['due_date'],'')
  def test_automatic_default_waits_for_setup(self):
   self.assertEqual(w.options()['interval'],15)
   config.update_config({'user_context':{}})
@@ -136,3 +136,10 @@ class SyncTests(unittest.TestCase):
    running.locked.return_value=False;bob.locked.return_value=False
    result=w.sync_tasks(None)
    self.assertEqual(result['state'],'setup');self.assertIn('Settings',result['message']);start.assert_not_called()
+
+ def test_existing_unclear_suggestion_defaults_to_me(self):
+  w.save({'suggestions':{'qa':dict(item(),id='qa',type='unclear',owner='Owner unclear',status='review')},'processed':{}})
+  suggestion=w.snapshot()['suggestions'][0]
+  self.assertEqual(suggestion['type'],'my');self.assertEqual(suggestion['owner'],'Brett Scharmett')
+  w.action({'action':'accept','id':'qa'})
+  self.assertEqual(tasks.load_tasks()['my_tasks'][0]['assignee'],'Brett Scharmett')
