@@ -50,7 +50,7 @@ let usageLoading=false;
 function storageSize(value){const units=['B','KB','MB','GB','TB'];let index=0;while(value>=1024&&index<units.length-1){value/=1024;index++;}return value.toLocaleString(undefined,{maximumFractionDigits:1})+' '+units[index];}
 window.loadUsage=async()=>{
  if(usageLoading)return;usageLoading=true;
- try{const data=await api('/api/usage');const root=$('usageSummary');root.replaceChildren();
+ try{const data=await api('/api/usage');renderQuickUsage(data);const root=$('usageSummary');root.replaceChildren();
  const grid=text('div','','usage-grid');
  for(const [label,bucket] of [['Today (UTC)',data.today],['This month (UTC)',data.month],['Since tracking started',data.total]]){const card=text('article','','workspace-card');card.append(text('h3',label),text('strong',bucket.requests+' Bob requests'),text('p',bucket.succeeded+' succeeded · '+bucket.failed+' failed','muted small'),text('p',bucket.reported_units.toLocaleString(undefined,{maximumFractionDigits:6})+' Bobcoins reported'),text('p',bucket.unreported+' requests without reported usage','muted small'));for(const [field,title] of [['input_tokens','Input tokens'],['output_tokens','Output tokens'],['cache_read_tokens','Cached tokens read'],['cache_write_tokens','Cached tokens written']]){const reports=bucket[field+'_reports']||0;card.append(text('p',title+': '+(reports?bucket[field].toLocaleString()+' ('+reports+'/'+bucket.requests+' requests reported)':'Unavailable'),'muted small'));}grid.append(card);}root.append(grid,text('p','Bobcoins measure Bob consumption, not a dollar charge or your remaining account balance. Your IBM plan determines billing. Missing cost or token data is unknown, not free. Totals cover only this app on this Mac. Cached tokens may overlap input tokens; do not add them together.','muted small'));
  $('usageStatus').textContent=(data.started_at?'Tracking since '+date(data.started_at,true)+'.':'Tracking begins with your next Bob request; earlier activity cannot be reconstructed.')+(data.tracking_error?' A recent request could not be recorded. Totals may be incomplete.':'');
@@ -70,3 +70,17 @@ function openSavedDraft(id){
 $('closeSavedDraft').onclick=async()=>{await flushDrafts();$('savedDraftEditor').close();window.renderDrafts();};
 $('savedDraftEditor').addEventListener('close',()=>window.renderDrafts());
 $('copySavedDraft').onclick=()=>busy($('copySavedDraft'),async()=>{await copyRichDraft(state.drafts[editingSavedDraft]||'',state.draftMeta[editingSavedDraft]?.html);notice('Draft copied. Paste it into Outlook and review before sending.');});
+
+let quickUsageLoading=false;
+function renderQuickUsage(data){
+ const today=data.today,partial=today.unreported>0||data.tracking_error;
+ const total=today.reported_units.toLocaleString(undefined,{maximumFractionDigits:3});
+ const summary=today.requests===0?'No usage today':today.unreported===today.requests?'Usage unreported':total+' Bobcoins'+(partial?' · Partial':'');
+ $('usageQuick').textContent='Today (UTC) · '+summary;
+ $('usageQuick').title='Today (UTC) · '+today.requests+' requests · '+today.unreported+' without reported usage. '+(data.tracking_error?'Some usage could not be recorded. ':'')+'This app on this Mac only. Click for tokens and usage details.';
+ $('usageQuick').setAttribute('aria-label',summary+'. '+$('usageQuick').title);
+}
+window.refreshQuickUsage=async()=>{if(quickUsageLoading)return;quickUsageLoading=true;try{renderQuickUsage(await api('/api/usage'));}catch{$('usageQuick').textContent='Usage unavailable';$('usageQuick').title='Could not load usage. Click to retry in Usage.';}finally{quickUsageLoading=false;}};
+$('usageQuick').onclick=()=>view('usage');
+window.refreshQuickUsage();
+setInterval(()=>{if(!document.hidden&&document.querySelector('.view.active')?.id!=='usage')window.refreshQuickUsage();},30000);

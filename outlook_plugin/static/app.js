@@ -212,7 +212,7 @@ window.addEventListener('focus',resumeWorkspace);
 
 async function refreshSyncedViews(){
  contactsLoaded=false;
- const jobs=[window.loadTaskWorkspace?.(),window.refreshSetup?.(),refreshBobStatus()];
+ const jobs=[window.loadTaskWorkspace?.(),window.refreshSetup?.(),refreshBobStatus(),window.refreshQuickUsage?.()];
  const active=document.querySelector('.view.active')?.id;
  // Company labels and draft text may be mid-edit; never replace the active editor.
  if(active==='contacts'&&!$('contacts').contains(document.activeElement))jobs.push(loadContacts(true));

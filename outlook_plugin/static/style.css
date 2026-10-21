@@ -106,3 +106,5 @@ dialog{max-height:calc(100dvh - 48px);overflow:auto;border-radius:16px;box-shado
 .task-confetti{position:fixed;inset:0;pointer-events:none;z-index:10000;overflow:hidden}.confetti-piece{position:absolute;left:50%;top:42%;width:7px;height:11px;border-radius:2px;background:#007aff}.confetti-piece:nth-child(4n+1){background:#34c759}.confetti-piece:nth-child(4n+2){background:#ffcc00}.confetti-piece:nth-child(4n+3){background:#af52de}.confetti-piece:nth-child(3n){width:6px;height:6px;border-radius:50%}@media(prefers-reduced-motion:reduce){.task-confetti{display:none}}
 
 .body-text a,.task-email-body a{color:#0066cc;text-decoration:underline;overflow-wrap:anywhere}
+
+.usage-quick{flex-shrink:0;font-size:11px;padding:5px 9px;background:white;color:#51545b;margin-left:auto;white-space:nowrap}.usage-quick:hover{color:#0066cc;background:#edf4ff}
