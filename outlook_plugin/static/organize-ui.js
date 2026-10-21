@@ -19,7 +19,7 @@ window.renderProjectCards=tasks=>{
  if(!projectRows.length)root.append(text('p','Projects group related tasks. You can also keep tasks without a project.','muted'));
  for(const p of projectRows){
   const rows=tasks.filter(t=>t.project_id===p.id),done=rows.filter(t=>t.completed).length,waiting=rows.filter(t=>!t.completed&&t.waiting_on).length;
-  const card=text('article','','workspace-card project-card');const title=text('button',p.name,'project-title');title.onclick=()=>openProject(p.id);card.append(title);if(p.description)card.append(text('p',p.description,'muted small'));
+  const card=text('article','','workspace-card project-card');card.dataset.color=p.color;const title=text('button',p.name,'project-title');title.onclick=()=>openProject(p.id);card.append(title);if(p.description)card.append(text('p',p.description,'muted small'));
   const meter=document.createElement('progress');meter.max=Math.max(1,rows.length);meter.value=done;meter.setAttribute('aria-label',p.name+' task completion');card.append(meter,text('p',done+' of '+rows.length+' tasks completed'+(waiting?' · '+waiting+' waiting':''),'muted small'));
   const actions=text('div','','actions');const open=text('button','Open project');open.onclick=()=>openProject(p.id);const add=text('button','Add task');add.onclick=()=>{openProject(p.id);$('manualTask').click();};const edit=text('button','Edit project');edit.onclick=()=>openProjectEditor(p);actions.append(open,add,edit);card.append(actions);root.append(card);
  }
@@ -30,9 +30,9 @@ window.loadProjects=async()=>{
  $('boardProject').replaceChildren();for(const [value,label] of [['','All tasks'],['unassigned','No project'],...projectRows.map(p=>[p.id,p.name])]){const o=text('option',label);o.value=value;$('boardProject').append(o);}$('boardProject').value=selected;
  const saved=await api('/api/tasks');renderProjectCards([...saved.my_tasks,...saved.others_tasks]);boardFingerprint='';renderTaskBoard();
 };
-function openProjectEditor(p){editingProject=p?.id||null;$('projectName').value=p?.name||'';$('projectDescription').value=p?.description||'';$('projectStatus').textContent='';$('projectEditor').showModal();window.mountTaskFiles($('projectEditor'),'project',editingProject);}
+function openProjectEditor(p){editingProject=p?.id||null;$('projectName').value=p?.name||'';$('projectDescription').value=p?.description||'';$('projectColor').value=p?.color||['blue','purple','green','orange','pink'][projectRows.length%5];$('projectStatus').textContent='';$('projectEditor').showModal();window.mountTaskFiles($('projectEditor'),'project',editingProject);}
 $('newProject').onclick=()=>openProjectEditor();$('closeProject').onclick=()=>$('projectEditor').close();
-$('projectForm').onsubmit=e=>{e.preventDefault();busy(e.submitter,async()=>{try{await api('/api/projects',{id:editingProject,name:$('projectName').value,description:$('projectDescription').value});$('projectEditor').close();await loadProjects();}catch(error){$('projectStatus').textContent=error.message;throw error;}});};
+$('projectForm').onsubmit=e=>{e.preventDefault();busy(e.submitter,async()=>{try{await api('/api/projects',{id:editingProject,name:$('projectName').value,description:$('projectDescription').value,color:$('projectColor').value});$('projectEditor').close();await loadProjects();}catch(error){$('projectStatus').textContent=error.message;throw error;}});};
 $('boardProject').onchange=()=>{try{localStorage.setItem('outlook-board-project',$('boardProject').value);}catch{}boardFingerprint='';renderTaskBoard();};
 for(const [id,page] of [['openProfile','context'],['openWritingStyle','writing'],['openUsageDetails','usage']])$(id).onclick=()=>{$('settings').close();view(page);};
 function showAgent(){const p=agentRows.find(p=>p.id===$('agentChoice').value);if(!p)return;$('agentInstructions').value=p.instructions;$('agentExamples').value=p.examples;$('agentSaveStatus').textContent='Saved on this Mac.';}

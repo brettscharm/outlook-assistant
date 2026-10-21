@@ -2,8 +2,10 @@
 import uuid
 from .config import read_config, update_config, _LOCK
 
+COLORS=('blue','purple','green','orange','pink')
+
 def list_projects():
-    return read_config().get('projects', [])
+    return [dict(project,color=project.get('color') if project.get('color') in COLORS else COLORS[index%len(COLORS)]) for index,project in enumerate(read_config().get('projects', []))]
 
 def validate_id(value):
     if value and value not in {p['id'] for p in list_projects()}:
@@ -15,6 +17,7 @@ def save(data,request_id=None):
     if not isinstance(name,str) or not 1<=len(name.strip())<=100:raise ValueError('Enter a project name of up to 100 characters.')
     description=data.get('description','')
     if not isinstance(description,str) or len(description)>4000:raise ValueError('Keep project details under 4,000 characters.')
+    if 'color' in data and data['color'] not in COLORS:raise ValueError('Choose a supported project color.')
     with _LOCK:
         rows=list_projects()
         if request_id:
@@ -26,6 +29,6 @@ def save(data,request_id=None):
         if existing is None:
             existing={'id':str(uuid.uuid4())};rows.append(existing)
             if request_id:existing['request_id']=request_id
-        existing.update(name=name.strip(),description=description.strip())
+        existing.update(name=name.strip(),description=description.strip(),color=data.get('color',existing.get('color',COLORS[(len(rows)-1)%len(COLORS)])))
         update_config({'projects':rows})
         return rows

@@ -27,6 +27,15 @@ class ActionsTests(unittest.TestCase):
   self.assertEqual(updated['project']['description'],'Retain')
   with self.assertRaises(ValueError):self.call('edit_project',project_id=p['project']['id'],expected_revision=p['revision'],description='stale')
   task=self.create(project_id=p['project']['id']);self.assertEqual(task['task']['project_id'],p['project']['id'])
+ def test_project_colors_default_and_preserve_on_partial_edits(self):
+  p=self.call('create_project',name='Project color',request_id='color-project')
+  self.assertEqual(p['project']['color'],'blue')
+  changed=self.call('edit_project',project_id=p['project']['id'],expected_revision=p['revision'],color='purple')
+  renamed=self.call('edit_project',project_id=p['project']['id'],expected_revision=changed['revision'],name='Renamed')
+  self.assertEqual(renamed['project']['color'],'purple')
+  with self.assertRaises(ValueError):self.call('edit_project',project_id=p['project']['id'],expected_revision=renamed['revision'],color='invalid')
+  config.update_config({'projects':[{'id':'old','name':'Legacy project','description':''}]})
+  self.assertEqual(self.call('get_project',project_id='old')['project']['color'],'blue')
  def test_checklist_updates_move_and_waiting(self):
   task=self.create();identifier=task['task']['id']
   step=self.call('add_subtask',task_id=identifier,text='Review pricing',request_id='step-1')

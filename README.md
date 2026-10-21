@@ -154,3 +154,5 @@ For source installations, `python3 -m outlook_plugin.mcp_server` runs the same t
 - Progress: `add_task_update`, `add_subtask`, `set_subtask_completed`, `set_task_next_step`.
 
 Write tools are marked as mutations for the AI client. Creation/append calls require a stable `request_id` to prevent duplicates on retry. Partial task/project edits require the latest `revision` from `get_task`/`get_project` as `expected_revision`; stale edits return an error instead of overwriting newer data. Reconnect or refresh tools in your AI client after updating.
+
+Tasks in a project display its shared color. Edit the project to change the color for every task in it; existing projects receive an automatic color. Tasks moved out of a project return to their personal color. Completed tasks retain their muted appearance. MCP project creation/editing also accepts a `color`.
