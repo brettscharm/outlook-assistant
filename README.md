@@ -7,7 +7,7 @@ A desktop workspace for mail cached by Outlook, tasks, contacts, projects, and o
 1. **[Download Outlook Assistant for Mac](https://github.com/brettscharm/outlook-assistant/releases/download/v2.19.0/Outlook-Assistant-2.19.0-Apple-Silicon-Mac.zip)**.
 2. Open the ZIP and drag **Outlook Assistant.app** into **Applications**.
 3. Open **Outlook**, then **Outlook Assistant**.
-4. Follow **Settings → Setup**. Add your own Bob key and your name/email to enable task suggestions.
+4. Follow **Settings → Setup**. Follow **[Get your Bob API key](docs/INSTALL.md#get-your-bob-api-key)**, then add your name/email to enable task suggestions.
 
 **[Step-by-step installation and troubleshooting →](docs/INSTALL.md)**
 

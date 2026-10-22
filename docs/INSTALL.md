@@ -19,8 +19,21 @@ Open **Outlook** and let it sync. Then open **Outlook Assistant** from Applicati
 In **Settings → Setup**, follow the setup walkthrough. For automatic task suggestions:
 
 - Click **Install / update Bob** if Bob is missing.
-- Add your own Bob API key in **Settings → Bob connection**, then click **Test Bob connection**.
+- Create and add your Bob API key using the steps below.
 - Add your name and email in **Settings → Profile & writing → My profile**.
+
+### Get your Bob API key
+
+1. Open **[bob.ibm.com](https://bob.ibm.com)** and sign in with your work account.
+2. Open your **subscription instance**, then **API key management**.
+3. Create a new key and choose **Inference**. If asked, choose the team you use for work.
+4. **Copy the key before closing the dialog.** Bob only shows the full key once.
+5. Back in Outlook Assistant, open **Settings → Bob connection**. Set **Key name** to something like `Work Bob`, then paste the key into **Bob API key**.
+6. Click **Test Bob connection**. Wait for **Connected to IBM Bob. Test request succeeded.**
+
+No Terminal commands are needed. Keep your key private; each person should use their own. If your subscription or key-management page is unavailable, ask your Bob administrator for access.
+
+Already have a **General** key? Enter its team ID under **Bob team ID** in the same settings panel, or create an Inference key instead. [IBM’s API key guide, with screenshots](https://bob.ibm.com/docs/shell/account/api-keys).
 
 That’s it. Keep the app open; updates install automatically when it’s idle. Your work saves on your Mac.
 
@@ -49,7 +62,7 @@ You can use accessible cached mail and saved tasks without Bob. To enable genera
 
 1. Open **Settings → Setup → Install / update Bob**. The app installs a private Node 24 runtime if needed, then Bob. You can also follow **[IBM’s official installation guide](https://bob.ibm.com/docs/shell/getting-started/install-and-setup)**.
 2. Return to **Settings → Setup → Check setup again**. This app currently supports **Bob Shell 2.x**.
-3. Create your own Bob API key through IBM’s Bob portal. Prefer an **Inference** key; a general key also needs your team ID.
+3. Follow **[Get your Bob API key](#get-your-bob-api-key)** above. Choose an **Inference** key; a General key also needs your team ID.
 4. In **Settings → Bob connection**, give the key a recognizable name, enter it, and choose **Test Bob connection**. Never put your key in a GitHub issue or screenshot.
 5. Open **Settings → Profile & writing → My profile** and add your full name and email addresses or aliases. Add your role and account list to improve relevance.
 
