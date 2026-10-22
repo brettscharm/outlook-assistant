@@ -26,12 +26,14 @@ def snapshot():
     with _LOCK:return {**_STATE,'release':dict(_RELEASE)}
 
 def start():
-    from .ai_agent import _BOB_LOCK,node_executable,bob_executable
+    from .ai_agent import _BOB_LOCK,_BOB_SEARCH_LOCK,node_executable,bob_executable
     node=node_executable(bob_executable())
     if not _BOB_LOCK.acquire(False):raise ValueError('Bob is busy. Wait for the current request to finish.')
+    if not _BOB_SEARCH_LOCK.acquire(False):
+        _BOB_LOCK.release();raise ValueError('Project search is running. Wait for it to finish before updating Bob.')
     with _LOCK:
         if _STATE['state']=='working':
-            _BOB_LOCK.release();raise ValueError('Installation is already running.')
+            _BOB_SEARCH_LOCK.release();_BOB_LOCK.release();raise ValueError('Installation is already running.')
         _STATE.update(state='working',message='Checking IBM’s release…')
     def worker():
         try:
@@ -65,6 +67,7 @@ def start():
             with _LOCK:_STATE.update(state='failed',message='Installation timed out. Check your connection and retry.')
         except Exception as exc:
             with _LOCK:_STATE.update(state='failed',message=str(exc) if isinstance(exc,ValueError) else 'Installation failed. Check your connection and permissions.')
-        finally:_BOB_LOCK.release()
+        finally:
+            _BOB_SEARCH_LOCK.release();_BOB_LOCK.release()
     threading.Thread(target=worker,daemon=True).start()
     return snapshot()

@@ -21,6 +21,7 @@ import tempfile
 import threading
 
 _BOB_LOCK = threading.Lock()
+_BOB_SEARCH_LOCK = threading.Lock()
 
 
 def get_bob_api_key():
@@ -109,9 +110,12 @@ class BobAIAgent:
         compatibility = bob_compatibility(executable, node)
         if not compatibility["ready"]:
             raise RuntimeError(compatibility["detail"])
-        # Interactive chat waits for the current scan instead of failing immediately.
-        acquired = True if _coordinated else (_BOB_LOCK.acquire(timeout=180) if profile == "assistant" else _BOB_LOCK.acquire(blocking=False))
+        # Project search has its own shell slot, independent of background scans.
+        request_lock = _BOB_SEARCH_LOCK if profile == "project_search" else _BOB_LOCK
+        acquired = True if _coordinated else (request_lock.acquire(timeout=180) if profile == "assistant" else request_lock.acquire(blocking=False))
         if not acquired:
+            if profile == "project_search":
+                raise RuntimeError("A project search or Bob installation is already running. Please retry when it finishes.")
             if profile == "assistant":
                 raise RuntimeError("Bob is still busy. Your message is saved in the composer; please send it again shortly.")
             raise RuntimeError("Bob is working on another request. Please wait and retry.")
@@ -163,7 +167,7 @@ class BobAIAgent:
                 if attempted:usage.record(success,reported_stats)
             finally:
                 ai_profiles.finish(activity_id,success)
-                if not _coordinated:_BOB_LOCK.release()
+                if not _coordinated:request_lock.release()
 
     def generate_ai_briefing(self, calendar_events: List[Dict[str, Any]], unread_emails: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Synthesize daily executive agenda with meeting preps and action items."""

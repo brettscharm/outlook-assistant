@@ -22,6 +22,7 @@ SCHEDULING_EXAMPLES = """Alex: 'Sam, please schedule the Acme kickoff with me.' 
 'Our Acme call was cancelled; Sam, please find a new time.' -> New rescheduling task for Sam; do not suggest completion.
 """
 DEFAULTS={
+ 'project_search':{'name':'Project search','instructions':'Answer from supplied project evidence. Cite supporting sources and identify gaps in coverage. Do not modify the workspace.','examples':''},
  'tasks':{'name':'Task finder','instructions':'Find concrete outstanding actions. Prefer specific deliverables over generic follow-ups. Use saved identity and role. Keep descriptions grounded in the source.\n'+SCHEDULING_GUIDANCE.strip(),'examples':SCHEDULING_EXAMPLES.strip()},
  'reviewer':{'name':'Grounding reviewer','instructions':'Independently check source facts, requests, uncertainty and commitments. Never invent availability.','examples':''},
  'editor':{'name':'Reply editor','instructions':'Reconcile the draft with source evidence and the independent review. Preserve the user’s writing style and required HTML format.','examples':''},
