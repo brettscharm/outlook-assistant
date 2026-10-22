@@ -1,0 +1,5 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const source=fs.readFileSync('outlook_plugin/static/calendar-ui.js','utf8'),ctx=vm.createContext({});vm.runInContext(source.slice(source.indexOf('function calendarProjectMatches'),source.indexOf('function visibleCalendarEvents')),ctx);
+const events=[{id:'series',start_time:'2026-10-22T13:00:00Z'},{id:'series',start_time:'2026-10-23T13:00:00Z'}],projects=[{id:'p',meetings:[{calendar_id:'series',occurred_at:'2026-10-22T09:00:00-04:00'}]}];
+test('project filter matches occurrence and equivalent timezone',()=>{assert.equal(ctx.projectCalendarEvents(events,projects,'p').length,1);assert.equal(ctx.projectCalendarEvents(events,projects,'p')[0],events[0]);});
+test('all and unassigned filters retain correct events',()=>{assert.equal(ctx.projectCalendarEvents(events,projects,''),events);assert.equal(ctx.projectCalendarEvents(events,projects,'unassigned')[0],events[1]);assert.equal(ctx.projectCalendarEvents(events,projects,'missing').length,0);});

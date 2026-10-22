@@ -16,6 +16,7 @@ assert.equal(context.calendarRange(new Date(2026,7,21),'month').days,42);
 // Overflow uses already-loaded events and opens the meeting list without a cache request.
 const nodes={calendarMeetingTitle:{},calendarMeetingDetails:{children:[],replaceChildren(){this.children=[];},append(...items){this.children.push(...items);}},calendarMeeting:{open:false,showModal(){this.open=true;},close(){this.open=false;}}};
 const dayContext=vm.createContext({$:id=>nodes[id],text:(tag,label)=>({tag,label,children:[],append(...items){this.children.push(...items);}}),calendarOverlaps:()=>true,calendarEvents:[{subject:'One',start_time:'2026-10-22T08:00:00Z'},{subject:'Two',start_time:'2026-10-22T09:00:00Z'}],calendarEventButton:event=>({event}),chooseCalendarDay(){throw Error('Should not change the view until requested');}});
+dayContext.visibleCalendarEvents=()=>dayContext.calendarEvents;
 vm.runInContext(source.slice(source.indexOf('function showCalendarDay('),source.indexOf('function saveCalendarMode')),dayContext);
 dayContext.showCalendarDay(new Date(2026,9,22));assert.equal(nodes.calendarMeeting.open,true);assert.equal(nodes.calendarMeetingDetails.children[0].children.length,2);
 

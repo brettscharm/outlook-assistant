@@ -19,6 +19,18 @@ function calendarTimedLayout(events,day){
 function calendarVisibleDays(range,mode,hideWeekends){
  return Array.from({length:range.days},(_,i)=>calendarAddDays(range.start,i)).filter(day=>mode==='day'||!hideWeekends||![0,6].includes(day.getDay()));
 }
+function calendarProjectMatches(event,project){return (project.meetings||[]).some(m=>m.calendar_id===String(event.id)&&new Date(m.occurred_at).getTime()===new Date(event.start_time).getTime());}
+function projectCalendarEvents(events,projects,selected){if(!selected)return events;return events.filter(event=>selected==='unassigned'?!projects.some(p=>calendarProjectMatches(event,p)):projects.some(p=>p.id===selected&&calendarProjectMatches(event,p)));}
+function visibleCalendarEvents(){return projectCalendarEvents(calendarEvents,window.projectRows||[],$('calendarProject').value);}
+function fillCalendarProjects(){const select=$('calendarProject'),value=select.value;select.replaceChildren(text('option','All projects'));select.options[0].value='';const none=text('option','No project');none.value='unassigned';select.append(none);for(const project of window.projectRows||[]){const option=text('option',project.name);option.value=project.id;select.append(option);}select.value=[...select.options].some(o=>o.value===value)?value:'';}
+function calendarProjectControls(event,root){
+ const section=text('div','','calendar-project-links');section.append(text('h3','Projects'));
+ const linked=(window.projectRows||[]).filter(p=>calendarProjectMatches(event,p));for(const project of linked){const link=text('button',project.name,'project-link');link.type='button';link.onclick=()=>{$('calendarMeeting').close();window.openProject(project.id);};section.append(link);}
+ const available=(window.projectRows||[]).filter(p=>!calendarProjectMatches(event,p));
+ if(available.length){const actions=text('div','','actions');const select=document.createElement('select');select.setAttribute('aria-label','Project for this event');for(const p of available){const option=text('option',p.name);option.value=p.id;select.append(option);}const add=text('button','Add to project');add.type='button';const status=text('p','','muted small');status.setAttribute('role','status');add.onclick=()=>busy(add,async()=>{try{window.projectRows=await api('/api/project-calendar',{project_id:select.value,meeting:{title:event.subject||'Meeting',calendar_id:String(event.id),occurred_at:event.start_time,meeting_url:event.join_url||''}});fillCalendarProjects();renderCalendar();showCalendarMeeting(event);}catch(e){status.textContent=e.message;}});actions.append(select,add);section.append(actions,status);}
+ else if(!linked.length)section.append(text('p','Create a project in Projects to link this event.','muted small'));
+ root.append(section);
+}
 let calendarHideWeekends=false;
 try{calendarHideWeekends=localStorage.getItem('outlook-calendar-hide-weekends')==='true';}catch{}
 let calendarMode='month',calendarAnchor=calendarDay(new Date()),calendarEvents=[],calendarRequest=0,calendarChecked=null;
@@ -30,6 +42,7 @@ function showCalendarMeeting(event){
  if(event.organizer)root.append(text('p','Organizer · '+event.organizer));if(event.location)root.append(text('p','Location · '+event.location));
  try{const url=new URL(event.join_url);if(url.protocol==='https:'&&!url.username&&!url.password&&!event.join_url.includes('[redacted]')){const join=text('a','Join meeting','feedback-link');join.href=url.href;join.target='_blank';join.rel='noopener noreferrer';root.append(join);}}catch{}
  if(!root.querySelector('a'))root.append(text('p','No call link was found in this cached event. Open the invitation in Outlook or Teams.','muted small'));
+ calendarProjectControls(event,root);
  const attendees=event.attendees||[];
  root.append(text('h3','Invited people'));
  if(attendees.length){
@@ -48,7 +61,7 @@ function chooseCalendarDay(day){calendarAnchor=calendarDay(day);calendarMode='da
 function showCalendarDay(day){
  $('calendarMeetingTitle').textContent=day.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
  const root=$('calendarMeetingDetails');root.replaceChildren();
- const events=calendarEvents.filter(e=>calendarOverlaps(e,day)).sort((a,b)=>Number(b.all_day)-Number(a.all_day)||new Date(a.start_time)-new Date(b.start_time));
+ const events=visibleCalendarEvents().filter(e=>calendarOverlaps(e,day)).sort((a,b)=>Number(b.all_day)-Number(a.all_day)||new Date(a.start_time)-new Date(b.start_time));
  const list=text('div','','calendar-day-list');for(const event of events)list.append(calendarEventButton(event));root.append(list);
  const open=text('button','Open day view');open.type='button';open.onclick=()=>{$('calendarMeeting').close();chooseCalendarDay(day);};root.append(open);$('calendarMeeting').showModal();
 }
@@ -62,13 +75,13 @@ function renderCalendar(){
  if(calendarMode==='month'){
   const headings=text('div','','calendar-weekdays');for(const day of days.slice(0,calendarHideWeekends?5:7))headings.append(text('span',day.toLocaleDateString(undefined,{weekday:'short'})));root.append(headings);
   const grid=text('div','','calendar-month');grid.style.setProperty('--calendar-weeks',range.days/7);
-  for(const day of days){const cell=text('section','','calendar-month-day'+(day.getMonth()!==calendarAnchor.getMonth()?' outside-month':''));cell.setAttribute('aria-label',day.toLocaleDateString(undefined,{dateStyle:'full'}));const number=text('button',String(day.getDate()),'calendar-day-number'+(calendarDateKey(day)===today?' is-today':''));number.type='button';number.setAttribute('aria-label','View '+day.toLocaleDateString(undefined,{dateStyle:'full'}));number.onclick=()=>chooseCalendarDay(day);cell.append(number);const events=calendarEvents.filter(e=>calendarOverlaps(e,day)).sort((a,b)=>Number(b.all_day)-Number(a.all_day)||new Date(a.start_time)-new Date(b.start_time));for(const event of events.slice(0,3))cell.append(calendarEventButton(event,true));if(events.length>3){const more=text('button','+'+(events.length-3)+' more','calendar-more');more.type='button';more.setAttribute('aria-label','Show all '+events.length+' meetings on '+day.toLocaleDateString());more.onclick=()=>showCalendarDay(day);cell.append(more);}grid.append(cell);}root.append(grid);return;
+  for(const day of days){const cell=text('section','','calendar-month-day'+(day.getMonth()!==calendarAnchor.getMonth()?' outside-month':''));cell.setAttribute('aria-label',day.toLocaleDateString(undefined,{dateStyle:'full'}));const number=text('button',String(day.getDate()),'calendar-day-number'+(calendarDateKey(day)===today?' is-today':''));number.type='button';number.setAttribute('aria-label','View '+day.toLocaleDateString(undefined,{dateStyle:'full'}));number.onclick=()=>chooseCalendarDay(day);cell.append(number);const events=visibleCalendarEvents().filter(e=>calendarOverlaps(e,day)).sort((a,b)=>Number(b.all_day)-Number(a.all_day)||new Date(a.start_time)-new Date(b.start_time));for(const event of events.slice(0,3))cell.append(calendarEventButton(event,true));if(events.length>3){const more=text('button','+'+(events.length-3)+' more','calendar-more');more.type='button';more.setAttribute('aria-label','Show all '+events.length+' meetings on '+day.toLocaleDateString());more.onclick=()=>showCalendarDay(day);cell.append(more);}grid.append(cell);}root.append(grid);return;
  }
  const shell=text('div','','calendar-agenda calendar-'+calendarMode),head=text('div','','calendar-agenda-head');head.style.setProperty('--calendar-days',days.length);head.append(text('span','All day','calendar-gutter'));
- for(const day of days){const col=text('div','','calendar-agenda-date');const label=text('button',day.toLocaleDateString(undefined,{weekday:'short',day:'numeric'}),'calendar-date-heading'+(calendarDateKey(day)===today?' is-today':''));label.onclick=()=>chooseCalendarDay(day);col.append(label);for(const event of calendarEvents.filter(e=>e.all_day&&calendarOverlaps(e,day)))col.append(calendarEventButton(event,true));head.append(col);}shell.append(head);
+ for(const day of days){const col=text('div','','calendar-agenda-date');const label=text('button',day.toLocaleDateString(undefined,{weekday:'short',day:'numeric'}),'calendar-date-heading'+(calendarDateKey(day)===today?' is-today':''));label.onclick=()=>chooseCalendarDay(day);col.append(label);for(const event of visibleCalendarEvents().filter(e=>e.all_day&&calendarOverlaps(e,day)))col.append(calendarEventButton(event,true));head.append(col);}shell.append(head);
  const scroll=text('div','','calendar-time-scroll'),timeline=text('div','','calendar-timeline');timeline.style.setProperty('--calendar-days',days.length);const hours=text('div','','calendar-hour-labels');
  for(let hour=0;hour<24;hour++){const label=text('span',new Date(2026,0,1,hour).toLocaleTimeString(undefined,{hour:'numeric'}));label.style.top=(hour*64)+'px';hours.append(label);}timeline.append(hours);
- for(const day of days){const col=text('div','','calendar-time-day');col.setAttribute('aria-label',day.toLocaleDateString(undefined,{dateStyle:'full'}));for(const row of calendarTimedLayout(calendarEvents,day)){const button=calendarEventButton(row.event);button.style.top=(row.top/60*64)+'px';button.style.height=(Math.min(1440-row.top,row.bottom-row.top)/60*64)+'px';button.style.left=`calc(${row.column/row.columns*100}% + 2px)`;button.style.width=`calc(${100/row.columns}% - 4px)`;col.append(button);}if(calendarDateKey(day)===today){const now=new Date(),line=text('div','','calendar-now');line.style.top=((now.getHours()+now.getMinutes()/60)*64)+'px';line.setAttribute('aria-label','Current time');col.append(line);}timeline.append(col);}scroll.append(timeline);shell.append(scroll);root.append(shell);head.style.paddingRight=(scroll.offsetWidth-scroll.clientWidth)+'px';scroll.scrollTop=oldScroll??8*64;
+ for(const day of days){const col=text('div','','calendar-time-day');col.setAttribute('aria-label',day.toLocaleDateString(undefined,{dateStyle:'full'}));for(const row of calendarTimedLayout(visibleCalendarEvents(),day)){const button=calendarEventButton(row.event);button.style.top=(row.top/60*64)+'px';button.style.height=(Math.min(1440-row.top,row.bottom-row.top)/60*64)+'px';button.style.left=`calc(${row.column/row.columns*100}% + 2px)`;button.style.width=`calc(${100/row.columns}% - 4px)`;col.append(button);}if(calendarDateKey(day)===today){const now=new Date(),line=text('div','','calendar-now');line.style.top=((now.getHours()+now.getMinutes()/60)*64)+'px';line.setAttribute('aria-label','Current time');col.append(line);}timeline.append(col);}scroll.append(timeline);shell.append(scroll);root.append(shell);head.style.paddingRight=(scroll.offsetWidth-scroll.clientWidth)+'px';scroll.scrollTop=oldScroll??8*64;
 }
 let calendarPoll=null;
 window.loadCalendar=async(force=false,poll=false)=>{
@@ -77,8 +90,8 @@ window.loadCalendar=async(force=false,poll=false)=>{
  if(!poll){$('calendarStatus').textContent=calendarChecked?'Showing saved meetings · Checking for updates…':'Loading saved calendar…';renderCalendar();}
  try{
   const q=new URLSearchParams({from:range.start.toISOString(),to:range.end.toISOString()});if(force===true)q.set('refresh','1');
-  const data=await api('/api/calendar?'+q);if(request!==calendarRequest)return;
-  const changed=JSON.stringify(calendarEvents)!==JSON.stringify(data.events);calendarEvents=data.events;calendarChecked=data.checked;if(changed)renderCalendar();
+  const [data,projects]=await Promise.all([api('/api/calendar?'+q),api('/api/projects')]);if(request!==calendarRequest)return;
+  const changed=JSON.stringify(calendarEvents)!==JSON.stringify(data.events)||JSON.stringify(window.projectRows)!==JSON.stringify(projects);window.projectRows=projects;fillCalendarProjects();calendarEvents=data.events;calendarChecked=data.checked;if(changed)renderCalendar();
   $('calendarStatus').textContent=(data.checked?data.events.length+' meetings · Updated '+date(new Date(data.checked*1000).toISOString(),true):'No saved calendar yet')+(data.refreshing?' · Updating…':'')+(data.refresh_error?' · '+data.refresh_error:'')+(!data.refreshing&&!data.events.length&&data.checked?' · No saved meetings for these dates.':'');
   if(data.refreshing)calendarPoll=setTimeout(()=>{if($('calendar').classList.contains('active')&&!document.hidden)window.loadCalendar(false,true);},2000);
  }catch(e){if(request===calendarRequest)$('calendarStatus').textContent=(calendarChecked?'Showing saved meetings · ':'')+e.message;}
@@ -91,3 +104,5 @@ $('refreshCalendar').onclick=()=>window.loadCalendar(true);$('closeCalendarMeeti
 setInterval(()=>{if($('calendar').classList.contains('active')&&!document.hidden&&!$('calendarMeeting').open)window.loadCalendar();},60000);
 
 $('calendarHideWeekends').onchange=()=>{calendarHideWeekends=$('calendarHideWeekends').checked;try{localStorage.setItem('outlook-calendar-hide-weekends',String(calendarHideWeekends));}catch{}renderCalendar();};
+
+$('calendarProject').onchange=()=>renderCalendar();

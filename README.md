@@ -24,7 +24,7 @@ The Mac app includes Python and the mail reader. You do not need Git, Xcode, Pyt
 - **Mail:** browse cached mail and folders, search, preview source emails, and draft replies. Stable message identities recover links when Outlook changes local row IDs; unavailable task previews offer conversation search. Deleted or uncached mail cannot be restored by this app. Outlook must download new mail before this app can read it.
 - **Drafts:** drafts save locally. Copy a draft into Outlook, review it, and send it there. The app does not send mail or insert Reply All drafts into Outlook.
 - **Contacts:** browse cached senders by domain and link multiple domains to one company. This is not an Outlook address-book sync.
-- **Projects:** group related tasks, filter the board, and see completion counts.
+- **Projects:** group related tasks, filter the board, and see completion counts. Open a Calendar event to add it to a project’s Meetings list; filter month, week, or day views by project or No project. Links apply to the selected occurrence and do not change Outlook or Teams.
 - **Settings → AI assistants:** edit instructions and examples, restore defaults, and test sample content. **AI activity** shows real request status.
 - **Settings → Profile & writing:** your identity, role, writing style, and usage details. Calendar reads cached Teams meetings.
 

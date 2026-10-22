@@ -190,6 +190,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         if path=='/api/task-files':return self._send_json(task_files.change(data))
         if path=='/api/bob-install':return self._send_json(bob_install.start())
         if path=='/api/project-emails':return self._send_json(project_mail.link(self.engine,data.get('project_id'),data.get('email_id'),data.get('remove') is True))
+        if path=='/api/project-calendar':return self._send_json(projects.add_calendar_meeting(data))
         if path=='/api/projects':return self._send_json(projects.save(data))
         if path=='/api/ai-profiles':return self._send_json(ai_profiles.save(data))
         if path=='/api/ai-profile-test':

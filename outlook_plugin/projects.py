@@ -80,3 +80,19 @@ def save(data,request_id=None):
         if meetings is not None:existing['meetings']=meetings
         update_config({'projects':rows})
         return rows
+
+
+def add_calendar_meeting(data):
+    """Append one occurrence without overwriting a project's other work."""
+    meeting=validate_meetings([data.get('meeting')])[0]
+    if not meeting['calendar_id'] or not meeting['occurred_at']:raise ValueError('Choose a dated calendar event.')
+    with _LOCK:
+        rows=list_projects()
+        project=next((p for p in rows if p['id']==data.get('project_id')),None)
+        if project is None:raise ValueError('Project not found.')
+        meetings=project.setdefault('meetings',[])
+        instant=datetime.fromisoformat(meeting['occurred_at'].replace('Z','+00:00'))
+        if any(m.get('calendar_id')==meeting['calendar_id'] and m.get('occurred_at') and datetime.fromisoformat(m['occurred_at'].replace('Z','+00:00'))==instant for m in meetings):return rows
+        project['meetings']=validate_meetings(meetings+[meeting])
+        update_config({'projects':rows})
+        return rows
