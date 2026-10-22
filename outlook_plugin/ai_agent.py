@@ -281,6 +281,7 @@ Mode mine: include the user's actions and things they are explicitly waiting on.
 Do not create a duplicate of a supplied active task when a message merely repeats it or reports its progress. Keep distinct new deliverables separate.
 Extract concrete deadlines. Resolve relative dates using the source message's received_time, never today's date.
 If a relative date is ambiguous, leave due_date empty and explain in due_note. No deadline means empty due_date.
+Use the owner’s full name from message headers when available; do not invent a surname or email address.
 Ownership and deadlines must each have a short literal supporting quote. If none exists, leave them unclear/empty.
 Write a short, specific action title naming the deliverable or topic; avoid vague titles like "Follow up".
 Also write a description of 2–4 useful sentences: what to do, the named recipient/customer/project,
@@ -345,6 +346,9 @@ Also return a "completed" array with {"task_id":"supplied active task ID","email
             if kind=='unclear':
                 kind='my';owner_quote=''
             if kind=='my':owner=profile.get('full_name','').strip() or 'Me'
+            else:
+                from .task_owners import resolve_owner
+                owner=resolve_owner(owner,source)
             deadline=str(item.get('due_date','')).strip();due_quote=str(item.get('due_evidence',''))[:1200].strip()
             note=str(item.get('due_note',''))[:300]
             try:

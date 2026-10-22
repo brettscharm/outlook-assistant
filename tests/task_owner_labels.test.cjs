@@ -1,0 +1,6 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const source=fs.readFileSync('outlook_plugin/static/tasks-ui.js','utf8'),ctx=vm.createContext({ownerContacts:[{name:'Jane Smith',email:'jane@example.com',company:'Example'},{name:'Alex Jones',email:'alex@one.com',company:'One'},{name:'Alex Jones',email:'alex@two.com',company:'Two'}],currentOwnerName:()=> 'Brett Scharmett',currentOwnerEmails:()=>['brett@ibm.com']});
+vm.runInContext(source.slice(source.indexOf('function ownerFullName'),source.indexOf('function ownerChip')),ctx);
+test('owner label includes verified contact details and normalizes surname-first names',()=>{assert.equal(ctx.ownerLabel({owner:'Smith, Jane'}),'Jane Smith · jane@example.com · Example');assert.equal(ctx.ownerLabel({owner:'Jane <jane@example.com>'}),'Jane Smith · jane@example.com · Example');});
+test('ambiguous and unknown owners remain without guessed details',()=>{assert.equal(ctx.ownerLabel({owner:'Alex Jones'}),'Alex Jones');assert.equal(ctx.ownerLabel({owner:'Sam'}),'Sam');});
+test('my tasks use the current profile identity',()=>assert.equal(ctx.ownerLabel({type:'my',owner:'Someone else'}),'Brett Scharmett · brett@ibm.com'));
