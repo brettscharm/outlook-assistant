@@ -263,3 +263,9 @@ Search does not transcribe audio/video, parse attachment contents, read arbitrar
 Every Bob request uses one shared scheduler. It chooses a limit of 2–8 concurrent requests based on CPU count and installed RAM, reserves one or two slots for interactive work, and prioritizes direct questions/replies, then workspace search, then automatic scanning. Background work waits when CPU load is high. Up to six search groups can be ready at once, but the scheduler’s lower machine limit always wins. Excess requests wait rather than launching more shells; the queue itself is bounded. This is a resource limit, not a Bobcoin budget.
 
 Project search, workspace search, drafts, and task discovery can overlap. Each keeps its own safeguards against duplicate operations. AI activity shows running and waiting requests and the machine’s limit. Bob installation and app updates require an idle scheduler and prevent new work from starting during maintenance. Timeouts and failures release capacity. Provider speed and account limits still apply; no concurrency setting can guarantee that a Mac will never run out of resources.
+
+### Recordings library
+
+Open **Recordings** in the sidebar to browse local audio/video attachments, project meeting recording links, and saved transcripts. Filter by project or search names; larger libraries paginate. **Open recording** uses the default Mac player; **Open web recording** opens the saved HTTPS link. **View transcript** opens the project meeting, where you can edit/export its transcript or find tasks.
+
+Choose **Add recording**, select a saved project, and upload or drop files. Choose **Add link or transcript** to create a project meeting instead. Files remain in their existing project/task attachment folders; this library does not duplicate them. Live recording and automatic transcription are not part of this tab.

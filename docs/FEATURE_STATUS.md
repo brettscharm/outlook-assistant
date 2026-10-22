@@ -88,3 +88,7 @@ Sidebar Search spans available cached mail, saved call transcripts/notes, calend
 ## Shared Bob scheduler (2.31.0)
 
 All shell requests, including coordinated reply teams and parallel workspace searches, use a shared hardware-sized queue (2–8 running, up to 32 waiting). Interactive reservations, search-over-scan priority, CPU-load gating for new background work, safe maintenance exclusivity, status display, and exception cleanup are implemented. Workspace search offers up to six workers; project searches can run alongside it. Small-memory/low-core Macs get lower limits. Tests cover concurrency, priority, reservations, load gating and installation safety with mocked Bob processes; real-provider throughput is not yet benchmarked.
+
+## Recordings tab (2.32.0)
+
+Central library for project and task recording attachments, meeting web links, and transcripts. Project/name filters, pagination, missing-reference notices, local/web open actions, meeting/task navigation, and project upload/link entry points. References share the original stored data; no copies are created by listing. Browser flow tests use synthetic records. Native capture/transcription remain unfinished.
