@@ -217,3 +217,5 @@ main>header{height:auto;min-height:68px;gap:12px;flex-wrap:wrap;padding-top:12px
 .owner-chip[data-owner-label]{max-width:100%;white-space:normal;overflow-wrap:anywhere;line-height:1.5}
 
 .task-priority-flag.priority-none{background:#f0f1f3;color:#626974}.task-collapsed>.task-card-actions{display:flex}
+
+.sidebar-utilities{display:flex;width:100%;gap:8px}.sidebar-utilities>button{flex:1;text-align:center}#shareDialog{width:min(400px,calc(100vw - 32px))}.share-actions{display:grid;gap:10px}.share-actions>button{text-align:left;padding:12px 14px}#shareLink{width:100%}

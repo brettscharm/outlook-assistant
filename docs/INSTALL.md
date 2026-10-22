@@ -37,14 +37,14 @@ Already have a **General** key? Enter its team ID under **Bob team ID** in the s
 
 That’s it. Keep the app open; updates install automatically when it’s idle. Your work saves on your Mac.
 
-**Sharing it?** Choose **Settings → Setup → Share app** to copy this page’s link. Your emails, tasks, settings, and API key are not included.
+**Sharing it?** Choose **Share** beside Settings, then **Copy app link** to copy this page’s link. Your emails, tasks, settings, and API key are not included.
 
 **Mac won’t open it?** This is a development build and is not Apple-notarized. If macOS or your company blocks it, contact your IT support. A fully signed installer is not available yet.
 
 <details>
 <summary>More help and technical details</summary>
 
-Download: **2.19.0 prerelease**. Application updates: **2.27.0**. Verified October 22, 2026. The direct download above avoids GitHub’s older “Latest” release and its source-code ZIPs. Installation on a clean Mac is not yet fully verified.
+Download: **2.19.0 prerelease**. Application updates: **2.27.1**. Verified October 22, 2026. The direct download above avoids GitHub’s older “Latest” release and its source-code ZIPs. Installation on a clean Mac is not yet fully verified.
 
 ### Outlook
 
