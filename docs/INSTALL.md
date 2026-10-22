@@ -44,7 +44,7 @@ That’s it. Keep the app open; updates install automatically when it’s idle. 
 <details>
 <summary>More help and technical details</summary>
 
-Download: **2.19.0 prerelease**. Application updates: **2.27.1**. Verified October 22, 2026. The direct download above avoids GitHub’s older “Latest” release and its source-code ZIPs. Installation on a clean Mac is not yet fully verified.
+Download: **2.19.0 prerelease**. Application updates: **2.27.2**. Verified October 22, 2026. The direct download above avoids GitHub’s older “Latest” release and its source-code ZIPs. Installation on a clean Mac is not yet fully verified.
 
 ### Outlook
 

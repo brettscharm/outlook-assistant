@@ -219,3 +219,5 @@ main>header{height:auto;min-height:68px;gap:12px;flex-wrap:wrap;padding-top:12px
 .task-priority-flag.priority-none{background:#f0f1f3;color:#626974}.task-collapsed>.task-card-actions{display:flex}
 
 .sidebar-utilities{display:flex;width:100%;gap:8px}.sidebar-utilities>button{flex:1;text-align:center}#shareDialog{width:min(400px,calc(100vw - 32px))}.share-actions{display:grid;gap:10px}.share-actions>button{text-align:left;padding:12px 14px}#shareLink{width:100%}
+
+.task-duplicates{font-size:12px;text-align:left;color:#7c5600;background:#fff6df;border-color:#ead9ad;margin:6px 0}#taskDuplicates{width:min(760px,calc(100vw - 32px))}

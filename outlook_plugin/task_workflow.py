@@ -149,11 +149,11 @@ def normalized_action(value):
 
 
 def same_action(left,right):
-    if left.get('action_type','create')!=right.get('action_type','create'):return False
+    if (left.get('action_type') or 'create')!=(right.get('action_type') or 'create'):return False
     if left.get('action_type')=='complete' and left.get('task_id')!=right.get('task_id'):return False
     a,b=set(left.get('source_keys',[])),set(right.get('source_keys',[]))
     same_source=bool(a&b) if a and b else bool(left.get('email_id') and left.get('email_id')==right.get('email_id'))
-    if not same_source:return False
+    if not same_source:return same_cross_email_action(left,right)
     title_a,title_b=normalized_action(left.get('text')),normalized_action(right.get('text'))
     if title_a and title_a==title_b:return True
     quote_a,quote_b=normalized_action(left.get('evidence')),normalized_action(right.get('evidence'))
@@ -165,6 +165,23 @@ def same_action(left,right):
     overlap=len(words_a&words_b)/max(1,min(len(words_a),len(words_b)))
     return (min(len(quote_a),len(quote_b))>=30 and min(len(quote_a),len(quote_b))/max(len(quote_a),len(quote_b))>=.65
             and (quote_a in quote_b or quote_b in quote_a) and len(words_a&words_b)>=2 and overlap>=.6)
+
+
+def same_cross_email_action(left,right):
+    # Repeated reminders can have new message IDs. Require a shared concrete
+    # deadline so recurring work in a later period is not silently suppressed.
+    if not left.get('email_id') or not right.get('email_id'):return False
+    due=left.get('due_date')
+    if not due or due!=right.get('due_date'):return False
+    subject=lambda row:normalized_action(re.sub(r'^(?:(?:re|fw|fwd):\s*)+', '',str(row.get('email_subject') or '').strip(),flags=re.I))
+    if not subject(left) or subject(left)!=subject(right):return False
+    def owner(row):
+        return 'self' if row.get('type')=='my' else normalized_action(row.get('owner') or row.get('assignee'))
+    if not owner(left) or owner(left)!=owner(right):return False
+    title_a,title_b=normalized_action(left.get('text')),normalized_action(right.get('text'))
+    quote_a,quote_b=normalized_action(left.get('evidence')),normalized_action(right.get('evidence'))
+    verb=lambda title: {'accept':'join','join':'join'}.get(title.split()[0],title.split()[0]) if title else ''
+    return (title_a==title_b and len(title_a.split())>=5) or (quote_a==quote_b and len(quote_a)>=60 and verb(title_a)==verb(title_b) and len(set(title_a.split())&set(title_b.split()))>=3)
 
 
 def remembered_actions(data,saved,messages):
@@ -180,7 +197,7 @@ def remembered_actions(data,saved,messages):
 def reviewed_context(history,batch):
     sources={m.get('source_id',m['id']) for m in batch}
     words=set(re.findall(r'\w+', ' '.join(m.get('subject','')+' '+m.get('content','') for m in batch).casefold()))
-    reviewed=[r for r in history if r.get('status') in ('dismissed','accepted') or 'completed' in r]
+    reviewed=[r for r in history if r.get('status') in ('dismissed','accepted','review') or 'completed' in r]
     reviewed.sort(key=lambda r:(r.get('email_id') in sources,len(words&set(normalized_action(r.get('text')).split()))),reverse=True)
     result=[];size=0
     for row in reviewed[:200]:

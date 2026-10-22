@@ -362,6 +362,7 @@ function savedTaskCard(t){
  const top=text('div','','action-card-top');const title=text('h3',t.text);top.append(title);const priorityFlag=taskPriorityFlag(t.priority);if(priorityFlag)top.append(priorityFlag);card.append(top);addTaskCollapse(card,top,t);
  const meta=text('div','','task-meta');const due=taskDeadline(t);if(due.due)meta.append(text('span',due.label,'due-chip '+due.urgency));if(!due.due)meta.append(text('span','No due date','muted small'));card.append(meta);
  if(t.deadline?.kind==='meeting'){const meeting=text('p','Before '+t.deadline.subject,'task-meeting');if(t.deadline.availability==='unavailable')meeting.append(text('small','Meeting unavailable · Check Calendar'));card.append(meeting);}
+ if(t.possible_duplicates?.length){const duplicates=text('button','Compare '+(t.possible_duplicates.length+1)+' similar tasks','task-duplicates');duplicates.type='button';duplicates.onclick=()=>showTaskDuplicates(t);card.append(duplicates);}
  const context=text('div','','task-card-context');context.append(ownerChip(t));const project=window.projectRows?.find(p=>p.id===t.project_id);if(project){const chip=text('button',project.name,'project-link');chip.onclick=()=>window.openProject?.(project.id);context.append(chip);}for(const person of t.co_owners||[])context.append(text('span',person,'owner-chip co-owner-chip'));card.append(context);
  if(t.next_step||t.description){const detail=text('p','','task-description');renderEmailLinks(detail,(t.next_step?'Next: ':'')+(t.next_step||t.description));card.append(detail);}
  if(t.waiting_on)card.append(text('p','Waiting on '+t.waiting_on,'task-waiting'));
@@ -426,3 +427,10 @@ function setTaskReminder(reminder){const at=reminder?.next_at||reminder?.at;cons
 function taskReminderValues(){const field=$('taskReminderAt'),repeat=Number($('taskReminderRepeat').value);if(!field.value)return {};const old=JSON.parse(field.dataset.original||'{}');if(field.value===field.dataset.local&&repeat===(old.repeat_days||0))return {at:old.at,repeat_days:repeat};return {at:new Date(field.value).toISOString(),repeat_days:repeat};}
 $('remindTomorrow').onclick=()=>{const d=new Date();d.setDate(d.getDate()+1);$('taskReminderAt').value=new Date(d-d.getTimezoneOffset()*60000).toISOString().slice(0,16);queueTaskEdit();};
 $('clearReminder').onclick=()=>{$('taskReminderAt').value='';queueTaskEdit();};
+
+function showTaskDuplicates(task){
+ const root=$('taskDuplicateList');root.replaceChildren();
+ for(const id of [task.id,...task.possible_duplicates]){const other=taskSaved.find(t=>t.id===id);if(!other)continue;const row=text('article','','action-card');row.append(text('h3',other.text),text('p',other.description||other.evidence||'','task-description'),text('p',[ownerLabel(other),other.due_date?'Due '+other.due_date:'No due date',other.email_subject].filter(Boolean).join(' · '),'muted small'));const open=text('button','Open task');open.type='button';open.onclick=()=>{$('taskDuplicates').close();editTask(other,'saved');};row.append(open);root.append(row);}
+ $('taskDuplicates').showModal();
+}
+$('taskDuplicatesClose').onclick=()=>$('taskDuplicates').close();

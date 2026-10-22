@@ -136,7 +136,9 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         if path=='/api/accounts': return self._send_json(self.engine.list_accounts())
         if path=='/api/task-lanes': return self._send_json(board_lanes())
         if path=='/api/archive':return self._send_json(mail_archive.status())
-        if path=='/api/tasks': return self._send_json(load_tasks())
+        if path=='/api/tasks':
+            from .task_duplicates import annotate
+            return self._send_json(annotate(load_tasks()))
         if path=='/api/emails':
             backend=self.engine.get_active_backend()
             args=dict(folder=q.get('folder',['all'])[0],limit=max(1,min(200,int(q.get('limit',['50'])[0]))),
