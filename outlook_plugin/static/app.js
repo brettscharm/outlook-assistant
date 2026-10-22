@@ -176,7 +176,7 @@ async function refreshBobStatus(){
  $('bobKeyLabel').textContent=result.key_name;
  const labels={connected:'Working',unchecked:'Not tested',missing:'No key',revoked:'Revoked',expired:'Expired',invalid:'Rejected',permission:'Access denied',quota:'Usage limit',rate_limit:'Rate limited',network:'Connection failed',error:'Request failed'};
  $('bobStateLabel').textContent=labels[result.state]||result.title;
- const detail=result.message+(result.checked_at?' Last checked: '+date(result.checked_at,true)+'.':'');indicator.title=detail;indicator.setAttribute('aria-label',result.key_name+': '+(labels[result.state]||result.title)+'. '+detail+' Open Settings.');
+ const detail=result.message+(result.checked_at?' Last checked: '+date(result.checked_at,true)+'.':'');indicator.title=detail;indicator.setAttribute('aria-label',result.key_name+': '+(labels[result.state]||result.title)+'. '+detail);
  if(['connected','unchecked','missing'].includes(result.state)&&$('noticeText').textContent===currentBobMessage)notice('');
  currentBobIssue=result.state+':'+(result.checked_at||'');currentBobMessage=result.message;
  const problem=!['connected','unchecked','missing'].includes(result.state);$('bobWarning').hidden=!problem||currentBobIssue===dismissedBobIssue;
@@ -185,7 +185,7 @@ async function refreshBobStatus(){
  }catch{$('bobStatus').dataset.state='network';$('bobStateLabel').textContent='Status unavailable';$('bobStatus').title='Cannot reach the app to check the last Bob result.';}
 }
 $('fixBobKey').onclick=()=>$('settingsOpen').click();
-$('bobStatus').onclick=()=>$('settingsOpen').click();
+
 $('dismissBobWarning').onclick=()=>{dismissedBobIssue=currentBobIssue;try{sessionStorage.setItem('dismissed-bob-issue',dismissedBobIssue);}catch{}$('bobWarning').hidden=true;if($('noticeText').textContent===currentBobMessage)notice('');};
 setInterval(()=>{if(!document.hidden)refreshBobStatus();},4000);
 
@@ -213,6 +213,7 @@ $('findInvitations').onclick=()=>{state.folder='all';state.unread=false;state.se
 document.addEventListener('keydown',event=>{if((event.metaKey||event.ctrlKey)&&event.key.toLowerCase()==='f'&&!document.querySelector('dialog[open]')){const active=document.querySelector('.view.active')?.id;const id={mail:'search',tasks:'boardSearch','task-review':'taskSearch',contacts:'contactSearch',drafts:'draftSearch'}[active];if(id){event.preventDefault();$(id).focus();$(id).select();}}});
 
 function selectSettingsSection(name){
+ $('settingsStatus').hidden=name!=='bob';
  document.querySelectorAll('[data-settings-panel]').forEach(p=>p.hidden=p.dataset.settingsPanel!==name);
  document.querySelectorAll('[data-settings-section]').forEach(b=>{if(b.dataset.settingsSection===name)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
  document.querySelector('.settings-content').scrollTop=0;

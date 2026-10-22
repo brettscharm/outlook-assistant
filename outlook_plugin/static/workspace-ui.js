@@ -100,6 +100,6 @@ function renderQuickUsage(data){
  $('usageQuick').setAttribute('aria-label',summary+'. '+$('usageQuick').title);
 }
 window.refreshQuickUsage=async()=>{if(quickUsageLoading)return;quickUsageLoading=true;try{renderQuickUsage(await api('/api/usage'));}catch{$('usageQuick').textContent='Usage unavailable';$('usageQuick').title='Could not load usage. Click to retry in Usage.';}finally{quickUsageLoading=false;}};
-$('usageQuick').onclick=()=>view('usage');
+$('usageQuick').onclick=async()=>{await closeSettings();if(!$('settings').open)view('usage');};
 window.refreshQuickUsage();
 setInterval(()=>{if(!document.hidden&&document.querySelector('.view.active')?.id!=='usage')window.refreshQuickUsage();},30000);
