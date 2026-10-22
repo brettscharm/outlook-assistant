@@ -254,8 +254,6 @@ def sync_tasks(engine, automatic=False):
         return {'state':'setup','message':'Add your Bob API key in Settings to check tasks.'}
     if _RUN.locked():
         return {'state':'running','message':'Task check is already running.'}
-    if _BOB_LOCK.locked():
-        return {'state':'busy','message':'Mail synced. Bob is busy; try Sync now again when it finishes.'}
     from .ai_agent import bob_compatibility
     compatibility=bob_compatibility()
     if not compatibility['ready']:
@@ -397,7 +395,7 @@ def scheduler(engine,shutdown):
         if not opts['interval']:
             last_attempt=None;last_poll=None;observed=None
             continue
-        if automatic_state()!='ready' or _RUN.locked() or _BOB_LOCK.locked():continue
+        if automatic_state()!='ready' or _RUN.locked():continue
         now=time.monotonic()
         if last_poll is not None and now-last_poll<60:continue
         last_poll=now

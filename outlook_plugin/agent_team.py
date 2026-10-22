@@ -8,7 +8,7 @@ def draft(agent,prompt,evidence,intent):
     if not _BOB_LOCK.acquire(timeout=180):
         raise RuntimeError('Bob is still busy. Please try drafting again shortly.')
     try:
-        # The outer lease keeps other jobs out; only these two read-only sessions overlap.
+        # The outer lease serializes draft teams; each shell also uses the shared scheduler.
         with ThreadPoolExecutor(max_workers=2,thread_name_prefix='draft-team') as pool:
             writer=pool.submit(agent._call_llm,prompt,profile='writer',_coordinated=True)
             reviewer=pool.submit(agent._call_llm,

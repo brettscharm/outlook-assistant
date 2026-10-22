@@ -123,7 +123,7 @@ def run(engine,data,ai_factory=BobAIAgent):
         raw=ai_factory()._call_llm(PROMPT+json.dumps({'question':question,'from':data.get('from'),'to':data.get('to'),'timezone':str(zone),'sources':batch},ensure_ascii=False),profile='workspace_search',_coordinated=True)
         return checked(raw,{s['id']:s for s in batch})
     findings=[];failures=0;failure_detail=''
-    with ThreadPoolExecutor(max_workers=3) as pool:
+    with ThreadPoolExecutor(max_workers=6) as pool:
         futures=[pool.submit(review,batch) for batch in batches]
         for index,future in enumerate(as_completed(futures)):
             try:findings.append(future.result())
@@ -157,7 +157,7 @@ def start(engine,data):
     options(data)
     with _LOCK:
         if JOB['running']:raise ValueError('A workspace search is already running.')
-        if not _BOB_SEARCH_LOCK.acquire(False):raise ValueError('A project search or Bob installation is running. Retry when it finishes.')
+        if not _BOB_SEARCH_LOCK.acquire(False):raise ValueError('A workspace search or Bob installation is running. Retry when it finishes.')
         JOB.update(running=True,status='working',message='Searching saved content…')
     def worker():
         try:

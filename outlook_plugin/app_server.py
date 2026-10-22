@@ -8,6 +8,7 @@ import urllib.parse
 import uuid
 from pathlib import Path
 from . import __version__
+from .bob_scheduler import SCHEDULER
 from .ai_agent import BobAIAgent, bob_executable, get_bob_api_key, save_bob_api_key, _BOB_LOCK, _BOB_SEARCH_LOCK
 from .config import read_config, update_config
 from .engine import OutlookEngine
@@ -83,7 +84,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         if path=='/api/project-search':return self._send_json(project_search.history(q.get('project_id',[''])[0]))
         if path=='/api/project-emails':return self._send_json(project_mail.listing(self.engine,q.get('project_id',[''])[0],q.get('search',[''])[0],q.get('offset',['0'])[0],q.get('limit',['25'])[0],q.get('discover',['false'])[0]=='true'))
         if path=='/api/projects':return self._send_json(projects.list_projects())
-        if path=='/api/ai-profiles':return self._send_json({'profiles':ai_profiles.profiles(),'activity':ai_profiles.activity()})
+        if path=='/api/ai-profiles':return self._send_json({'profiles':ai_profiles.profiles(),'activity':ai_profiles.activity(),'scheduler':SCHEDULER.snapshot()})
         if path=='/api/drafts': return self._send_json(drafts.load())
         if path=='/api/bob-status': return self._send_json(bob_status.current(get_bob_api_key()))
         if path=='/api/troubleshoot':
@@ -93,6 +94,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             from .task_communication import open_feedback
             return self._send_json(open_feedback(data.get('kind')))
         if path=='/api/onboarding': return self._send_json(onboarding.current())
+        if path=='/api/bob-scheduler':return self._send_json(SCHEDULER.snapshot())
         if path=='/api/usage': return self._send_json(usage.snapshot())
         if path=='/api/storage': return self._send_json({'directory':str(drafts.DRAFTS_FILE.parent),'backup_directory':str(storage.backups(drafts.DRAFTS_FILE)[0].parent),'recoveries':storage.RECOVERIES})
         if path=='/api/source-status':return self._send_json(outlook_status.sources())
@@ -331,8 +333,12 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             else: raise ValueError('Unknown task action.')
             return self._send_json(tasks)
         if path=='/api/update':
-            if mail_archive._LOCK.locked() or task_workflow.snapshot()['job']['running'] or email_chat._LOCK.locked() or project_search._LOCK.locked() or _BOB_SEARCH_LOCK.locked() or _BOB_LOCK.locked():return self._send_json({'updated':False,'message':'Update deferred until the current AI work completes.'})
-            updated,msg=check_and_apply_update(auto_pull=True)
+            if SCHEDULER.snapshot()['running'] or SCHEDULER.snapshot()['queued'] or SCHEDULER.snapshot()['maintenance'] or mail_archive._LOCK.locked() or task_workflow.snapshot()['job']['running'] or email_chat._LOCK.locked() or project_search._LOCK.locked() or _BOB_SEARCH_LOCK.locked() or _BOB_LOCK.locked():return self._send_json({'updated':False,'message':'Update deferred until the current AI work completes.'})
+            if not SCHEDULER.begin_maintenance():return self._send_json({'updated':False,'message':'Update deferred until Bob work completes.'})
+            try:updated,msg=check_and_apply_update(auto_pull=True)
+            except Exception:
+                SCHEDULER.end_maintenance();raise
+            if not updated:SCHEDULER.end_maintenance()
             self._send_json({'updated':updated,'message':msg})
             if updated:
                 self.server.restart=True

@@ -30,10 +30,13 @@ def start():
     node=node_executable(bob_executable())
     if not _BOB_LOCK.acquire(False):raise ValueError('Bob is busy. Wait for the current request to finish.')
     if not _BOB_SEARCH_LOCK.acquire(False):
-        _BOB_LOCK.release();raise ValueError('Project search is running. Wait for it to finish before updating Bob.')
+        _BOB_LOCK.release();raise ValueError('Workspace search is running. Wait for it to finish before updating Bob.')
+    from .bob_scheduler import SCHEDULER
+    if not SCHEDULER.begin_maintenance():
+        _BOB_SEARCH_LOCK.release();_BOB_LOCK.release();raise ValueError('Bob is busy. Wait for active and queued requests before updating.')
     with _LOCK:
         if _STATE['state']=='working':
-            _BOB_SEARCH_LOCK.release();_BOB_LOCK.release();raise ValueError('Installation is already running.')
+            SCHEDULER.end_maintenance();_BOB_SEARCH_LOCK.release();_BOB_LOCK.release();raise ValueError('Installation is already running.')
         _STATE.update(state='working',message='Checking IBM’s release…')
     def worker():
         try:
@@ -68,6 +71,10 @@ def start():
         except Exception as exc:
             with _LOCK:_STATE.update(state='failed',message=str(exc) if isinstance(exc,ValueError) else 'Installation failed. Check your connection and permissions.')
         finally:
-            _BOB_SEARCH_LOCK.release();_BOB_LOCK.release()
-    threading.Thread(target=worker,daemon=True).start()
+            SCHEDULER.end_maintenance();_BOB_SEARCH_LOCK.release();_BOB_LOCK.release()
+    try:threading.Thread(target=worker,daemon=True).start()
+    except Exception:
+        SCHEDULER.end_maintenance();_BOB_SEARCH_LOCK.release();_BOB_LOCK.release()
+        with _LOCK:_STATE.update(state='failed',message='Could not start installation.')
+        raise
     return snapshot()

@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 from .config import read_config, update_config
 from . import usage, bob_status
+from .bob_scheduler import SCHEDULER
 import shutil
 import subprocess
 import tempfile
@@ -99,6 +100,10 @@ class BobAIAgent:
         return bool(self.api_key and bob_executable())
 
     def _call_llm(self, prompt, system_prompt="You are an executive Outlook assistant.", profile="assistant", _coordinated=False):
+        with SCHEDULER.slot(profile):
+            return self._run_llm(prompt,system_prompt,profile)
+
+    def _run_llm(self, prompt, system_prompt, profile):
         if not self.api_key:
             raise RuntimeError("Add your Bob API key in Settings.")
         executable = bob_executable()
@@ -110,15 +115,6 @@ class BobAIAgent:
         compatibility = bob_compatibility(executable, node)
         if not compatibility["ready"]:
             raise RuntimeError(compatibility["detail"])
-        # Project search has its own shell slot, independent of background scans.
-        request_lock = _BOB_SEARCH_LOCK if profile == "project_search" else _BOB_LOCK
-        acquired = True if _coordinated else (request_lock.acquire(timeout=180) if profile == "assistant" else request_lock.acquire(blocking=False))
-        if not acquired:
-            if profile == "project_search":
-                raise RuntimeError("A project search or Bob installation is already running. Please retry when it finishes.")
-            if profile == "assistant":
-                raise RuntimeError("Bob is still busy. Your message is saved in the composer; please send it again shortly.")
-            raise RuntimeError("Bob is working on another request. Please wait and retry.")
         from . import ai_profiles
         activity_id=ai_profiles.begin(profile)
         success=False;reported_stats={};attempted=False
@@ -167,7 +163,6 @@ class BobAIAgent:
                 if attempted:usage.record(success,reported_stats)
             finally:
                 ai_profiles.finish(activity_id,success)
-                if not _coordinated:request_lock.release()
 
     def generate_ai_briefing(self, calendar_events: List[Dict[str, Any]], unread_emails: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Synthesize daily executive agenda with meeting preps and action items."""

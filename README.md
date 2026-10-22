@@ -246,7 +246,7 @@ Search scans all associated text and sends up to 24 relevant 3,000-character exc
 
 **Export a transcript:** In Projects → Meetings, click **Export transcript** beside the transcript. This saves the current text as a UTF-8 `.txt` file, preserving speaker labels, timestamps, and line breaks. The desktop app offers a save dialog; the browser downloads the file.
 
-Project searches start a separate, isolated Bob Shell request and can run alongside automatic task scans or reply drafting. One project search runs at a time. Both requests count toward your existing Bob allowance; provider rate limits still apply. Bob installation waits until both request slots are idle.
+Project searches start a separate, isolated Bob Shell request and can run alongside automatic task scans or reply drafting. One project search runs at a time. Both requests count toward your existing Bob allowance; provider rate limits still apply. Bob installation waits until all active and queued requests are finished.
 
 ### Search across the workspace
 
@@ -254,6 +254,12 @@ Open **Search** in the sidebar. Choose **This month**, **Past 7 days**, **Last m
 
 Dates use the Mac’s current timezone. Email uses received time; meetings use occurrence time; tasks qualify by creation, update, progress-update, or due date. Meeting transcripts need a meeting date to appear in a date-filtered search. Undated project and contact data is included as background context. Other undated records are excluded from date-filtered searches, with a count in coverage.
 
-Each search ranks excerpts across four source families, selecting up to 24 excerpts per family. Up to three isolated Bob Shell requests review groups concurrently, followed by a cited synthesis when needed. Background task scanning can continue. This uses your Bob allowance for multiple requests; it is not a spending cap. Sources and exact quotes are validated, and coverage/partial failures appear in results. This is retrieval across saved content, not an exhaustive model review of every record in large date ranges.
+Each search ranks excerpts across four source families, selecting up to 24 excerpts per family. Up to six isolated Bob Shell requests review groups concurrently, subject to the shared hardware-aware scheduler, followed by a cited synthesis when needed. Background task scanning can continue. This uses your Bob allowance for multiple requests; it is not a spending cap. Sources and exact quotes are validated, and coverage/partial failures appear in results. This is retrieval across saved content, not an exhaustive model review of every record in large date ranges.
 
 Search does not transcribe audio/video, parse attachment contents, read arbitrary local files, or fetch linked web pages. A calendar entry is evidence of a scheduled meeting, not proof that a call happened or that a person attended. No messages are sent and no tasks are changed by search.
+
+### Responsive parallel processing
+
+Every Bob request uses one shared scheduler. It chooses a limit of 2–8 concurrent requests based on CPU count and installed RAM, reserves one or two slots for interactive work, and prioritizes direct questions/replies, then workspace search, then automatic scanning. Background work waits when CPU load is high. Up to six search groups can be ready at once, but the scheduler’s lower machine limit always wins. Excess requests wait rather than launching more shells; the queue itself is bounded. This is a resource limit, not a Bobcoin budget.
+
+Project search, workspace search, drafts, and task discovery can overlap. Each keeps its own safeguards against duplicate operations. AI activity shows running and waiting requests and the machine’s limit. Bob installation and app updates require an idle scheduler and prevent new work from starting during maintenance. Timeouts and failures release capacity. Provider speed and account limits still apply; no concurrency setting can guarantee that a Mac will never run out of resources.

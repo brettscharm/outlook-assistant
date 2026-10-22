@@ -46,5 +46,5 @@ class WorkspaceSearchTests(unittest.TestCase):
     def test_search_lock_blocks_duplicate_start(self):
         with patch.object(s,'_BOB_SEARCH_LOCK') as lock:
             lock.acquire.return_value=False
-            with self.assertRaisesRegex(ValueError,'project search'):s.start(self.engine,{'question':'Q'})
+            with self.assertRaisesRegex(ValueError,'workspace search'):s.start(self.engine,{'question':'Q'})
             lock.release.assert_not_called()

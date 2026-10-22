@@ -84,3 +84,7 @@ Ask project retrieves across associated email content, saved meeting transcripts
 ## Workspace search (2.30.0)
 
 Sidebar Search spans available cached mail, saved call transcripts/notes, calendar, tasks/subtasks/updates, review suggestions, project context, contacts/companies/groups, and drafts. Timezone-aware month/week/custom/all-time filters; persistent results and backup export. Retrieval selects up to 24 excerpts per source family (four families), with three parallel evidence reviewers and a synthesis step. Source quote validation, progress polling, partial-failure and coverage notices are implemented. Audio/video transcription, attachment parsing, and external-link content retrieval remain unsupported. Concurrency and UI tests use synthetic inputs and mocked Bob responses; live multi-shell provider performance remains unverified.
+
+## Shared Bob scheduler (2.31.0)
+
+All shell requests, including coordinated reply teams and parallel workspace searches, use a shared hardware-sized queue (2–8 running, up to 32 waiting). Interactive reservations, search-over-scan priority, CPU-load gating for new background work, safe maintenance exclusivity, status display, and exception cleanup are implemented. Workspace search offers up to six workers; project searches can run alongside it. Small-memory/low-core Macs get lower limits. Tests cover concurrency, priority, reservations, load gating and installation safety with mocked Bob processes; real-provider throughput is not yet benchmarked.
