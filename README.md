@@ -237,3 +237,9 @@ A matching email invitation or explicit booking confirmation can produce a **com
 In **Projects → Meetings**, choose an uploaded recording or paste its recording link. Paste a speaker-labeled transcript, or import a UTF-8 `.txt`, `.vtt`, or `.srt` file (up to 60,000 characters per meeting). Transcripts autosave with the project. Click **Find tasks** to send the transcript and saved context to Bob. Suggestions appear in **Tasks to review**, with the project, source quote, and named owner. Unknown owners stay unassigned. Review owners and deadlines before adding; assignment does not notify anyone. Previously reviewed suggestions are remembered on subsequent scans.
 
 Audio/video transcription, speaker diarization, and in-app screen capture are not included in this transcript workflow. Export the transcript from your meeting provider first. Uploaded recordings remain local attachments; recording links are not downloaded or transcribed.
+
+### Ask a project
+
+Choose **Projects → Ask project** to search that project’s linked emails, saved meeting transcripts and notes, tasks, subtasks, and progress updates. Press Enter to ask; Shift+Enter adds a line. Answers and source quotes save on this Mac, and **Open source** takes you to the email, task, or meeting. Project question history is also included in downloadable workspace backups.
+
+Search scans all associated text and sends up to 24 relevant 3,000-character excerpts to Bob, along with recent questions and your saved context. Coverage appears beneath each answer; large-project answers are not exhaustive. Excluded and unavailable emails are omitted. Audio/video, attachments, and the contents of linked web pages are not searched—add a transcript for recordings. Quoted sources are checked against the supplied excerpts, but you should still verify conclusions. This search cannot modify or send anything.

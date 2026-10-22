@@ -76,3 +76,7 @@ Local Slack IndexedDB, browser cache, and service-worker storage are present on 
 ## Project transcript tasks (2.28.0)
 
 Saved meetings support transcripts and an attached recording reference. Bob can extract evidence-backed tasks into the review queue, retaining project membership and recording links. Owner and deadline quotes are validated; unknown owners are unassigned. Re-analysis respects prior suggestions and dismissals. Imported text transcripts are limited to 60,000 characters; audio/video transcription and native capture remain unfinished.
+
+## Project search (2.29.0)
+
+Ask project retrieves across associated email content, saved meeting transcripts/notes, project details, tasks, subtasks and updates. Up to 24 relevant excerpts are provided to Bob. Answers validate literal source quotes and include source navigation, coverage counts and unavailable-email counts. History persists locally and exports with workspace backups. It does not transcribe recordings, parse file attachments, or open linked websites.

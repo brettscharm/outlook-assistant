@@ -2,7 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),vm=require(
 function setup(){
  class Element{constructor(){this.children=[];this.parentElement={};}append(...items){this.children.push(...items);}replaceChildren(...items){this.children=items;}setAttribute(k,v){this[k]=v;}addEventListener(){}showModal(){this.open=true;}close(){this.open=false;}}
  const ids={},calls=[],$=id=>ids[id]||(ids[id]=new Element());
- const ctx={window:{},$,URLSearchParams,clearTimeout,setTimeout,text:(tag,value)=>Object.assign(new Element(),{tag,textContent:value}),api:url=>new Promise(resolve=>calls.push({url,resolve})),date:x=>x};
+ const ctx={document:{createElement:()=>new Element(),body:new Element()},window:{},$,URLSearchParams,clearTimeout,setTimeout,text:(tag,value)=>Object.assign(new Element(),{tag,textContent:value}),api:url=>new Promise(resolve=>calls.push({url,resolve})),date:x=>x};
  vm.createContext(ctx);vm.runInContext(fs.readFileSync('outlook_plugin/static/project-mail.js','utf8'),ctx);return {ctx,ids,calls};
 }
 const settle=async()=>{for(let i=0;i<5;i++)await Promise.resolve();};
