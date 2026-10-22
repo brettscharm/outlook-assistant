@@ -2,6 +2,14 @@
 
 This tracks earlier requests against implemented behavior. A local cache is not a substitute for authorization, a complete server history, or a writable Outlook integration.
 
+## Current distribution (verified October 22, 2026)
+
+- Desktop download: **2.19.0 Apple silicon prerelease**, linked directly from the [installation guide](INSTALL.md). GitHub’s Latest badge still belongs to 2.15.0; it is not the newest desktop package.
+- Application code: **2.25.4**, installed through the in-app updater. Package/runtime updates still require a new desktop download.
+- Main navigation includes Tasks, Projects, Tasks to review, Calendar, Mail, Drafts, Contacts & companies, and MCP connection. The general in-app chat has been removed.
+- Subsequent features include project emails, meetings/recording attachments, custom project colors, visible subtask creation, meeting-scheduling task guidance, stronger review-history matching, owner contact details, and stable email-link recovery. Cached calendar and mail coverage remain incomplete; unavailable messages cannot be restored from the server.
+- The sections below describe when earlier features were introduced, not the current installation requirements. Use the installation guide for current setup steps.
+
 ## Implemented in 2.16
 
 - Unified work hierarchy: project boards with names/descriptions/counts, project-aware task creation, and one saved-task panel for task details, subtasks, dependencies and updates. Project context persists across page reloads; cards use a single Open task action.
@@ -54,4 +62,4 @@ True model fine-tuning is not implemented; Bob profile instructions/examples are
 
 ## External AI clients
 
-The general in-app chat is removed as of 2.19.0. Local MCP tools expose mail, tasks, projects, contacts, and cached calendar data. Since 2.18.1, mutation tools create/edit tasks and projects and manage task progress and checklist steps with retry deduplication and stale-edit checks. Settings → Connect AI apps provides a configuration for desktop clients. No cloud endpoint or tunnel is enabled. Bob task discovery and reply drafting remain.
+The general in-app chat is removed as of 2.19.0. Local MCP tools expose mail, tasks, projects, contacts, and cached calendar data. Since 2.18.1, mutation tools create/edit tasks and projects and manage task progress and checklist steps with retry deduplication and stale-edit checks. MCP connection in the main sidebar (also Settings → Connect AI apps) provides a configuration for desktop clients. No cloud endpoint or tunnel is enabled. Bob task discovery and reply drafting remain.

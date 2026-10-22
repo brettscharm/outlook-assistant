@@ -4,7 +4,7 @@ A desktop workspace for mail cached by Outlook, tasks, contacts, projects, and o
 
 ## Install on a Mac
 
-1. **[Open the latest release](https://github.com/brettscharm/outlook-assistant/releases/tag/v2.19.0)** and download the **Apple-Silicon-Mac.zip** file under **Assets**. Do not choose GitHub’s “Source code” ZIP.
+1. **[Open the Apple silicon prerelease](https://github.com/brettscharm/outlook-assistant/releases/tag/v2.19.0)** and download the **Apple-Silicon-Mac.zip** file under **Assets**. Do not choose GitHub’s “Source code” ZIP.
 2. Unzip it and move **Outlook Assistant.app** into **Applications**. Keep one installed copy.
 3. Open **Microsoft Outlook**, sign in, and let your mail finish downloading.
 4. Open **Outlook Assistant**. Use **Settings → Setup** to see any missing requirements.
@@ -16,7 +16,7 @@ The Mac app includes Python and the mail reader. You do not need Git, Xcode, Pyt
 
 **Requirements:** macOS 13 or later, Apple silicon (M1 or later), and New Outlook with a supported local cache. Compatibility with every Mac, Outlook version, and company-managed device is not guaranteed. The current downloadable app is ad-hoc signed, **not Developer ID signed or notarized**. macOS or company policy may block it; do not disable security controls.
 
-**Download versus app version:** the latest packaged desktop release is currently **2.19.0**. Newer application features are delivered by the in-app updater. See the [feature status](docs/FEATURE_STATUS.md) for implemented features and remaining integrations. Keep the app open and connected to the internet; installation waits for a safe idle period and for active Bob work to finish. The displayed version changes after the update restarts the service. A package update does not replace the bundled runtime or Finder/Dock icon; those require a newer desktop download.
+**Download versus app version:** the newest packaged desktop download is the **2.19.0 prerelease**. GitHub’s generic Latest link points to the older 2.15 build; use the explicit download link above. Newer application features are delivered by the in-app updater. See the [feature status](docs/FEATURE_STATUS.md) for implemented features and remaining integrations. Keep the app open and connected to the internet; installation waits for a safe idle period and for active Bob work to finish. The displayed version changes after the update restarts the service. A package update does not replace the bundled runtime or Finder/Dock icon; those require a newer desktop download.
 
 ## Everyday use
 
