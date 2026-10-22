@@ -16,12 +16,12 @@ def listing(query='',project_id='',offset=0,limit=20):
             file=by_id.get(m.get('recording_file_id'));used.add(m.get('recording_file_id'))
             rows.append(dict(id='meeting:'+p['id']+':'+m['id'],title=m['title'],project_id=p['id'],project_name=p['name'],meeting_id=m['id'],owner_kind='project',owner_id=p['id'],file=file,url=m.get('recording_url',''),has_transcript=bool(m.get('transcript','').strip()),occurred_at=m.get('occurred_at',''),missing_file=bool(m.get('recording_file_id') and not file)))
         for f in attached:
-            if f['id'] not in used:rows.append(dict(id='file:project:'+p['id']+':'+f['id'],title=f['name'],project_id=p['id'],project_name=p['name'],owner_kind='project',owner_id=p['id'],file=f,has_transcript=False,occurred_at=''))
+            if f['id'] not in used:rows.append(dict(id='file:project:'+p['id']+':'+f['id'],title=f['name'],project_id=p['id'],project_name=p['name'],owner_kind='project',owner_id=p['id'],file=f,has_transcript=False,occurred_at=f.get('occurred_at','')))
     for group in tasks.load_tasks().values():
         for task in group:
             pid=task.get('project_id','')
             if project_id and pid!=project_id:continue
-            for f in files('task',task['id']):rows.append(dict(id='file:task:'+task['id']+':'+f['id'],title=f['name'],project_id=pid,project_name=names.get(pid,'No project'),owner_kind='task',owner_id=task['id'],task_title=task['text'],file=f,has_transcript=False,occurred_at=''))
+            for f in files('task',task['id']):rows.append(dict(id='file:task:'+task['id']+':'+f['id'],title=f['name'],project_id=pid,project_name=names.get(pid,'No project'),owner_kind='task',owner_id=task['id'],task_title=task['text'],file=f,has_transcript=False,occurred_at=f.get('occurred_at','')))
     needle=str(query).strip().casefold()
     if needle:rows=[r for r in rows if needle in ' '.join(str(r.get(k,'')) for k in ('title','project_name','task_title')).casefold() or needle in str((r.get('file') or {}).get('name','')).casefold()]
     rows.sort(key=lambda r:(not bool(r.get('occurred_at')),r['title'].casefold()))

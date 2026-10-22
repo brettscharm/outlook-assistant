@@ -4,6 +4,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 : "${PYTHON:=python3}"
 : "${OUTPUT:=$ROOT/dist}"
 bash "$ROOT/scripts/build_mcp.sh"
+bash "$ROOT/scripts/build_recorder.sh"
 "$PYTHON" -m PyInstaller --noconfirm --clean --windowed --onedir --target-arch arm64 \
  --icon "$ROOT/assets/OutlookAssistant.icns" \
  --name 'Outlook Assistant' --osx-bundle-identifier com.brettscharm.outlookassistant \

@@ -15,7 +15,7 @@ from .engine import OutlookEngine
 from .local_store import profiles, LocalStoreBridge
 from .contacts import group_contacts, link_company, link_companies, suggest_company, set_favorite
 from .tasks import board_lanes, save_board_lanes, move_task, load_tasks, add_task, toggle_task, delete_task, edit_task
-from . import slack_import, email_summary, recordings, workspace_search, transcript_export, project_search, meeting_tasks, project_mail, task_files, meeting_mail, calendar_cache, mail_archive, task_progress, bob_install, projects, ai_profiles, task_workflow, email_chat, workspace, setup_check, drafts, storage, usage, bob_status, outlook_status, onboarding
+from . import recorder, slack_import, email_summary, recordings, workspace_search, transcript_export, project_search, meeting_tasks, project_mail, task_files, meeting_mail, calendar_cache, mail_archive, task_progress, bob_install, projects, ai_profiles, task_workflow, email_chat, workspace, setup_check, drafts, storage, usage, bob_status, outlook_status, onboarding
 from .updater import check_and_apply_update
 
 PORT = 8484
@@ -80,6 +80,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             available=bool(release['version'] and installed and tuple(map(int,release['version'].split('.')))>tuple(map(int,installed.split('.'))))
             return self._send_json({**release,'installed':installed,'update_available':available})
         if path=='/api/slack':return self._send_json(slack_import.listing(q.get('search',[''])[0],q.get('conversation',[''])[0],q.get('offset',['0'])[0]))
+        if path=='/api/recorder':return self._send_json(recorder.snapshot())
         if path=='/api/recordings':return self._send_json(recordings.listing(q.get('search',[''])[0],q.get('project_id',[''])[0],q.get('offset',['0'])[0],q.get('limit',['20'])[0]))
         if path=='/api/task-files':return self._send_json(task_files.listing(q.get('kind',[''])[0],q.get('owner',[''])[0]))
         if path=='/api/workspace-search':return self._send_json(workspace_search.snapshot())
@@ -163,7 +164,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             return self._send_json(data)
         if path.startswith('/api/'):
             return self._send_json({'error':'Unknown endpoint.'},404)
-        if path not in ('/','/index.html','/app.js','/tasks-ui.js','/review-bulk.js','/contact-groups.js','/task-files.js','/workspace-ui.js','/project-mail.js','/workspace-search.js','/recordings.js','/organize-ui.js','/calendar-ui.js','/onboarding-ui.js','/rich-editor.js','/reply-composer.js','/email-summary.js','/updates-ui.js','/slack-ui.js','/style.css','/app-icon.png'):
+        if path not in ('/','/index.html','/app.js','/tasks-ui.js','/review-bulk.js','/contact-groups.js','/task-files.js','/workspace-ui.js','/project-mail.js','/workspace-search.js','/recordings.js','/recorder-ui.js','/organize-ui.js','/calendar-ui.js','/onboarding-ui.js','/rich-editor.js','/reply-composer.js','/email-summary.js','/updates-ui.js','/slack-ui.js','/style.css','/app-icon.png'):
             return self._send_json({'error':'Not found.'},404)
         return super().do_GET()
 
@@ -201,6 +202,12 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         if path=='/api/workspace-search':return self._send_json(workspace_search.start(self.engine,data))
         if path=='/api/project-search':return self._send_json(project_search.ask(self.engine,data))
         if path=='/api/transcript-export':return self._send_json(transcript_export.export(data))
+        if path=='/api/recorder':
+            action=data.get('action')
+            if action=='start':return self._send_json(recorder.start(data))
+            if action=='stop':return self._send_json(recorder.stop())
+            if action=='reveal':return self._send_json(recorder.reveal())
+            raise ValueError('Unknown recorder action.')
         if path=='/api/slack-import':return self._send_json(slack_import.import_messages(data))
         if path=='/api/email-summary':return self._send_json(email_summary.summarize(self.engine,data))
         if path=='/api/meeting-tasks':return self._send_json(meeting_tasks.extract(data))
@@ -338,11 +345,13 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             return self._send_json(tasks)
         if path=='/api/update':
             if SCHEDULER.snapshot()['running'] or SCHEDULER.snapshot()['queued'] or SCHEDULER.snapshot()['maintenance'] or mail_archive._LOCK.locked() or task_workflow.snapshot()['job']['running'] or email_chat._LOCK.locked() or project_search._LOCK.locked() or _BOB_SEARCH_LOCK.locked() or _BOB_LOCK.locked():return self._send_json({'updated':False,'message':'Update deferred until the current AI work completes.'})
-            if not SCHEDULER.begin_maintenance():return self._send_json({'updated':False,'message':'Update deferred until Bob work completes.'})
+            if not recorder.reserve_update():return self._send_json({'updated':False,'message':'Update deferred until the recording is saved.'})
+            if not SCHEDULER.begin_maintenance():
+                recorder.release_update();return self._send_json({'updated':False,'message':'Update deferred until Bob work completes.'})
             try:updated,msg=check_and_apply_update(auto_pull=True)
             except Exception:
-                SCHEDULER.end_maintenance();raise
-            if not updated:SCHEDULER.end_maintenance()
+                recorder.release_update();SCHEDULER.end_maintenance();raise
+            if not updated:recorder.release_update();SCHEDULER.end_maintenance()
             self._send_json({'updated':updated,'message':msg})
             if updated:
                 self.server.restart=True

@@ -256,3 +256,4 @@ main>header{height:auto;min-height:68px;gap:12px;flex-wrap:wrap;padding-top:12px
  .sidebar .folders,.sidebar .folder-label{display:none!important}
  .recordings-toolbar{grid-template-columns:minmax(0,1fr)}.recordings-empty{padding:32px 16px}
 }
+#captureDialog{width:min(540px,calc(100vw - 32px))}#captureDialog>label:not(.capture-choice){display:grid;gap:8px;margin:16px 0}.capture-choice{display:flex;align-items:center;gap:10px;margin:14px 0}.capture-choice input{width:16px;height:16px}.capture-banner{display:flex;align-items:center;gap:12px;flex-wrap:wrap;flex-shrink:0;padding:12px 24px;border-bottom:1px solid #efccc7;background:#fff4f2;color:#922f26}.capture-banner[hidden]{display:none}.capture-banner>span{flex:1;min-width:180px}.capture-banner[data-state=complete]{background:#eef8f0;border-color:#cee4d1;color:#28633a}.capture-banner button{white-space:nowrap}#recordings>.section-heading .actions{flex-wrap:wrap}
