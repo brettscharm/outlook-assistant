@@ -80,3 +80,7 @@ Saved meetings support transcripts and an attached recording reference. Bob can 
 ## Project search (2.29.0)
 
 Ask project retrieves across associated email content, saved meeting transcripts/notes, project details, tasks, subtasks and updates. Up to 24 relevant excerpts are provided to Bob. Answers validate literal source quotes and include source navigation, coverage counts and unavailable-email counts. History persists locally and exports with workspace backups. It does not transcribe recordings, parse file attachments, or open linked websites.
+
+## Workspace search (2.30.0)
+
+Sidebar Search spans available cached mail, saved call transcripts/notes, calendar, tasks/subtasks/updates, review suggestions, project context, contacts/companies/groups, and drafts. Timezone-aware month/week/custom/all-time filters; persistent results and backup export. Retrieval selects up to 24 excerpts per source family (four families), with three parallel evidence reviewers and a synthesis step. Source quote validation, progress polling, partial-failure and coverage notices are implemented. Audio/video transcription, attachment parsing, and external-link content retrieval remain unsupported. Concurrency and UI tests use synthetic inputs and mocked Bob responses; live multi-shell provider performance remains unverified.

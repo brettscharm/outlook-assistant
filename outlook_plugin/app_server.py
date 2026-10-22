@@ -8,13 +8,13 @@ import urllib.parse
 import uuid
 from pathlib import Path
 from . import __version__
-from .ai_agent import BobAIAgent, bob_executable, get_bob_api_key, save_bob_api_key, _BOB_LOCK
+from .ai_agent import BobAIAgent, bob_executable, get_bob_api_key, save_bob_api_key, _BOB_LOCK, _BOB_SEARCH_LOCK
 from .config import read_config, update_config
 from .engine import OutlookEngine
 from .local_store import profiles, LocalStoreBridge
 from .contacts import group_contacts, link_company, link_companies, suggest_company, set_favorite
 from .tasks import board_lanes, save_board_lanes, move_task, load_tasks, add_task, toggle_task, delete_task, edit_task
-from . import transcript_export, project_search, meeting_tasks, project_mail, task_files, meeting_mail, calendar_cache, mail_archive, task_progress, bob_install, projects, ai_profiles, task_workflow, email_chat, workspace, setup_check, drafts, storage, usage, bob_status, outlook_status, onboarding
+from . import workspace_search, transcript_export, project_search, meeting_tasks, project_mail, task_files, meeting_mail, calendar_cache, mail_archive, task_progress, bob_install, projects, ai_profiles, task_workflow, email_chat, workspace, setup_check, drafts, storage, usage, bob_status, outlook_status, onboarding
 from .updater import check_and_apply_update
 
 PORT = 8484
@@ -79,6 +79,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             available=bool(release['version'] and installed and tuple(map(int,release['version'].split('.')))>tuple(map(int,installed.split('.'))))
             return self._send_json({**release,'installed':installed,'update_available':available})
         if path=='/api/task-files':return self._send_json(task_files.listing(q.get('kind',[''])[0],q.get('owner',[''])[0]))
+        if path=='/api/workspace-search':return self._send_json(workspace_search.snapshot())
         if path=='/api/project-search':return self._send_json(project_search.history(q.get('project_id',[''])[0]))
         if path=='/api/project-emails':return self._send_json(project_mail.listing(self.engine,q.get('project_id',[''])[0],q.get('search',[''])[0],q.get('offset',['0'])[0],q.get('limit',['25'])[0],q.get('discover',['false'])[0]=='true'))
         if path=='/api/projects':return self._send_json(projects.list_projects())
@@ -158,7 +159,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             return self._send_json(data)
         if path.startswith('/api/'):
             return self._send_json({'error':'Unknown endpoint.'},404)
-        if path not in ('/','/index.html','/app.js','/tasks-ui.js','/review-bulk.js','/contact-groups.js','/task-files.js','/workspace-ui.js','/project-mail.js','/organize-ui.js','/calendar-ui.js','/onboarding-ui.js','/rich-editor.js','/reply-composer.js','/style.css','/app-icon.png'):
+        if path not in ('/','/index.html','/app.js','/tasks-ui.js','/review-bulk.js','/contact-groups.js','/task-files.js','/workspace-ui.js','/project-mail.js','/workspace-search.js','/organize-ui.js','/calendar-ui.js','/onboarding-ui.js','/rich-editor.js','/reply-composer.js','/style.css','/app-icon.png'):
             return self._send_json({'error':'Not found.'},404)
         return super().do_GET()
 
@@ -193,6 +194,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         if path=='/api/task-files':return self._send_json(task_files.change(data))
         if path=='/api/bob-install':return self._send_json(bob_install.start())
         if path=='/api/project-emails':return self._send_json(project_mail.link(self.engine,data.get('project_id'),data.get('email_id'),data.get('remove') is True))
+        if path=='/api/workspace-search':return self._send_json(workspace_search.start(self.engine,data))
         if path=='/api/project-search':return self._send_json(project_search.ask(self.engine,data))
         if path=='/api/transcript-export':return self._send_json(transcript_export.export(data))
         if path=='/api/meeting-tasks':return self._send_json(meeting_tasks.extract(data))
@@ -329,7 +331,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             else: raise ValueError('Unknown task action.')
             return self._send_json(tasks)
         if path=='/api/update':
-            if mail_archive._LOCK.locked() or task_workflow.snapshot()['job']['running'] or email_chat._LOCK.locked() or project_search._LOCK.locked() or _BOB_LOCK.locked():return self._send_json({'updated':False,'message':'Update deferred until the current AI work completes.'})
+            if mail_archive._LOCK.locked() or task_workflow.snapshot()['job']['running'] or email_chat._LOCK.locked() or project_search._LOCK.locked() or _BOB_SEARCH_LOCK.locked() or _BOB_LOCK.locked():return self._send_json({'updated':False,'message':'Update deferred until the current AI work completes.'})
             updated,msg=check_and_apply_update(auto_pull=True)
             self._send_json({'updated':updated,'message':msg})
             if updated:
