@@ -14,7 +14,7 @@ from .engine import OutlookEngine
 from .local_store import profiles, LocalStoreBridge
 from .contacts import group_contacts, link_company, link_companies, suggest_company, set_favorite
 from .tasks import board_lanes, save_board_lanes, move_task, load_tasks, add_task, toggle_task, delete_task, edit_task
-from . import project_search, meeting_tasks, project_mail, task_files, meeting_mail, calendar_cache, mail_archive, task_progress, bob_install, projects, ai_profiles, task_workflow, email_chat, workspace, setup_check, drafts, storage, usage, bob_status, outlook_status, onboarding
+from . import transcript_export, project_search, meeting_tasks, project_mail, task_files, meeting_mail, calendar_cache, mail_archive, task_progress, bob_install, projects, ai_profiles, task_workflow, email_chat, workspace, setup_check, drafts, storage, usage, bob_status, outlook_status, onboarding
 from .updater import check_and_apply_update
 
 PORT = 8484
@@ -172,7 +172,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             if self.headers.get('Content-Type','').split(';')[0]!='application/json':
                 return self._send_json({'error':'JSON required.'},415)
             size=int(self.headers.get('Content-Length','0'))
-            limit=36_000_000 if urllib.parse.urlparse(self.path).path=='/api/task-files' else 1500000 if urllib.parse.urlparse(self.path).path in ('/api/drafts','/api/mcp','/api/polish-reply','/api/projects') else 100000
+            limit=36_000_000 if urllib.parse.urlparse(self.path).path=='/api/task-files' else 1500000 if urllib.parse.urlparse(self.path).path in ('/api/drafts','/api/mcp','/api/polish-reply','/api/projects','/api/transcript-export') else 100000
             if size<0 or size>limit: return self._send_json({'error':'Request too large.'},413)
             data=json.loads(self.rfile.read(size) or '{}')
             if not isinstance(data,dict): raise ValueError('Expected an object.')
@@ -194,6 +194,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         if path=='/api/bob-install':return self._send_json(bob_install.start())
         if path=='/api/project-emails':return self._send_json(project_mail.link(self.engine,data.get('project_id'),data.get('email_id'),data.get('remove') is True))
         if path=='/api/project-search':return self._send_json(project_search.ask(self.engine,data))
+        if path=='/api/transcript-export':return self._send_json(transcript_export.export(data))
         if path=='/api/meeting-tasks':return self._send_json(meeting_tasks.extract(data))
         if path=='/api/project-calendar':return self._send_json(projects.add_calendar_meeting(data))
         if path=='/api/projects':return self._send_json(projects.save(data))
