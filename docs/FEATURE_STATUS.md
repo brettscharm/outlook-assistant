@@ -72,3 +72,7 @@ Local Slack IndexedDB, browser cache, and service-worker storage are present on 
 - Workspace/organization policy determines whether app installation requires approval: [Slack app approval](https://slack.com/help/articles/222386767-Manage-app-approval-for-your-workspace-Manage-app-installation-settings-for-your-workspace). Private distribution avoids Marketplace listing review, not workspace policy.
 - Reading message history requires an authorized token and the relevant conversation scopes/access: [conversations.history](https://docs.slack.dev/reference/methods/conversations.history/). It does not grant blanket access to all DMs.
 - Current local workflow: manually copy a message's text and permalink into a task, set Source to Slack, and paste the permalink in Source link. This does not install a Slack app, retrieve the message automatically, or monitor a channel. Follow the organization's rules for copying work content.
+
+## Project transcript tasks (2.28.0)
+
+Saved meetings support transcripts and an attached recording reference. Bob can extract evidence-backed tasks into the review queue, retaining project membership and recording links. Owner and deadline quotes are validated; unknown owners are unassigned. Re-analysis respects prior suggestions and dismissals. Imported text transcripts are limited to 60,000 characters; audio/video transcription and native capture remain unfinished.

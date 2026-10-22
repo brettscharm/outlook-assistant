@@ -231,3 +231,9 @@ Project colors support any six-digit hex color. In **Edit project**, use the col
 Task discovery recognizes requests to schedule, book, arrange, or reschedule meetings. It keeps the named scheduler as owner, including someone the user is waiting on, and distinguishes a scheduling deadline from the requested meeting date. Status updates should not duplicate an already active scheduling task.
 
 A matching email invitation or explicit booking confirmation can produce a **completion suggestion** in Tasks to review. Promises, tentative holds, cancellation, or a proposed date passing do not establish completion. Scheduling does not complete preparation or attendance tasks. Completion still requires your review. The task finder uses the supplied cached emails for this check; it does not independently query Teams or infer that no meeting exists from missing calendar data. Instructions and examples are included in the Task finder defaults; core scheduling rules also apply when you have customized its instructions. This updates guidance, not Bob's underlying model weights.
+
+### Transcript tasks
+
+In **Projects → Meetings**, choose an uploaded recording or paste its recording link. Paste a speaker-labeled transcript, or import a UTF-8 `.txt`, `.vtt`, or `.srt` file (up to 60,000 characters per meeting). Transcripts autosave with the project. Click **Find tasks** to send the transcript and saved context to Bob. Suggestions appear in **Tasks to review**, with the project, source quote, and named owner. Unknown owners stay unassigned. Review owners and deadlines before adding; assignment does not notify anyone. Previously reviewed suggestions are remembered on subsequent scans.
+
+Audio/video transcription, speaker diarization, and in-app screen capture are not included in this transcript workflow. Export the transcript from your meeting provider first. Uploaded recordings remain local attachments; recording links are not downloaded or transcribed.
