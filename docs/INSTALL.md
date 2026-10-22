@@ -1,20 +1,39 @@
-# Install Outlook Assistant on your Mac
+# Get Outlook Assistant
 
-Verified against the published download and application code on **October 22, 2026**. The desktop ZIP is **2.19.0**; current application code is **2.25.4**, delivered separately by the in-app updater.
+For **Apple silicon Macs (M1 or newer)** with macOS 13 or later. No Windows version.
 
-## 1. Download and open the desktop app
+## 1. Download
 
-1. Go to **[Apple silicon desktop download (2.19.0 prerelease)](https://github.com/brettscharm/outlook-assistant/releases/tag/v2.19.0)**.
-2. Under **Assets**, download the ZIP whose name ends in **Apple-Silicon-Mac.zip**. GitHub’s source-code downloads are for developers.
-3. Double-click the ZIP in Finder.
-4. Move **Outlook Assistant.app** into **Applications**. If you do not have permission to use the shared Applications folder, use your own `~/Applications` folder if your organization permits it.
-5. Open the app from Applications. You should get a dedicated Mac window; no Terminal or browser window is needed for normal use.
+**[Download Outlook Assistant for Mac](https://github.com/brettscharm/outlook-assistant/releases/download/v2.19.0/Outlook-Assistant-2.19.0-Apple-Silicon-Mac.zip)**
 
-The current packaged download is **[Outlook-Assistant-2.19.0-Apple-Silicon-Mac.zip](https://github.com/brettscharm/outlook-assistant/releases/download/v2.19.0/Outlook-Assistant-2.19.0-Apple-Silicon-Mac.zip)**. This is a prerelease development build. GitHub’s generic “Latest” link currently points to the older 2.15 build, so use the link above. It installs the desktop shell; newer app code arrives through the automatic updater. Leave the app open with internet access. Updates wait while Bob is busy or the interface has unsaved work. Find the running version in **Settings → Setup**. Some controls described below appear after that update.
+## 2. Install
 
-The download supports macOS 13+ and supports Apple silicon (M1 or later) only. All supported macOS releases and clean installations have not yet been tested. The app is not yet Developer ID signed or notarized. If macOS or your organization blocks it, follow your organization’s approved software process; do not disable Gatekeeper or remove quarantine to bypass the block.
+Double-click the downloaded ZIP. Drag **Outlook Assistant.app** into **Applications**.
 
-## 2. Let Outlook download your mail
+## 3. Open
+
+Open **Outlook** and let it sync. Then open **Outlook Assistant** from Applications.
+
+## 4. Finish setup
+
+In **Settings → Setup**, follow the setup walkthrough. For automatic task suggestions:
+
+- Click **Install / update Bob** if Bob is missing.
+- Add your own Bob API key in **Settings → Bob connection**, then click **Test Bob connection**.
+- Add your name and email in **Settings → Profile & writing → My profile**.
+
+That’s it. Keep the app open; updates install automatically when it’s idle. Your work saves on your Mac.
+
+**Sharing it?** Choose **Settings → Setup → Share app** to copy this page’s link. Your emails, tasks, settings, and API key are not included.
+
+**Mac won’t open it?** This is a development build and is not Apple-notarized. If macOS or your company blocks it, contact your IT support. A fully signed installer is not available yet.
+
+<details>
+<summary>More help and technical details</summary>
+
+Download: **2.19.0 prerelease**. Application updates: **2.25.5**. Verified October 22, 2026. The direct download above avoids GitHub’s older “Latest” release and its source-code ZIPs. Installation on a clean Mac is not yet fully verified.
+
+### Outlook
 
 Open **New Outlook**, sign in to your account, and wait for mail to sync. Then open Outlook Assistant and use **Settings → Setup**.
 
@@ -24,7 +43,7 @@ Open **New Outlook**, sign in to your account, and wait for mail to sync. Then o
 
 Keep Outlook running for new mail. Older cached mail can remain readable when Outlook is closed. This app cannot fetch messages or attachments that Outlook has not downloaded, and Teams calendar coverage depends on what Teams has cached.
 
-## 3. Connect IBM Bob for AI features
+### Bob setup details
 
 You can use accessible cached mail and saved tasks without Bob. To enable generated replies and automatic task discovery:
 
@@ -38,7 +57,7 @@ You can use accessible cached mail and saved tasks without Bob. To enable genera
 
 After successful setup, a fresh configuration checks for tasks every 15 minutes, starting with the past seven days. This sends cached message excerpts and saved context to IBM Bob and uses your Bob allowance. Review the suggestions in **Tasks to review**. Pause or change the scan range under **Email task options**. Existing users retain their saved settings.
 
-## 4. Keep one copy and let it update
+### Updates
 
 - Always open the same app from Applications. Do not run a second copy from Downloads.
 - Application code updates automatically when the app is open and idle; active Bob requests finish first. No manual refresh is normally needed.
@@ -46,13 +65,13 @@ After successful setup, a fresh configuration checks for tasks every 15 minutes,
 - To start the service when you sign in to your Mac, enable **Settings → Startup & storage → Start at login** after putting the app in its permanent location.
 - Closing the window may leave the service running. Quit stops a service launched by that app; an independently started service may remain running.
 
-## Saved work survives restarts
+### Your saved work
 
 Tasks, projects, subtasks, notes, drafts, identity, company links, and preferences save outside the application. Updating or restarting the laptop does not delete completed saves. An interrupted AI request may need to run again.
 
 Find storage details and **Export a backup** in **Settings → Startup & storage**. Local recovery copies are automatic, but they share your laptop’s disk. Use your normal Mac backup too. Do not delete `.outlook_assistant_*.json` files when updating or moving the app.
 
-## Quick troubleshooting
+### Troubleshooting
 
 | What you see | What to do |
 |---|---|
@@ -69,8 +88,12 @@ Find storage details and **Export a backup** in **Settings → Startup & storage
 
 For help, use Settings → Feedback or [open a repository issue](https://github.com/brettscharm/outlook-assistant/issues). Describe your app, macOS, and Outlook versions. Do not attach private emails, account details, or API keys.
 
-[Back to the README](../README.md)
 
-## Connect a desktop AI client
+
+### Connect another AI app
 
 Click **MCP connection** in the left sidebar, then **Copy connection settings**. This is also available under **Settings → Connect AI apps**. Merge the server entry into the local MCP configuration of a compatible desktop client, then restart that client. Keep Outlook Assistant running. The bundled bridge requires macOS 13+ and supports Apple silicon; it needs no Bob or separate language runtime. It can read mail/calendar and create or edit local tasks/projects, including checklist steps and progress notes. ChatGPT cloud connections require a supported remote endpoint or Secure MCP Tunnel and are not automatically configured by this app.
+
+</details>
+
+[Back to the README](../README.md)

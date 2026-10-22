@@ -5,7 +5,7 @@ This tracks earlier requests against implemented behavior. A local cache is not 
 ## Current distribution (verified October 22, 2026)
 
 - Desktop download: **2.19.0 Apple silicon prerelease**, linked directly from the [installation guide](INSTALL.md). GitHub’s Latest badge still belongs to 2.15.0; it is not the newest desktop package.
-- Application code: **2.25.4**, installed through the in-app updater. Package/runtime updates still require a new desktop download.
+- Application code: **2.25.5**, installed through the in-app updater. Package/runtime updates still require a new desktop download.
 - Main navigation includes Tasks, Projects, Tasks to review, Calendar, Mail, Drafts, Contacts & companies, and MCP connection. The general in-app chat has been removed.
 - Subsequent features include project emails, meetings/recording attachments, custom project colors, visible subtask creation, meeting-scheduling task guidance, stronger review-history matching, owner contact details, and stable email-link recovery. Cached calendar and mail coverage remain incomplete; unavailable messages cannot be restored from the server.
 - The sections below describe when earlier features were introduced, not the current installation requirements. Use the installation guide for current setup steps.

@@ -4,11 +4,10 @@ A desktop workspace for mail cached by Outlook, tasks, contacts, projects, and o
 
 ## Install on a Mac
 
-1. **[Open the Apple silicon prerelease](https://github.com/brettscharm/outlook-assistant/releases/tag/v2.19.0)** and download the **Apple-Silicon-Mac.zip** file under **Assets**. Do not choose GitHub’s “Source code” ZIP.
-2. Unzip it and move **Outlook Assistant.app** into **Applications**. Keep one installed copy.
-3. Open **Microsoft Outlook**, sign in, and let your mail finish downloading.
-4. Open **Outlook Assistant**. Use **Settings → Setup** to see any missing requirements.
-5. For AI features, install **[IBM Bob Shell](https://bob.ibm.com/docs/shell/getting-started/install-and-setup)**, then add your Bob API key in **Settings → Bob connection** and test the connection. Add your name and email in **Settings → Profile & writing → My profile**.
+1. **[Download Outlook Assistant for Mac](https://github.com/brettscharm/outlook-assistant/releases/download/v2.19.0/Outlook-Assistant-2.19.0-Apple-Silicon-Mac.zip)**.
+2. Open the ZIP and drag **Outlook Assistant.app** into **Applications**.
+3. Open **Outlook**, then **Outlook Assistant**.
+4. Follow **Settings → Setup**. Add your own Bob key and your name/email to enable task suggestions.
 
 **[Step-by-step installation and troubleshooting →](docs/INSTALL.md)**
 
