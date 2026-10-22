@@ -137,7 +137,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             companies=sorted(set([row.split('\t')[0].strip() for row in accounts.splitlines() if row.strip()]+list(cfg.get('domain_companies',{}).values())),key=str.casefold)
             for group in groups:
                 group['suggestion']=suggest_company(group['domain'],companies,cfg.get('domain_companies',{})) if not group['company'] else None
-            return self._send_json({'groups':groups,'companies':companies,'favorites':cfg.get('favorite_companies',[]),'source':'Cached email senders'})
+            return self._send_json({'groups':groups,'companies':companies,'favorites':cfg.get('favorite_companies',[]),'source':'Cached email senders and recipients'})
         if path=='/api/folders': return self._send_json(self.engine.list_folders())
         if path=='/api/accounts': return self._send_json(self.engine.list_accounts())
         if path=='/api/task-lanes': return self._send_json(board_lanes())

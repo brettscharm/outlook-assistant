@@ -1,4 +1,4 @@
-"""Contacts inferred locally from cached senders, grouped by exact email domain."""
+"""Contacts inferred locally from cached senders and recipients, grouped by exact email domain."""
 from email.utils import parseaddr
 import re
 from .config import read_config, update_config, _LOCK
@@ -58,18 +58,30 @@ def group_contacts(rows,links):
     people={}
     for row in rows:
         sender=row.get('from') or {}
-        name,address=sender.get('name',''),sender.get('address','')
-        if not address: name,address=parseaddr(row.get('sender',''))
-        address=address.strip().lower()
-        if address.count('@')!=1 or any(c.isspace() for c in address): continue
-        local,domain=address.rsplit('@',1)
-        if not local: continue
-        try: domain=normalize_domain(domain)
-        except ValueError: continue
-        address=local+'@'+domain
-        person=people.setdefault(address,dict(email=address,name=name or address,domain=domain,message_count=0))
-        person['message_count']+=1
-        if person['name']==address and name: person['name']=name
+        if not isinstance(sender,dict) or not sender.get('address'):
+            name,address=parseaddr(row.get('sender',''))
+            sender={'name':name,'address':address}
+        candidates=[sender]
+        for key in ('to','cc','bcc','reply_to'):
+            recipients=row.get(key) or []
+            if isinstance(recipients,list):candidates.extend(recipients)
+        seen=set()
+        for candidate in candidates:
+            if isinstance(candidate,str):name,address=parseaddr(candidate)
+            elif isinstance(candidate,dict):name,address=candidate.get('name',''),candidate.get('address','')
+            else:continue
+            if not isinstance(address,str):continue
+            name=name.strip() if isinstance(name,str) else ''
+            address=address.strip().lower()
+            if address.count('@')!=1 or any(c.isspace() for c in address):continue
+            local,domain=address.rsplit('@',1)
+            if not local:continue
+            try:domain=normalize_domain(domain)
+            except ValueError:continue
+            address=local+'@'+domain
+            person=people.setdefault(address,dict(email=address,name=name or address,domain=domain,message_count=0))
+            if address not in seen:person['message_count']+=1;seen.add(address)
+            if person['name']==address and name:person['name']=name
     groups={}
     for person in people.values():
         domain=person.pop('domain')

@@ -48,3 +48,14 @@ class ContactTests(unittest.TestCase):
         groups=group_contacts([],{'first.example':'One Company','second.example':'One Company'})
         self.assertEqual({g['domain'] for g in groups},{'first.example','second.example'})
         self.assertTrue(all(g['company']=='One Company' and g['contacts']==[] for g in groups))
+
+    def test_recipients_are_searchable_and_count_once_per_message(self):
+        rows=[{'from':{'name':'Ann','address':'ann@example.com'},'to':[{'name':'Ann','address':'ANN@example.com'},{'name':'Sam','address':'sam@example.com'}],'cc':[{'name':'Sam','address':'sam@example.com'},'Pat <pat@example.org>'],'bcc':[{'name':'Bea','address':'bea@example.org'}],'reply_to':[{'name':'Reply','address':'reply@example.org'}]}]
+        people={p['email']:p for g in group_contacts(rows,{}) for p in g['contacts']}
+        self.assertEqual(len(people),5)
+        self.assertEqual(people['sam@example.com']['name'],'Sam')
+        self.assertTrue(all(p['message_count']==1 for p in people.values()))
+
+    def test_malformed_recipients_do_not_break_contacts(self):
+        rows=[{'sender':'Ann <ann@example.com>','to':[None,4,{'address':42},'invalid'],'cc':'unexpected'}]
+        self.assertEqual(group_contacts(rows,{})[0]['contacts'][0]['name'],'Ann')

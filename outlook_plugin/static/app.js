@@ -100,14 +100,29 @@ function contactFavoriteKey(group){return group.company?'company:'+group.company
 function compareContactGroups(a,b){return Number(contactFavorites.has(contactFavoriteKey(b.group)))-Number(contactFavorites.has(contactFavoriteKey(a.group)))||(a.group.company||a.group.domain).localeCompare(b.group.company||b.group.domain)||a.group.domain.localeCompare(b.group.domain);}
 async function loadContacts(force=false){
  if(contactsLoading||(!force&&contactsLoaded))return;
- contactsLoading=true;$('contactCount').textContent='Reading cached senders…';
+ contactsLoading=true;$('contactCount').textContent='Reading cached contacts…';
  try{const result=await api('/api/contacts');await window.loadContactGroups?.();contactData=result.groups;contactFavorites=new Set(result.favorites||[]);contactsLoaded=true;
  $('companyOptions').replaceChildren();for(const company of result.companies){const option=text('option',company);option.value=company;$('companyOptions').append(option);}renderContacts();
  }catch(e){$('contactCount').textContent='Contacts could not be loaded. Try Refresh contacts.';throw e;}finally{contactsLoading=false;}
 }
+function normalizeContactSearch(value){return String(value||'').normalize('NFKD').replace(/\p{M}/gu,'').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim().replace(/\s+/g,' ');}
+function searchContactGroups(groups,query){
+ const normalized=normalizeContactSearch(query),tokens=normalized.split(' ').filter(Boolean);
+ return groups.map(group=>{
+  const company=normalizeContactSearch(group.company+' '+group.domain);
+  const groupMatch=tokens.every(token=>company.includes(token));
+  const ranked=group.contacts.map(person=>{
+   const name=normalizeContactSearch(person.name),email=normalizeContactSearch(person.email),personal=name+' '+email;
+   if(!tokens.every(token=>(personal+' '+company).includes(token)))return null;
+   const score=!tokens.length?0:name===normalized||email===normalized?4:tokens.every(token=>personal.includes(token))?3:groupMatch?1:2;
+   return {person,score};
+  }).filter(Boolean).sort((a,b)=>b.score-a.score||a.person.name.localeCompare(b.person.name)||a.person.email.localeCompare(b.person.email));
+  return {group,people:ranked.map(row=>row.person),groupMatch,score:ranked[0]?.score||0};
+ }).filter(row=>row.people.length||row.groupMatch).sort((a,b)=>b.score-a.score||compareContactGroups(a,b));
+}
 function renderContacts(){
  const query=$('contactSearch').value.toLowerCase().trim();const root=$('contactGroups');root.replaceChildren();
- const matches=contactData.map(group=>{const groupMatch=(group.domain+' '+group.company).toLowerCase().includes(query);return {group,people:group.contacts.filter(p=>groupMatch||(p.name+' '+p.email).toLowerCase().includes(query)),groupMatch};}).filter(row=>row.people.length||row.groupMatch).sort(compareContactGroups);
+ const matches=searchContactGroups(contactData,query);
  const pages=Math.max(1,Math.ceil(matches.length/contactPageSize));contactPage=Math.min(Math.max(1,contactPage),pages);
  const start=(contactPage-1)*contactPageSize,end=Math.min(start+contactPageSize,matches.length);
  const total=matches.reduce((sum,row)=>sum+row.people.length,0);
@@ -118,16 +133,16 @@ function renderContacts(){
   const summary=text('summary','');summary.append(text('strong',group.company||group.domain),text('span',(group.company?group.domain+' · ':'')+people.length+(people.length===1?' contact':' contacts'),'muted small'));const star=text('button','','company-star');star.type='button';
   function refreshStar(){const starred=contactFavorites.has(contactFavoriteKey(group));star.textContent=starred?'★':'☆';star.classList.toggle('starred',starred);star.setAttribute('aria-pressed',String(starred));star.setAttribute('aria-label',(starred?'Unstar ':'Star ')+(group.company||group.domain));star.title=starred?'Unstar company':'Star company';}
   refreshStar();star.onclick=async event=>{event.preventDefault();event.stopPropagation();star.disabled=true;state.pending++;try{const result=await api('/api/contact-favorite',{domain:group.domain,starred:!contactFavorites.has(contactFavoriteKey(group))});contactFavorites=new Set(result.favorites);contactPage=1;renderContacts();const button=[...$('contactGroups').querySelectorAll('.company-star')].find(b=>b.dataset.domain===group.domain);button?.focus();}catch(error){notice(error.message,'error');star.disabled=false;}finally{state.pending--;}};star.dataset.domain=group.domain;summary.append(star);card.append(summary);
-  const form=document.createElement('form');form.className='company-link';
+  const form=document.createElement('form');form.className='company-link';form.hidden=!!query;
   const input=document.createElement('input');input.setAttribute('list','companyOptions');input.setAttribute('aria-label','Company for '+group.domain);input.placeholder='Choose or type a company';input.maxLength=200;input.value=contactDrafts[group.domain]??group.company;let companyTimer;input.oninput=()=>{contactDrafts[group.domain]=input.value;clearTimeout(companyTimer);companyTimer=setTimeout(()=>form.requestSubmit(),700);};
   const save=text('button','Save company','primary');save.type='submit';const unlink=text('button','Unlink');unlink.type='button';unlink.hidden=!group.company;
   form.onsubmit=e=>{e.preventDefault();busy(save,async()=>{await api('/api/contact-company',{domain:group.domain,company:input.value});group.company=input.value.trim();delete contactDrafts[group.domain];const header=summary.querySelector('strong');header.textContent=group.company||group.domain;summary.querySelector('span').textContent=(group.company?group.domain+' · ':'')+people.length+(people.length===1?' contact':' contacts');unlink.hidden=!group.company;refreshStar();window.refreshCompanyGroups?.(card,group);notice('Company link saved for '+group.domain+'.');});};
   unlink.onclick=()=>busy(unlink,async()=>{await api('/api/contact-company',{domain:group.domain,company:''});input.value='';group.company='';delete contactDrafts[group.domain];summary.querySelector('strong').textContent=group.domain;summary.querySelector('span').textContent=people.length+(people.length===1?' contact':' contacts');unlink.hidden=true;refreshStar();window.refreshCompanyGroups?.(card,group);notice('Company link removed.');});
   form.append(input,save,unlink);card.append(form);
-  if(group.suggestion){const suggestion=text('div','','company-link');const accept=text('button','Use '+group.suggestion.company);accept.type='button';suggestion.append(text('span',group.suggestion.reason,'muted small'),accept);accept.onclick=()=>{input.value=group.suggestion.company;contactDrafts[group.domain]=input.value;form.requestSubmit();suggestion.remove();};card.append(suggestion);}
+  if(group.suggestion&&!query){const suggestion=text('div','','company-link');const accept=text('button','Use '+group.suggestion.company);accept.type='button';suggestion.append(text('span',group.suggestion.reason,'muted small'),accept);accept.onclick=()=>{input.value=group.suggestion.company;contactDrafts[group.domain]=input.value;form.requestSubmit();suggestion.remove();};card.append(suggestion);}
   const related=contactData.filter(g=>group.company&&g.company.toLowerCase()===group.company.toLowerCase()).map(g=>g.domain);
-  if(related.length>1)card.append(text('p','Company domains: '+related.join(', '),'company-link muted small'));
-  window.mountContactGroups?.(card,group);
+  if(!query&&related.length>1)card.append(text('p','Company domains: '+related.join(', '),'company-link muted small'));
+  if(!query)window.mountContactGroups?.(card,group);
   for(const person of people){const row=text('div','','contact-person');const info=text('div','','contact-person-info');info.append(text('strong',person.name),text('span',person.email,'muted small'));const mail=text('button','Search mail');mail.onclick=()=>{state.folder='all';state.unread=false;state.search=person.email;$('search').value=person.email;$('all').classList.add('selected');$('unread').classList.remove('selected');$('mail').classList.remove('detail-open');view('mail');Promise.all([folders(),loadEmails()]).catch(e=>notice(e.message));};row.append(info,text('span',person.message_count+' messages','muted small'),mail);card.append(row);}
   root.append(card);
  }
