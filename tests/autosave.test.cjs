@@ -2,7 +2,7 @@ const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/st
 const {test}=require('node:test');
 function setup(kind){
  const nodes={};const $=id=>nodes[id]??={value:'',children:[],open:true,hidden:true,reportValidity:()=>true,checkValidity:()=>true,addEventListener(){}};
- const calls=[],pending=[];const ctx={$,window:{},state:{pending:0},taskEditor:{origin:'saved',item:{id:'task'}},editingProject:'project',taskScheduleValues:()=>({}),taskFingerprint:'',boardFingerprint:'',setTimeout,clearTimeout,api:(path,data)=>{calls.push(data);return new Promise((resolve,reject)=>pending.push({resolve,reject}));}};
+ const calls=[],pending=[];const ctx={$,window:{},state:{pending:0},taskEditor:{origin:'saved',item:{id:'task'}},editingProject:'project',taskScheduleValues:()=>({}),taskReminderValues:()=>({}),taskFingerprint:'',boardFingerprint:'',setTimeout,clearTimeout,api:(path,data)=>{calls.push(data);return new Promise((resolve,reject)=>pending.push({resolve,reject}));}};
  vm.createContext(ctx);const source=fs.readFileSync('outlook_plugin/static/'+(kind==='task'?'tasks-ui.js':'organize-ui.js'),'utf8');
  const start=source.indexOf(kind==='task'?'let taskEditTimer':'let projectSaveTimer');const end=source.indexOf(kind==='task'?'const boardLimits':'function queueProjectSave',start);
  vm.runInContext(source.slice(start,end),ctx);return {ctx,$,calls,pending,flush:ctx.window[kind==='task'?'flushTaskEdits':'flushProjectEdits'],field:kind==='task'?'editTaskText':'projectName',status:kind==='task'?'taskSaveStatus':'projectStatus',retry:kind==='task'?'retryTaskSave':'retryProjectSave'};

@@ -215,3 +215,5 @@ main>header{height:auto;min-height:68px;gap:12px;flex-wrap:wrap;padding-top:12px
 .project-color-field{display:grid;gap:8px}.project-color-controls{display:flex;gap:10px;align-items:center}.project-color-controls input[type=color]{width:64px;height:44px;padding:4px;cursor:pointer}.project-color-controls input:not([type=color]){width:140px;font-family:ui-monospace,monospace}
 
 .owner-chip[data-owner-label]{max-width:100%;white-space:normal;overflow-wrap:anywhere;line-height:1.5}
+
+.task-priority-flag.priority-none{background:#f0f1f3;color:#626974}.task-collapsed>.task-card-actions{display:flex}

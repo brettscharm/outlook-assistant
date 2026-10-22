@@ -315,8 +315,8 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
                 if due:
                     from datetime import date
                     date.fromisoformat(due)
-                tasks=add_task(data.get('type','my'),text,str(data.get('owner',''))[:200],due,source=source,description=str(data.get('description','')),source_type=data.get('source_type'),source_url=data.get('source_url',''),priority=data.get('priority','none'),project_id=data.get('project_id',''),color=data.get('color','none'),deadline=data.get('deadline'),co_owners=data.get('co_owners'))
-            elif action=='edit':tasks=edit_task(str(data.get('id','')),str(data.get('text','')),str(data.get('owner','')),data.get('type','my'),str(data.get('due_date','')),description=data.get('description'),source_type=data.get('source_type'),source_url=data.get('source_url'),priority=data.get('priority'),project_id=data.get('project_id'),color=data.get('color'),deadline=data.get('deadline'),co_owners=data.get('co_owners'))
+                tasks=add_task(data.get('type','my'),text,str(data.get('owner',''))[:200],due,source=source,description=str(data.get('description','')),source_type=data.get('source_type'),source_url=data.get('source_url',''),priority=data.get('priority','none'),project_id=data.get('project_id',''),color=data.get('color','none'),deadline=data.get('deadline'),co_owners=data.get('co_owners'),reminder=data.get('reminder'))
+            elif action=='edit':tasks=edit_task(str(data.get('id','')),str(data.get('text','')),str(data.get('owner','')),data.get('type','my'),str(data.get('due_date','')),description=data.get('description'),source_type=data.get('source_type'),source_url=data.get('source_url'),priority=data.get('priority'),project_id=data.get('project_id'),color=data.get('color'),deadline=data.get('deadline'),co_owners=data.get('co_owners'),reminder=data.get('reminder'))
             elif action=='move':tasks=move_task(str(data.get('id','')),str(data.get('lane_id','')))
             elif action=='toggle': tasks=toggle_task(data.get('id'))
             elif action=='delete': tasks=delete_task(data.get('id'))
@@ -342,6 +342,8 @@ def start_app_server(port=PORT,open_browser=True):
     scan_engine = OutlookEngine()
     scan_engine.local_only = True
     threading.Thread(target=task_workflow.scheduler,args=(scan_engine,scan_shutdown),daemon=True).start()
+    from . import task_reminders
+    threading.Thread(target=task_reminders.scheduler,args=(scan_shutdown,),daemon=True).start()
     print(f'Outlook Assistant: http://localhost:{port}',flush=True)
     if open_browser:
         import webbrowser

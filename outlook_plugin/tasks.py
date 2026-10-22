@@ -56,6 +56,7 @@ def add_task(
     color: str = "none",
     deadline=None,
     co_owners=None,
+    reminder=None,
 ) -> Dict[str, List[Dict[str, Any]]]:
     """Add a new task and return all updated tasks."""
     source_type,source_url=validate_source(source_type or ("email" if source and source.get("email_id") else "other"),source_url)
@@ -64,6 +65,9 @@ def add_task(
     priority=validate_priority(priority)
     people=validate_co_owners(co_owners or [])
     extras=validate_task_details(color,deadline)
+    if reminder is not None:
+        from .task_reminders import validate
+        extras["reminder"]=validate(reminder)
     tasks = load_tasks()
     if request_id and any(t.get("id")==request_id for rows in tasks.values() for t in rows):return tasks
     key = "my_tasks" if task_type == "my" else "others_tasks"
@@ -130,7 +134,7 @@ delete_task = _serialized(delete_task)
 
 
 @_serialized
-def edit_task(task_id, text, owner, kind, due_date, description=None, source_type=None, source_url=None, priority=None, project_id=None, color=None, deadline=None, co_owners=None):
+def edit_task(task_id, text, owner, kind, due_date, description=None, source_type=None, source_url=None, priority=None, project_id=None, color=None, deadline=None, co_owners=None, reminder=None):
     from datetime import date
     if not text.strip(): raise ValueError('Enter a task.')
     if kind not in ('my','others','unclear'): raise ValueError('Choose an owner group.')
@@ -145,6 +149,9 @@ def edit_task(task_id, text, owner, kind, due_date, description=None, source_typ
         for item in data[group]:
             if item['id']==task_id:
                 extras=validate_task_details(color,deadline,item.get('deadline'))
+                if reminder is not None:
+                    from .task_reminders import validate
+                    extras['reminder']=validate(reminder,item.get('reminder'))
                 item.update(text=text.strip()[:2000],assignee=current_user_name() if kind=='my' else owner.strip()[:200] or 'Owner unclear',type=kind,due_date=due_date)
                 if source_type is not None or source_url is not None:
                     platform,url=validate_source(source_type if source_type is not None else item.get('source_type','email' if item.get('email_id') else 'other'),source_url if source_url is not None else item.get('source_url',''))

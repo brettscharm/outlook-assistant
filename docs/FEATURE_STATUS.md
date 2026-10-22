@@ -5,7 +5,7 @@ This tracks earlier requests against implemented behavior. A local cache is not 
 ## Current distribution (verified October 22, 2026)
 
 - Desktop download: **2.19.0 Apple silicon prerelease**, linked directly from the [installation guide](INSTALL.md). GitHub’s Latest badge still belongs to 2.15.0; it is not the newest desktop package.
-- Application code: **2.26.0**, installed through the in-app updater. Package/runtime updates still require a new desktop download.
+- Application code: **2.27.0**, installed through the in-app updater. Package/runtime updates still require a new desktop download.
 - Main navigation includes Tasks, Projects, Tasks to review, Calendar, Mail, Drafts, Contacts & companies, and MCP connection. The general in-app chat has been removed.
 - Subsequent features include project emails, meetings/recording attachments, custom project colors, visible subtask creation, meeting-scheduling task guidance, stronger review-history matching, owner contact details, and stable email-link recovery. Cached calendar and mail coverage remain incomplete; unavailable messages cannot be restored from the server.
 - The sections below describe when earlier features were introduced, not the current installation requirements. Use the installation guide for current setup steps.
@@ -63,3 +63,12 @@ True model fine-tuning is not implemented; Bob profile instructions/examples are
 ## External AI clients
 
 The general in-app chat is removed as of 2.19.0. Local MCP tools expose mail, tasks, projects, contacts, and cached calendar data. Since 2.18.1, mutation tools create/edit tasks and projects and manage task progress and checklist steps with retry deduplication and stale-edit checks. MCP connection in the main sidebar (also Settings → Connect AI apps) provides a configuration for desktop clients. No cloud endpoint or tunnel is enabled. Bob task discovery and reply drafting remain.
+
+## Slack investigation — October 22, 2026
+
+Local Slack IndexedDB, browser cache, and service-worker storage are present on the development Mac. Only directory structure and sizes were checked; no tokens, cookies, or credentials were extracted. These files do not establish complete or durable DM/channel coverage. No automatic Slack reader is implemented or verified.
+
+- A supported message-context shortcut requires a Slack app with the `commands` scope: [Slack shortcuts](https://docs.slack.dev/interactivity/implementing-shortcuts/).
+- Workspace/organization policy determines whether app installation requires approval: [Slack app approval](https://slack.com/help/articles/222386767-Manage-app-approval-for-your-workspace-Manage-app-installation-settings-for-your-workspace). Private distribution avoids Marketplace listing review, not workspace policy.
+- Reading message history requires an authorized token and the relevant conversation scopes/access: [conversations.history](https://docs.slack.dev/reference/methods/conversations.history/). It does not grant blanket access to all DMs.
+- Current local workflow: manually copy a message's text and permalink into a task, set Source to Slack, and paste the permalink in Source link. This does not install a Slack app, retrieve the message automatically, or monitor a channel. Follow the organization's rules for copying work content.

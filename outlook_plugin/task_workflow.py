@@ -122,7 +122,7 @@ def action(data):
             # Preserve idempotence even if an accepted suggestion is retried with an edited title.
             existing=load_tasks()
             if not any(t.get('suggestion_id')==item['id'] for group in existing.values() for t in group):
-                add_task(kind,title,owner,due,source,source_type=data.get('source_type','email'),source_url=data.get('source_url',''),priority=data.get('priority','none'),project_id=data.get('project_id',''),color=data.get('color','none'),deadline=data.get('deadline'),co_owners=data.get('co_owners'))
+                add_task(kind,title,owner,due,source,source_type=data.get('source_type','email'),source_url=data.get('source_url',''),priority=data.get('priority','none'),project_id=data.get('project_id',''),color=data.get('color','none'),deadline=data.get('deadline'),co_owners=data.get('co_owners'),reminder=data.get('reminder'))
             item.update(status='accepted',description=source['description'],text=title,owner=owner,type=kind,due_date=due)
         else:raise ValueError('Unknown review action.')
         save(store)
