@@ -6,7 +6,7 @@ import sys
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from . import workspace_search, project_search, __version__, config, tasks, task_workflow, email_chat, drafts, storage, usage
+from . import slack_import, workspace_search, project_search, __version__, config, tasks, task_workflow, email_chat, drafts, storage, usage
 
 LOGIN_FILE = Path.home() / 'Library/LaunchAgents/com.brettscharm.outlookassistant.plist'
 INSTALLATIONS = [Path.home()/'Applications/Outlook Assistant.app',Path('/Applications/Outlook Assistant.app')]
@@ -52,7 +52,7 @@ def export_data():
     with task_workflow._LOCK, tasks._LOCK:
         return {'format':'outlook-assistant-backup','schema':1,'app_version':__version__,
                 'created_at':datetime.now(timezone.utc).isoformat(), 'settings':settings,
-                'tasks':tasks.load_tasks(), 'task_review':task_workflow.load(), 'chat':email_chat.history(),'workspace_search':storage.read_json(workspace_search.FILE,{'results':[]}),'project_search':{p['id']:project_search.history(p['id']) for p in cfg.get('projects',[])},'drafts':drafts.load(), 'usage':storage.read_json(usage.USAGE_FILE,{})}
+                'slack':slack_import.load(),'tasks':tasks.load_tasks(), 'task_review':task_workflow.load(), 'chat':email_chat.history(),'workspace_search':storage.read_json(workspace_search.FILE,{'results':[]}),'project_search':{p['id']:project_search.history(p['id']) for p in cfg.get('projects',[])},'drafts':drafts.load(), 'usage':storage.read_json(usage.USAGE_FILE,{})}
 
 def learn_style(ai, examples):
     if not isinstance(examples, str) or not 80 <= len(examples.strip()) <= 24000:

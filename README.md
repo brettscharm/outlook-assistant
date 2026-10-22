@@ -273,3 +273,17 @@ Choose **Add recording**, select a saved project, and upload or drop files. Choo
 ### Long-email summaries
 
 Emails over 2,200 characters show **Summarize** above the reply composer and message body. Bob produces a collapsible list of main points, requests and deadlines with expandable supporting quotes. Summaries are cached locally (up to 500 entries) and reused for the same source text. Excluded/unavailable emails cannot be summarized. Preview-only messages and bodies beyond the first 100,000 characters show a partial-content notice. Summarization runs on demand through the shared scheduler and does not create tasks or send mail.
+
+### Updates while you work
+
+The app checks for source updates every five minutes, including while Bob is busy. An available update shows a dismissible banner at most once per local calendar day. **Update when ready** waits for running work, open editors, and unsaved drafts; it never cancels a Bob job. Idle automatic updates continue. Keep the app open to apply a queued update. Native app-shell updates still require the latest Mac download.
+
+### Reading and replying
+
+Mail has a sender header, a full-length reading area, and a **Reply** composer above the message. Use **Expand editor** for more space, choose a tone, write a draft, then **Polish draft**. Formatting is available in the toolbar and **More formatting**; drafts save automatically. **Copy reply** transfers the draft to Outlook for review and sending. The current cache bridge supplies plain text, so this is an Outlook-style layout, not an exact copy of the original message's HTML, images, or attachments.
+
+### Slack imports
+
+Open **Slack → Import messages**. Enter a workspace and conversation name, then paste a conversation or select message JSON files from a Slack export you are allowed to access. Select files from one channel/DM at a time (up to 30 files, 1 MB each). Import `users.json` with the same workspace name to resolve people’s names. You can add an optional original Slack message link.
+
+Imports are saved locally, included in downloadable workspace backups, searchable in **Slack** and **Search**, and can become tasks through **Create task**. Reimporting the same workspace/conversation/timestamp updates the existing message. Pasted text is deduplicated by its content; it has no inferred date and appears only in all-time workspace searches. Export timestamps support date-filtered searches. These are saved imports, not live channel/DM monitoring; attachments are not downloaded and export availability depends on your Slack workspace permissions.

@@ -5,7 +5,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-from . import tasks, projects, calendar_cache, project_search, drafts, task_workflow
+from . import slack_import, tasks, projects, calendar_cache, project_search, drafts, task_workflow
 from .contacts import group_contacts
 from .ai_agent import BobAIAgent, _BOB_SEARCH_LOCK
 from .config import DATA_DIR, read_config
@@ -81,6 +81,8 @@ def collect(engine,start,end,zone):
     cfg=read_config()
     for domain,company in cfg.get('domain_companies',{}).items():add('company',domain,str(company),json.dumps({'domain':domain,'company':company}),context=True)
     for group in cfg.get('contact_groups',[]):add('group',group.get('id',''),group.get('name','Contact group'),json.dumps(group,ensure_ascii=False),context=True)
+    for row in slack_import.documents():
+        add('slack',row['id'],row['channel']+' · '+row['sender'],row['sender']+'\n'+row['text'],[row['occurred_at']])
     for key,draft in drafts.load().get('entries',{}).items():
         if draft.get('deleted'):continue
         add('draft',key,'Saved draft',json.dumps({k:draft.get(k) for k in ('text','html','subject','intent','updated_at')},ensure_ascii=False),[draft.get('updated_at')])
@@ -111,7 +113,7 @@ def run(engine,data,ai_factory=BobAIAgent):
     docs,coverage=collect(engine,start,end,zone)
     selected=[];total=0
     # Rank each source family separately so email volume cannot crowd out calls/tasks.
-    families=[{'email'},{'meeting','calendar'},{'task','review'},{'project','company','contact','group','draft'}]
+    families=[{'slack'},{'email'},{'meeting','calendar'},{'task','review'},{'project','company','contact','group','draft'}]
     for family in families:
         chunks,count=project_search.retrieve([d for d in docs if d['kind'] in family],question)
         total+=count

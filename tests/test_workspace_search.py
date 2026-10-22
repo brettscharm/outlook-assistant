@@ -11,7 +11,7 @@ from outlook_plugin import workspace_search as s
 class WorkspaceSearchTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
-        self.patches=[patch.object(s,'FILE',Path(self.tmp.name)/'search.json'),patch.object(s,'read_config',return_value={'domain_companies':{},'bob_api_key':'DO_NOT_EXPOSE'}),patch.object(s.tasks,'load_tasks',return_value={}),patch.object(s.projects,'list_projects',return_value=[]),patch.object(s.task_workflow,'load',return_value={'suggestions':{}}),patch.object(s.drafts,'load',return_value={'entries':{}}),patch.object(s.calendar_cache,'_hydrate'),patch.object(s.calendar_cache,'_CACHE',{'events':[]})]
+        self.patches=[patch.object(s.slack_import,'documents',return_value=[]),patch.object(s,'FILE',Path(self.tmp.name)/'search.json'),patch.object(s,'read_config',return_value={'domain_companies':{},'bob_api_key':'DO_NOT_EXPOSE'}),patch.object(s.tasks,'load_tasks',return_value={}),patch.object(s.projects,'list_projects',return_value=[]),patch.object(s.task_workflow,'load',return_value={'suggestions':{}}),patch.object(s.drafts,'load',return_value={'entries':{}}),patch.object(s.calendar_cache,'_hydrate'),patch.object(s.calendar_cache,'_CACHE',{'events':[]})]
         for p in self.patches:p.start();self.addCleanup(p.stop)
         self.engine=Mock();self.engine.get_emails.return_value=[]
     def test_timezone_boundaries(self):
@@ -26,6 +26,11 @@ class WorkspaceSearchTests(unittest.TestCase):
         with patch.object(s.projects,'list_projects',return_value=rows):docs,coverage=s.collect(self.engine,date(2026,10,1),date(2026,10,31),ZoneInfo('UTC'))
         self.assertEqual({d['key'] for d in docs},{'p','in'});self.assertEqual(coverage['undated'],1)
         self.assertNotIn('DO_NOT_EXPOSE',json.dumps(docs))
+    def test_slack_date_range_and_source_identity(self):
+        rows=[{'id':'s1','channel':'#team','sender':'Alex','text':'Proposal action','occurred_at':'2026-10-02T03:59:00Z'}, {'id':'s2','channel':'#team','sender':'Alex','text':'Undated paste','occurred_at':''}]
+        with patch.object(s.slack_import,'documents',return_value=rows):
+            docs,coverage=s.collect(self.engine,date(2026,10,1),date(2026,10,1),ZoneInfo('America/New_York'))
+        self.assertEqual([d['key'] for d in docs],['s1']);self.assertEqual(docs[0]['kind'],'slack');self.assertEqual(coverage['undated'],1)
     def test_parallel_reviews_and_verified_synthesis(self):
         docs=[{'id':'unused','kind':'email','key':str(i),'title':'Demo','content':'Evidence '+str(i),'project_id':'','context':False} for i in range(24)]
         barrier=threading.Barrier(2);active=0;maximum=0;lock=threading.Lock()
