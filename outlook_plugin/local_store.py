@@ -63,6 +63,8 @@ class LocalStoreBridge:
                                  sender=f"{sender.get('name','')} <{sender.get('address','')}>".strip(),
                                  received_time=m.get('received',''), is_read=m.get('read')=='read',
                                  body_complete=m.get('body_state') in ('inline','file') and bool(m.get('body'))))
+            from .mail_references import remember
+            remember(p,rows)
             _CACHE.clear()
             _CACHE.update(fingerprint=fingerprint, checked=time.time(), rows=rows,
                           partial=result.returncode==3, diagnostics=result.stderr[-2000:],
@@ -108,7 +110,12 @@ class LocalStoreBridge:
         return visible_messages(self._load()['rows'])
 
     def get_email_details(self, message_id):
-        return next((m for m in visible_messages(self._load()['rows']) if m['id']==str(message_id)),None)
+        data=self._load()
+        rows=visible_messages(data['rows'])
+        item=next((m for m in rows if m['id']==str(message_id)),None)
+        if item:return item
+        from .mail_references import recover
+        return recover(message_id,data['profile'],rows)
 
     def get_upcoming_events(self, **kwargs):
         raise RuntimeError('Calendar events are not supported by the local cache reader yet. Mail invites are searchable in Mail; they do not prove availability.')

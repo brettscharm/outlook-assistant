@@ -39,7 +39,7 @@ function taskSource(t){
   if(loading||loaded)return;loading=true;content.setAttribute('aria-busy','true');content.replaceChildren(text('p','Loading email…','muted small'));
   try{const m=await api('/api/email?'+new URLSearchParams({id:t.email_id}));
    content.replaceChildren(text('strong',m.subject||'(No subject)'),text('p',m.sender||m.from?.address||'Sender unavailable','muted small'),text('p',date(m.received_time,true),'muted small'),text('p',m.body_complete?'Cached email':'Preview only · Full email is not available in the cache','muted small'),text('div',m.body||m.preview||'No readable content cached.','task-email-body'));const body=content.querySelector('.task-email-body');renderEmailLinks(body,body.textContent);loaded=true;
-  }catch(e){content.replaceChildren(text('p','Email preview unavailable: '+e.message,'muted small'));const retry=text('button','Try again');retry.type='button';retry.onclick=load;content.append(retry);}
+  }catch(e){content.replaceChildren(text('p','Email preview unavailable: '+e.message,'muted small'));const retry=text('button','Try again');retry.type='button';retry.onclick=load;content.append(retry);const search=text('button','Search conversation');search.type='button';search.onclick=()=>{state.folder='all';state.unread=false;state.search=t.email_subject||'';$('search').value=state.search;view('mail');loadEmails().catch(e=>notice(e.message,'error'));};content.append(search);}
   finally{loading=false;content.removeAttribute('aria-busy');}
  }
  details.ontoggle=()=>{summary.textContent=details.open?'Hide email':'Preview email';if(details.open){openEmailPreviews.add(key);load();}else openEmailPreviews.delete(key);};

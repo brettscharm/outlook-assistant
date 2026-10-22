@@ -22,7 +22,7 @@ The Mac app includes Python and the mail reader. You do not need Git, Xcode, Pyt
 
 - **Tasks:** create and edit tasks, customize lanes, and drag cards between them. Optional priorities and due dates support sorting. Upcoming deadlines stand out; completed cards turn gray and can be hidden without deleting them.
 - **Tasks to review:** review suggested actions before adding them. Accepting one keeps you on the review page. Unclear suggestions default to you; choosing My task uses your saved name. You can assign a different owner or dismiss a suggestion with a reason and undo it. New-mail checks can also suggest completing existing tasks with a supporting quote; acceptance is required.
-- **Mail:** browse cached mail and folders, search, preview source emails, and draft replies. Outlook must download new mail before this app can read it.
+- **Mail:** browse cached mail and folders, search, preview source emails, and draft replies. Stable message identities recover links when Outlook changes local row IDs; unavailable task previews offer conversation search. Deleted or uncached mail cannot be restored by this app. Outlook must download new mail before this app can read it.
 - **Drafts:** drafts save locally. Copy a draft into Outlook, review it, and send it there. The app does not send mail or insert Reply All drafts into Outlook.
 - **Contacts:** browse cached senders by domain and link multiple domains to one company. This is not an Outlook address-book sync.
 - **Projects:** group related tasks, filter the board, and see completion counts.

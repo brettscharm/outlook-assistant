@@ -145,7 +145,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             return self._send_json(backend.get_emails(**args))
         if path=='/api/email':
             item=self.engine.get_email_details(q.get('id',[''])[0])
-            return self._send_json(item if item else {'error':'Message not found.'},200 if item else 404)
+            return self._send_json(item if item else {'error':'This email is no longer available in the current Outlook cache, or is hidden by your mail exclusions. Your saved task is still here. Open Outlook and sync, or search Mail for the conversation.'},200 if item else 404)
         if path=='/api/meeting-mail':return self._send_json(meeting_mail.discover(self.engine))
         if path=='/api/calendar':
             ranged='from' in q or 'to' in q
@@ -273,7 +273,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             return self._send_json({'reply':reply,'usage':self.ai.last_usage})
         if path=='/api/smart-reply':
             email=self.engine.get_email_details(str(data.get('email_id','')))
-            if not email: return self._send_json({'error':'Message not found.'},404)
+            if not email: return self._send_json({'error':'This email is no longer available in the current Outlook cache, or is hidden by your mail exclusions. Your saved task is still here. Open Outlook and sync, or search Mail for the conversation.'},404)
             reply=self.ai.draft_smart_reply(email,[],intent=str(data.get('intent','Draft a helpful reply without making commitments.'))[:3000],tone=data.get('tone','friendly'))
             return self._send_json({'reply':reply,'usage':self.ai.last_usage})
         if path=='/api/extract-tasks':
