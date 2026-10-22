@@ -269,3 +269,7 @@ Project search, workspace search, drafts, and task discovery can overlap. Each k
 Open **Recordings** in the sidebar to browse local audio/video attachments, project meeting recording links, and saved transcripts. Filter by project or search names; larger libraries paginate. **Open recording** uses the default Mac player; **Open web recording** opens the saved HTTPS link. **View transcript** opens the project meeting, where you can edit/export its transcript or find tasks.
 
 Choose **Add recording**, select a saved project, and upload or drop files. Choose **Add link or transcript** to create a project meeting instead. Files remain in their existing project/task attachment folders; this library does not duplicate them. Live recording and automatic transcription are not part of this tab.
+
+### Long-email summaries
+
+Emails over 2,200 characters show **Summarize** above the reply composer and message body. Bob produces a collapsible list of main points, requests and deadlines with expandable supporting quotes. Summaries are cached locally (up to 500 entries) and reused for the same source text. Excluded/unavailable emails cannot be summarized. Preview-only messages and bodies beyond the first 100,000 characters show a partial-content notice. Summarization runs on demand through the shared scheduler and does not create tasks or send mail.

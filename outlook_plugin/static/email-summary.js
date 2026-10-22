@@ -1,0 +1,6 @@
+'use strict';
+window.mountEmailSummary=(id,message,root)=>{
+ if((message.body||message.preview||'').length<=2200)return;
+ const section=text('section','','email-summary');const button=text('button','Summarize');button.type='button';const status=text('span','','muted small');status.setAttribute('role','status');const content=text('div');section.append(button,status,content);root.append(section);
+ button.onclick=async()=>{button.disabled=true;status.textContent='Summarizing…';try{const result=await api('/api/email-summary',{email_id:id});if(!section.isConnected)return;const details=document.createElement('details');details.open=true;details.append(text('summary','Summary'));const list=text('ul');for(const point of result.bullets){const item=text('li');item.append(text('p',point.text));const evidence=document.createElement('details');evidence.append(text('summary','Source'),text('blockquote',point.quote));item.append(evidence);list.append(item);}details.append(list);if(result.partial)details.append(text('p','Based on available cached text; some content was not included.','muted small'));content.replaceChildren(details);button.hidden=true;status.textContent='';}catch(e){if(section.isConnected)status.textContent=e.message;}finally{button.disabled=false;}};
+};

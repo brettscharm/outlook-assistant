@@ -226,3 +226,5 @@ main>header{height:auto;min-height:68px;gap:12px;flex-wrap:wrap;padding-top:12px
 .recordings-toolbar{gap:12px;flex-wrap:wrap;margin-bottom:18px}.recordings-toolbar input{flex:1;min-width:180px}.recordings-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr));gap:16px;margin-bottom:20px}.recording-card h3{overflow-wrap:anywhere}.recording-card .actions{margin-top:16px}dialog[aria-label="Add recording"]{width:min(700px,90vw);max-height:85vh;overflow:auto}
 
 .sidebar-connections{display:grid;gap:2px;padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid var(--line)}.sidebar .brand{margin-bottom:16px}.sidebar-connections .sync-controls{width:100%}
+
+.email-summary{border:1px solid var(--line);border-radius:12px;background:#f7f9fc;padding:14px 18px;margin:16px 0}.email-summary>span{margin-left:10px}.email-summary>div>details>summary{font-weight:600;cursor:pointer}.email-summary ul{padding-left:20px;margin-bottom:0}.email-summary li p{margin:10px 0 4px}.email-summary li details{font-size:12px;color:var(--muted)}.email-summary blockquote{white-space:pre-wrap;margin:8px 0}
