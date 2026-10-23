@@ -16,4 +16,9 @@ captureStop.onclick=()=>busy(captureStop,async()=>renderCaptureStatus(await api(
 refreshRecorder();setInterval(refreshRecorder,2000);
 
 window.refreshRecorder=refreshRecorder;
+const reminderLabel=text('label','Ask to record calls','capture-choice'),reminderToggle=document.createElement('input'),reminderStatus=text('span','','muted small');reminderToggle.type='checkbox';reminderToggle.disabled=true;reminderLabel.prepend(reminderToggle);const reminderSettings=text('div','','actions');reminderSettings.style.margin='12px 0';reminderSettings.append(reminderLabel,reminderStatus);recordingsHeading.after(reminderSettings);
+async function refreshReminders(){try{const value=await api('/api/call-prompts');reminderToggle.checked=value.enabled;reminderToggle.disabled=!value.supported;reminderStatus.textContent=!value.supported?'Requires macOS 14.2 or later.':value.error||'';}catch{reminderStatus.textContent='Recording reminders unavailable.';}}
+reminderToggle.onchange=async()=>{reminderToggle.disabled=true;try{await api('/api/call-prompts',{action:'settings',enabled:reminderToggle.checked});}catch(e){notice(e.message,'error');}finally{await refreshReminders();}};
+refreshReminders();setInterval(()=>{if(recordingsView.classList.contains('active'))refreshReminders();},15000);
+
 })();

@@ -16,7 +16,7 @@ from .local_store import profiles, LocalStoreBridge
 from .contacts import group_contacts, link_company, link_companies, suggest_company, set_favorite
 from .tasks import board_lanes, save_board_lanes, move_task, load_tasks, add_task, toggle_task, delete_task, edit_task
 from . import recorder, slack_import, email_summary, recordings, workspace_search, transcript_export, project_search, meeting_tasks, project_mail, task_files, meeting_mail, calendar_cache, mail_archive, task_progress, bob_install, projects, ai_profiles, task_workflow, email_chat, workspace, setup_check, drafts, storage, usage, bob_status, outlook_status, onboarding
-from . import transcription
+from . import transcription, call_prompts
 from .updater import check_and_apply_update
 
 PORT = 8484
@@ -81,6 +81,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
             available=bool(release['version'] and installed and tuple(map(int,release['version'].split('.')))>tuple(map(int,installed.split('.'))))
             return self._send_json({**release,'installed':installed,'update_available':available})
         if path=='/api/slack':return self._send_json(slack_import.listing(q.get('search',[''])[0],q.get('conversation',[''])[0],q.get('offset',['0'])[0]))
+        if path=='/api/call-prompts':return self._send_json(call_prompts.snapshot())
         if path=='/api/transcription':
             ident=q.get('id',[''])[0]
             return self._send_json(transcription.detail(ident) if ident else transcription.listing())
@@ -206,6 +207,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         if path=='/api/workspace-search':return self._send_json(workspace_search.start(self.engine,data))
         if path=='/api/project-search':return self._send_json(project_search.ask(self.engine,data))
         if path=='/api/transcript-export':return self._send_json(transcript_export.export(data))
+        if path=='/api/call-prompts':return self._send_json(call_prompts.command(data))
         if path=='/api/transcription':
             action=data.get('action')
             if action=='speakers':return self._send_json(transcription.rename_speakers(data))
@@ -383,6 +385,7 @@ def start_app_server(port=PORT,open_browser=True):
     threading.Thread(target=task_reminders.scheduler,args=(scan_shutdown,),daemon=True).start()
     speech_thread=threading.Thread(target=transcription.scheduler,args=(scan_shutdown,),daemon=True)
     speech_thread.start()
+    threading.Thread(target=call_prompts.supervise,args=(port,INSTANCE,scan_shutdown),daemon=True).start()
     print(f'Outlook Assistant: http://localhost:{port}',flush=True)
     if open_browser:
         import webbrowser
