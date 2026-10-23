@@ -153,20 +153,24 @@ def process(job, shutdown):
 
 
 def scheduler(shutdown):
-    # A second server must not run another speech worker against the same queue.
-    import fcntl
+    # An OS-owned loopback port is released on exit and works in older frozen apps
+    # that do not bundle fcntl. No server listens or accepts data on this socket.
+    import socket
     ROOT.mkdir(parents=True,exist_ok=True,mode=0o700)
-    with (ROOT/'worker.lock').open('w') as lock:
-        try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-        except BlockingIOError:return
+    port=30000+int(hashlib.sha256(str(ROOT).encode()).hexdigest()[:8],16)%20000
+    with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as lock:
+        while not shutdown.is_set():
+            try:lock.bind(('127.0.0.1',port));break
+            except OSError:
+                if shutdown.wait(5):return
+        if shutdown.is_set():return
         for row in listing():
             if row['state'] in ACTIVE:
                 job=load(row['id']);job.update(state='queued',message='Resuming…');save(job)
         while not shutdown.is_set():
             from . import recorder
             try:recorder.snapshot()
-            except (ValueError,OSError,RuntimeError):pass  # A removed project must not stop other jobs.
-            # Finalize and enqueue even when no browser window is open.
+            except (ValueError,OSError,RuntimeError):pass
             job=next((row for row in reversed(listing()) if row['state']=='queued'),None)
             if job:
                 with _WORK:

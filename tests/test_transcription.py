@@ -86,7 +86,7 @@ class TranscriptionTests(unittest.TestCase):
         job=self.job();job.update(state='processing',published_transcript='Existing transcript');t.save(job)
         shutdown=threading.Event();seen=[]
         def process(restored,stop):seen.append(restored);stop.set()
-        with patch.object(recorder,'snapshot'),patch.object(t,'process',side_effect=process):t.scheduler(shutdown)
+        with patch('socket.socket'),patch.object(recorder,'snapshot'),patch.object(t,'process',side_effect=process):t.scheduler(shutdown)
         self.assertEqual(len(seen),1)
         self.assertEqual(seen[0]['published_transcript'],'Existing transcript')
         self.assertEqual(seen[0]['state'],'queued')
