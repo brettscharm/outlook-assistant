@@ -1,13 +1,13 @@
 import json,tempfile,time,unittest
 from pathlib import Path
 from unittest.mock import patch,Mock
-from outlook_plugin import recorder as r
+from outlook_plugin import recorder as r, transcription
 from outlook_plugin.storage import write_json,read_json
 
 class RecorderTests(unittest.TestCase):
  def setUp(self):
   temp=tempfile.TemporaryDirectory();self.addCleanup(temp.cleanup);self.root=Path(temp.name);self.dest=self.root/'attachments';self.dest.mkdir()
-  for p in [patch.object(r,'ROOT',self.root/'recordings'),patch.object(r,'FILE',self.root/'session.json'),patch.object(r,'supported',return_value=True),patch.object(r.task_files,'directory',return_value=self.dest),patch.object(r.subprocess,'run',return_value=Mock(returncode=0)),patch.object(r.shutil,'disk_usage',return_value=Mock(free=10**10))]:p.start();self.addCleanup(p.stop)
+  for p in [patch.object(transcription,'ROOT',self.root/'transcription'),patch.object(r,'ROOT',self.root/'recordings'),patch.object(r,'FILE',self.root/'session.json'),patch.object(r,'supported',return_value=True),patch.object(r.task_files,'directory',return_value=self.dest),patch.object(r.subprocess,'run',return_value=Mock(returncode=0)),patch.object(r.shutil,'disk_usage',return_value=Mock(free=10**10))]:p.start();self.addCleanup(p.stop)
   r.release_update()
  def start(self):return r.start({'project_id':'p','title':'Test','video':False,'microphone':True})
  def native(self,state,**kw):
@@ -19,6 +19,8 @@ class RecorderTests(unittest.TestCase):
  def test_completed_attachment_persists_and_registers_once(self):
   self.start();session,folder=self.native('complete');(folder/'recording.m4a').write_bytes(b'fixture media')
   self.assertEqual(r.snapshot()['state'],'complete');r.snapshot()
+  self.assertEqual(len(transcription.listing()),1)
+  self.assertEqual(transcription.listing()[0]['state'],'queued')
   files=read_json(self.dest/'index.json',{})['files'];self.assertEqual(len(files),1);self.assertEqual(files[0]['name'],'Test.m4a');self.assertTrue((self.dest/'recordings'/(session['id']+'.m4a')).is_file())
  def test_recovers_rename_before_index_write(self):
   self.start();session,folder=self.native('complete');target=self.dest/'recordings';target.mkdir();(target/(session['id']+'.m4a')).write_bytes(b'saved')

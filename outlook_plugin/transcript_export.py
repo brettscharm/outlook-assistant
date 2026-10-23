@@ -12,7 +12,7 @@ def filename(title):
 def export(data):
     title=data.get('title','Meeting');content=data.get('transcript')
     if not isinstance(title,str) or len(title)>300:raise ValueError('Invalid meeting title.')
-    if not isinstance(content,str) or not content.strip() or len(content)>60000:raise ValueError('Add a transcript of up to 60,000 characters first.')
+    if not isinstance(content,str) or not content.strip() or len(content)>500000:raise ValueError('Add a transcript of up to 500,000 characters first.')
     script='''on run argv
 try
 activate

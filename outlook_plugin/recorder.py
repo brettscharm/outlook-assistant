@@ -65,6 +65,10 @@ def snapshot():
         if state=='complete' and not session.get('registered'):
             try:_finish(session,folder)
             except (OSError,ValueError,RuntimeError) as exc:state='failed';status['message']='Recording retained, but could not be attached: '+str(exc)
+        if state=='complete' and session.get('registered'):
+            from . import transcription
+            try:transcription.enqueue(session['project_id'],session['id'],session['title'],session['created_at'])
+            except (ValueError,OSError,RuntimeError) as exc:status['message']='Recording saved; transcription could not be queued: '+str(exc)
         result.update(state=state,active=state in ACTIVE,message=status.get('message',''),started_at=status.get('started_at',0),id=session['id'],project_id=session['project_id'],title=session['title'],recoverable=state=='failed')
         return result
 
@@ -107,6 +111,8 @@ def reserve_update():
     global _UPDATING
     with _LOCK:
         if snapshot()['active']:return False
+        from . import transcription
+        if any(job['state'] in transcription.ACTIVE for job in transcription.listing()):return False
         _UPDATING=True;return True
 
 def release_update():

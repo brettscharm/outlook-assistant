@@ -41,7 +41,7 @@ class MeetingTasksTest(unittest.TestCase):
         self.assertEqual(projects.validate_meetings([value])[0]['transcript'],value['transcript'])
         self.assertEqual(projects.validate_meetings([value])[0]['recording_file_id'],'file1')
     def test_oversized_transcript_rejected(self):
-        with self.assertRaises(ValueError):projects.validate_meetings([dict(self.meeting,transcript='x'*60001)])
+        with self.assertRaises(ValueError):projects.validate_meetings([dict(self.meeting,transcript='x'*500001)])
 
     def test_accept_keeps_project_and_recording_link(self):
         self.run_extract();task=next(iter(self.store['suggestions'].values()))
@@ -53,3 +53,26 @@ class MeetingTasksTest(unittest.TestCase):
     def test_reworded_title_same_evidence_is_not_duplicated(self):
         self.run_extract();self.answer['tasks'][0]['text']='Prepare and send the proposal'
         self.assertEqual(self.run_extract()['added'],0)
+
+    def test_anonymous_speaker_is_not_assigned_as_a_person(self):
+        self.meeting['transcript']='Speaker 1: I will send the proposal.'
+        self.answer['tasks'][0].update(owner='Speaker 1',owner_evidence=self.meeting['transcript'])
+        self.run_extract()
+        self.assertEqual(next(iter(self.store['suggestions'].values()))['owner'],'Unassigned')
+
+    def test_named_speaker_updates_pending_but_not_accepted(self):
+        self.answer['tasks'][0].update(owner='',owner_evidence='')
+        self.run_extract()
+        self.answer['tasks'][0].update(owner='Alex Smith',owner_evidence='Alex Smith: I will send the proposal.')
+        self.assertEqual(self.run_extract()['added'],0)
+        old=next(iter(self.store['suggestions'].values()))
+        self.assertEqual(old['owner'],'Alex Smith')
+        old['status']='accepted';old['owner']='User edited'
+        self.run_extract()
+        self.assertEqual(next(iter(self.store['suggestions'].values()))['owner'],'User edited')
+
+    def test_long_transcript_is_processed_in_sections(self):
+        self.meeting['transcript']='Alex Smith: I will send the proposal.\n'*1500
+        self.run_extract()
+        self.assertGreater(meeting_tasks.BobAIAgent._call_llm.call_count,1)
+        self.assertEqual(len(self.store['suggestions']),1)

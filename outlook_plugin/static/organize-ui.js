@@ -98,15 +98,15 @@ function addProjectMeetingRow(meeting={}){
  const row=text('section','','project-meeting-row');const ident=meeting.id||crypto.randomUUID();
  function field(label,value,type='text'){const wrap=text('label',label),input=document.createElement(type==='textarea'?'textarea':'input');if(type!=='textarea')input.type=type;input.value=value||'';input.setAttribute('aria-label',label);wrap.append(input);row.append(wrap);return input;}
  const title=field('Meeting name',meeting.title);title.required=true;title.maxLength=300;
- let local='';if(meeting.occurred_at){const d=new Date(meeting.occurred_at);if(!isNaN(d))local=new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);}
+ let local='';if(meeting.occurred_at){const d=new Date(meeting.occurred_at);if(!isNaN(d))local=new Date(d.getTime()-d.getTimezoneOffset()*500000).toISOString().slice(0,16);}
  const when=field('Meeting date & time',local,'datetime-local');
  const recording=field('Recording link',meeting.recording_url,'url');recording.placeholder='Paste a Teams recording link';recording.pattern='https://.*';recording.maxLength=4000;
  const link=field('Meeting link',meeting.meeting_url,'url');link.placeholder='https://…';link.pattern='https://.*';link.maxLength=4000;
  const notes=field('Meeting notes',meeting.notes,'textarea');notes.rows=2;notes.maxLength=4000;
- const transcript=field('Transcript',meeting.transcript,'textarea');transcript.rows=7;transcript.maxLength=60000;transcript.placeholder='Paste the transcript with speaker names and timestamps.';
+ const transcript=field('Transcript',meeting.transcript,'textarea');transcript.rows=7;transcript.maxLength=500000;transcript.placeholder='Paste the transcript with speaker names and timestamps.';
  const transcriptActions=text('div','','actions');const importTranscript=text('button','Import transcript');importTranscript.type='button';const transcriptFile=document.createElement('input');transcriptFile.type='file';transcriptFile.accept='.txt,.vtt,.srt';transcriptFile.hidden=true;
  const result=text('p','','muted small');result.setAttribute('role','status');
- importTranscript.onclick=()=>transcriptFile.click();transcriptFile.onchange=async()=>{try{const file=transcriptFile.files[0];if(!file)return;if(file.size>240000)throw Error('Use a transcript up to 60,000 characters.');const content=await file.text();if(content.length>60000)throw Error('Use a transcript up to 60,000 characters.');transcript.value=content;queueProjectSave();result.textContent='Transcript added.';}catch(e){result.textContent=e.message;}finally{transcriptFile.value='';}};
+ importTranscript.onclick=()=>transcriptFile.click();transcriptFile.onchange=async()=>{try{const file=transcriptFile.files[0];if(!file)return;if(file.size>2000000)throw Error('Use a transcript up to 500,000 characters.');const content=await file.text();if(content.length>500000)throw Error('Use a transcript up to 500,000 characters.');transcript.value=content;queueProjectSave();result.textContent='Transcript added.';}catch(e){result.textContent=e.message;}finally{transcriptFile.value='';}};
  const recordingLabel=text('label','Attached recording');const recordingFile=document.createElement('select');recordingLabel.append(recordingFile);const none=text('option','None');none.value='';recordingFile.append(none);let recordingId=meeting.recording_file_id||'';
  if(recordingId){const current=text('option','Saved recording');current.value=recordingId;recordingFile.append(current);recordingFile.value=recordingId;}
  const projectId=editingProject;

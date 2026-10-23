@@ -234,9 +234,9 @@ A matching email invitation or explicit booking confirmation can produce a **com
 
 ### Transcript tasks
 
-In **Projects → Meetings**, choose an uploaded recording or paste its recording link. Paste a speaker-labeled transcript, or import a UTF-8 `.txt`, `.vtt`, or `.srt` file (up to 60,000 characters per meeting). Transcripts autosave with the project. Click **Find tasks** to send the transcript and saved context to Bob. Suggestions appear in **Tasks to review**, with the project, source quote, and named owner. Unknown owners stay unassigned. Review owners and deadlines before adding; assignment does not notify anyone. Previously reviewed suggestions are remembered on subsequent scans.
+In **Projects → Meetings**, choose an uploaded recording or paste its recording link. Paste a speaker-labeled transcript, or import a UTF-8 `.txt`, `.vtt`, or `.srt` file (up to 500,000 characters per meeting). Transcripts autosave with the project. Click **Find tasks** to send the transcript and saved context to Bob. Suggestions appear in **Tasks to review**, with the project, source quote, and named owner. Unknown owners stay unassigned. Review owners and deadlines before adding; assignment does not notify anyone. Previously reviewed suggestions are remembered on subsequent scans.
 
-Audio/video transcription, speaker diarization, and in-app screen capture are not included in this transcript workflow. Export the transcript from your meeting provider first. Uploaded recordings remain local attachments; recording links are not downloaded or transcribed.
+Native recordings are transcribed automatically after Stop & save. For an existing local project recording, choose **Transcribe** in Recordings. Recording links are not downloaded or transcribed; attach a local copy you can access, or import the provider transcript.
 
 ### Ask a project
 
@@ -268,7 +268,7 @@ Project search, workspace search, drafts, and task discovery can overlap. Each k
 
 Open **Recordings** in the sidebar to browse local audio/video attachments, project meeting recording links, and saved transcripts. Filter by project or search names; larger libraries paginate. **Open recording** uses the default Mac player; **Open web recording** opens the saved HTTPS link. **View transcript** opens the project meeting, where you can edit/export its transcript or find tasks.
 
-Choose **Add recording**, select a saved project, and upload or drop files. Choose **Add link or transcript** to create a project meeting instead. Files remain in their existing project/task attachment folders; this library does not duplicate them. Live recording and automatic transcription are not part of this tab.
+Choose **Add existing**, select a saved project, and upload or drop files. Choose **Add link or transcript** to create a project meeting instead. Files remain in their existing project/task attachment folders; this library does not duplicate them. Use **Start recording** for a new call; it saves and transcribes automatically.
 
 ### Long-email summaries
 
@@ -294,6 +294,24 @@ On an Apple silicon Mac with **macOS 14 or later**, open **Recordings → Start 
 
 A visible banner and a Mac menu-bar recorder show that capture is active. Use **Stop & save** in either place. The recorder runs separately, so minimizing the main app does not stop it; closing the laptop or sleeping can interrupt capture. App updates wait until capture is finished. Recordings stop automatically after three hours, 2 GB of intermediate media, or low disk space. Start requires 3 GB free because saving temporarily needs room for the final file too.
 
-Finished audio (`.m4a`) or video (`.mp4`) is attached to the selected project and appears under Recordings. Interrupted or failed exports retain their source files under `~/Library/Application Support/Outlook Assistant/recordings/<session>/`; **Show recovery files** opens that folder. Recording itself uses no Bob allowance. Transcription and automatic Teams/Slack call detection are not part of this manual capture feature. This capture path still needs a real-call permission/audio test on each supported Mac setup.
+Finished audio (`.m4a`) or video (`.mp4`) is attached to the selected project and appears under Recordings. Interrupted or failed exports retain their source files under `~/Library/Application Support/Outlook Assistant/recordings/<session>/`; **Show recovery files** opens that folder. Recording itself uses no Bob allowance. Local transcription follows automatically; task extraction uses your Bob allowance. Automatic Teams/Slack call detection is not included. This capture path still needs a real-call permission/audio test on each supported Mac setup.
 
 Developers: `bash scripts/build_recorder.sh` builds/signs the bundled recorder. Its `--self-test <empty-folder>` and `--self-test-video <empty-folder>` modes exercise the real media writer/export with generated tones/frames only; they do not access capture devices.
+
+
+### Automatic transcripts and project tasks (2.37)
+
+1. Open **Recordings → Start recording**, choose a project, then choose the audio/screen source in macOS.
+2. **Stop & save** attaches the file and queues local transcription. The first run downloads a private Python runtime, speech packages, and models (about 1 GB; allow 3 GB free). No Terminal, Python, or extra API key is required on Apple silicon Macs with macOS 14+. Internet is needed for first-use downloads and Bob task extraction.
+3. The recording card shows setup, speaker separation, transcription, and task progress. **Transcript & speakers** lets you name voices and export the transcript. Speaker labels are estimates, including recurring voices within the same recording; overlapping or unmatched speech stays explicitly uncertain. Names heard in introductions appear as suggestions for confirmation. There is no voice identity database across calls.
+4. Bob extracts evidence-backed tasks into **Tasks to review**, linked to the project and meeting transcript. Review ownership and due dates before accepting. Confirmed speaker names update pending suggestions on the next pass; accepted/dismissed tasks are preserved. Assigning a name does not message that person.
+
+Only one local speech job runs at a time, with two CPU threads per speech model. Long transcripts are sent to Bob in sections through the shared scheduler. Audio stays local; transcript text and saved context go to Bob for task extraction. No recording, transcription, or speaker identification is perfect, especially with overlapping voices, echo, accents, or poor microphones.
+
+Jobs, timestamped speaker segments, and confirmed names are saved under `~/Library/Application Support/Outlook Assistant/transcription/jobs/`. Downloaded speech tools/models live beside that folder. The project transcript is also saved with project data and included in workspace exports; binary recordings and the separate speech-job files are not included in JSON backup exports. App updates preserve these data folders and wait for queued/active processing. After a normal app restart, unfinished work resumes. **Retry** reuses a saved transcript if only the Bob task step failed. Manual edits made in the project transcript are preserved rather than overwritten by processing.
+
+Existing local project recordings have a **Transcribe** button. Web links and recordings attached only to tasks require a local project attachment first. Uploads do not silently start processing. The transcription limit is three hours per file. Closing the app stops processing until it is reopened; minimizing the window does not. Initial setup errors are visible with Retry; corporate download restrictions still apply.
+
+Speech components: [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (MIT), [Whisper models](https://github.com/openai/whisper) (MIT), [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) (Apache-2.0), [speaker segmentation model](https://huggingface.co/pyannote/segmentation-3.0) (MIT), [WeSpeaker](https://github.com/wenet-e2e/wespeaker) (Apache-2.0), and [Python standalone builds](https://github.com/astral-sh/python-build-standalone). Python and speaker-model archives are checksum-pinned, Whisper uses a pinned model revision, and Python package versions are pinned in `speech-requirements.txt`. Models are downloaded on first use rather than stored in this repository.
+
+Validation: real local transcription and speaker separation on a synthetic two-voice conversation, real Bob extraction against that transcript with isolated project/task storage, restart/retry and deduplication unit tests, and desktop/mobile browser checks. Live Teams/Slack capture, hour-long performance, and a clean Mac installation still require field testing.

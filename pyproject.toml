@@ -20,4 +20,4 @@ outlook-assistant = "outlook_plugin.cli:main"
 include = ["outlook_plugin*"]
 
 [tool.setuptools.package-data]
-outlook_plugin = ["static/*", "bin/*"]
+outlook_plugin = ["static/*", "bin/*", "speech-requirements.txt"]

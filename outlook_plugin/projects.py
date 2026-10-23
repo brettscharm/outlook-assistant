@@ -37,7 +37,7 @@ def validate_meetings(meetings):
     for meeting in meetings:
         if not isinstance(meeting,dict):raise ValueError('Invalid meeting.')
         row={}
-        for key,limit in [('id',100),('title',300),('notes',4000),('transcript',60000),('recording_file_id',100),('occurred_at',50),('calendar_id',300),('meeting_url',4000),('recording_url',4000)]:
+        for key,limit in [('id',100),('title',300),('notes',4000),('transcript',500000),('recording_file_id',100),('occurred_at',50),('calendar_id',300),('meeting_url',4000),('recording_url',4000)]:
             value=meeting.get(key,'')
             if not isinstance(value,str) or len(value)>limit:raise ValueError('Invalid meeting '+key+'.')
             row[key]=value.strip()
