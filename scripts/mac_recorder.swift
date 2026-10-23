@@ -2,6 +2,21 @@ import Cocoa
 import AVFoundation
 import ScreenCaptureKit
 
+// Match Retina pixels without upscaling; bound memory and encoder load on large displays.
+struct RecordingVideoSize {
+    let width: Int
+    let height: Int
+    var bitRate: Int { min(24_000_000, max(6_000_000, width * height * 3)) }
+    static func fit(width: Double, height: Double, scale: Double) -> RecordingVideoSize {
+        guard width.isFinite, height.isFinite, scale.isFinite, width > 0, height > 0, scale > 0 else {
+            return RecordingVideoSize(width:1920,height:1080)
+        }
+        let w=width*scale, h=height*scale
+        let ratio=min(1, 3840/max(w,h), sqrt(8_294_400/(w*h)))
+        return RecordingVideoSize(width:max(2,Int(w*ratio/2)*2),height:max(2,Int(h*ratio/2)*2))
+    }
+}
+
 // Independent, visible recorder. No background capture begins until the system picker returns a selection.
 @available(macOS 14.0, *)
 final class Recorder: NSObject, NSApplicationDelegate, SCContentSharingPickerObserver, SCStreamOutput, SCStreamDelegate, AVCaptureAudioDataOutputSampleBufferDelegate {
@@ -29,6 +44,7 @@ final class Recorder: NSObject, NSApplicationDelegate, SCContentSharingPickerObs
     var sampleError: String?
     var completionNote = ""
     var exported = false
+    var videoSize = RecordingVideoSize(width:1920,height:1080)
     init(directory: URL, video: Bool, microphone: Bool) { self.directory=directory;self.video=video;self.microphone=microphone }
     func report(_ state: String, _ message: String) {
         self.state=state;self.message=message
@@ -79,13 +95,14 @@ final class Recorder: NSObject, NSApplicationDelegate, SCContentSharingPickerObs
         let output=try AVAssetWriter(outputURL:directory.appendingPathComponent("capture.mov"),fileType:.mov)
         func audioTrack()->AVAssetWriterInput {let track=AVAssetWriterInput(mediaType:.audio,outputSettings:[AVFormatIDKey:kAudioFormatMPEG4AAC,AVSampleRateKey:48000,AVNumberOfChannelsKey:2,AVEncoderBitRateKey:128000]);track.expectsMediaDataInRealTime=true;output.add(track);return track}
         audioInput=audioTrack();if microphone{micInput=audioTrack()}
-        if video {let track=AVAssetWriterInput(mediaType:.video,outputSettings:[AVVideoCodecKey:AVVideoCodecType.h264,AVVideoWidthKey:1280,AVVideoHeightKey:720,AVVideoCompressionPropertiesKey:[AVVideoAverageBitRateKey:2_500_000]]);track.expectsMediaDataInRealTime=true;output.add(track);screenInput=track}
+        if video {let track=AVAssetWriterInput(mediaType:.video,outputSettings:[AVVideoCodecKey:AVVideoCodecType.h264,AVVideoWidthKey:videoSize.width,AVVideoHeightKey:videoSize.height,AVVideoCompressionPropertiesKey:[AVVideoAverageBitRateKey:videoSize.bitRate,AVVideoExpectedSourceFrameRateKey:30,AVVideoMaxKeyFrameIntervalKey:60,AVVideoProfileLevelKey:AVVideoProfileLevelH264HighAutoLevel]]);track.expectsMediaDataInRealTime=true;output.add(track);screenInput=track}
         writer=output
         return output
     }
     func start(_ filter: SCContentFilter) async throws {
         guard !stopping else{return}
-        let config=SCStreamConfiguration();config.width=1280;config.height=720;config.minimumFrameInterval=CMTime(value:1,timescale:15);config.queueDepth=4;config.capturesAudio=true;config.sampleRate=48000;config.channelCount=2;config.excludesCurrentProcessAudio=true;config.showsCursor=true
+        videoSize=RecordingVideoSize.fit(width:Double(filter.contentRect.width),height:Double(filter.contentRect.height),scale:Double(filter.pointPixelScale))
+        let config=SCStreamConfiguration();config.width=video ? videoSize.width : 1280;config.height=video ? videoSize.height : 720;config.scalesToFit=true;config.minimumFrameInterval=CMTime(value:1,timescale:30);config.queueDepth=4;config.capturesAudio=true;config.sampleRate=48000;config.channelCount=2;config.excludesCurrentProcessAudio=true;config.showsCursor=true
         let output=try prepareWriter()
         let capture=SCStream(filter:filter,configuration:config,delegate:self);self.stream=capture
         try capture.addStreamOutput(self,type:.audio,sampleHandlerQueue:queue)
@@ -100,7 +117,7 @@ final class Recorder: NSObject, NSApplicationDelegate, SCContentSharingPickerObs
         guard output.startWriting() else {throw output.error ?? NSError(domain:"Recorder",code:3)}
         try await capture.startCapture()
         mic?.startRunning();started=Date();activity=ProcessInfo.processInfo.beginActivity(options:[.userInitiated,.idleSystemSleepDisabled],reason:"Recording a call")
-        report("recording",video ? "Recording screen, call audio\(microphone ? " and microphone" : ""). Use Stop to save." : "Recording call audio\(microphone ? " and microphone" : ""). No screen video is saved.")
+        report("recording",video ? "Recording screen (\(videoSize.width) × \(videoSize.height)), call audio\(microphone ? " and microphone" : ""). Use Stop to save." : "Recording call audio\(microphone ? " and microphone" : ""). No screen video is saved.")
     }
     func append(_ sample: CMSampleBuffer,to input: AVAssetWriterInput?){
         guard let writer=writer,let input=input,!stopping,CMSampleBufferDataIsReady(sample) else{return}
@@ -132,20 +149,30 @@ final class Recorder: NSObject, NSApplicationDelegate, SCContentSharingPickerObs
     func exportRecording(){
         guard writer?.status == .completed else{finish("failed",writer?.error?.localizedDescription ?? "Recording could not be finalized. The partial file was retained.");return}
         let asset=AVURLAsset(url:directory.appendingPathComponent("capture.mov"))
-        guard let exporter=AVAssetExportSession(asset:asset,presetName:video ? AVAssetExportPreset1280x720 : AVAssetExportPresetAppleM4A) else{finish("failed","Could not prepare the recording. The original file was retained.");return}
+        guard let exporter=AVAssetExportSession(asset:asset,presetName:video ? AVAssetExportPresetHighestQuality : AVAssetExportPresetAppleM4A) else{finish("failed","Could not prepare the recording. The original file was retained.");return}
         Task { @MainActor in
         let tracks: [AVAssetTrack]
         do {tracks=try await asset.loadTracks(withMediaType:.audio)}catch{finish("failed",error.localizedDescription);return}
         let mix=AVMutableAudioMix();mix.inputParameters=tracks.map{track in let p=AVMutableAudioMixInputParameters(track:track);p.setVolume(1,at:.zero);return p};exporter.audioMix=mix
         exporter.outputURL=directory.appendingPathComponent(video ? "recording.mp4" : "recording.m4a");exporter.outputFileType=video ? .mp4 : .m4a
         await exporter.export()
-        if exporter.status == .completed {self.exported=true;try? FileManager.default.removeItem(at:self.directory.appendingPathComponent("capture.mov"));self.finish("complete",self.sampleError == nil ? "Recording saved."+self.completionNote : "Recording saved after capture stopped: "+self.sampleError!)}
+        if exporter.status == .completed {
+            if video {
+                do {
+                    let saved=AVURLAsset(url:exporter.outputURL!)
+                    guard let track=try await saved.loadTracks(withMediaType:.video).first else {throw NSError(domain:"Recorder",code:4,userInfo:[NSLocalizedDescriptionKey:"Export did not contain screen video. The original file was retained."])}
+                    let size=try await track.load(.naturalSize)
+                    guard Int(size.width)==videoSize.width,Int(size.height)==videoSize.height else {throw NSError(domain:"Recorder",code:5,userInfo:[NSLocalizedDescriptionKey:"Export changed the video resolution. The original file was retained."])}
+                }catch {self.finish("failed",error.localizedDescription);return}
+            }
+            self.exported=true;try? FileManager.default.removeItem(at:self.directory.appendingPathComponent("capture.mov"));self.finish("complete",self.sampleError == nil ? "Recording saved."+self.completionNote : "Recording saved after capture stopped: "+self.sampleError!)}
         else {self.finish("failed",exporter.error?.localizedDescription ?? "Export failed. The original recording was retained.")}
         }
     }
     // Exercises the real writer/mixer with generated tones, never opens capture devices.
     func selfTest() async {
         do {
+            if video {videoSize=RecordingVideoSize.fit(width:1512,height:982,scale:2)}
             let format=AVAudioFormat(standardFormatWithSampleRate:48000,channels:2)!
             let buffer=AVAudioPCMBuffer(pcmFormat:format,frameCapacity:48000)!;buffer.frameLength=48000
             for channel in 0..<2 {for frame in 0..<48000 {buffer.floatChannelData![channel][frame]=Float(sin(Double(frame)*2*Double.pi*440/48000)*0.15)}}
@@ -161,7 +188,7 @@ final class Recorder: NSObject, NSApplicationDelegate, SCContentSharingPickerObs
             if video {
                 for frame in 0..<15 {
                     var pixel: CVPixelBuffer?
-                    CVPixelBufferCreate(kCFAllocatorDefault,1280,720,kCVPixelFormatType_32BGRA,nil,&pixel)
+                    CVPixelBufferCreate(kCFAllocatorDefault,videoSize.width,videoSize.height,kCVPixelFormatType_32BGRA,nil,&pixel)
                     guard let pixel=pixel else{throw NSError(domain:"SelfTest",code:2)}
                     CVPixelBufferLockBaseAddress(pixel,[]);memset(CVPixelBufferGetBaseAddress(pixel),48,CVPixelBufferGetDataSize(pixel));CVPixelBufferUnlockBaseAddress(pixel,[])
                     var format:CMVideoFormatDescription?;CMVideoFormatDescriptionCreateForImageBuffer(allocator:kCFAllocatorDefault,imageBuffer:pixel,formatDescriptionOut:&format)
@@ -183,6 +210,11 @@ final class Recorder: NSObject, NSApplicationDelegate, SCContentSharingPickerObs
     func applicationShouldTerminate(_ sender:NSApplication)->NSApplication.TerminateReply {if !["complete","failed","cancelled"].contains(state){stopPressed();return .terminateCancel};return .terminateNow}
 }
 let arguments=CommandLine.arguments
+if arguments.contains("--self-test-dimensions") {
+    let cases:[(Double,Double,Double,Int,Int)]=[(1512,982,2,3024,1964),(1920,1080,1,1920,1080),(2560,1440,2,3840,2160),(1080,1920,2,2160,3840),(800,600,1,800,600),(1001,701,1,1000,700),(0,0,1,1920,1080)]
+    for (w,h,s,ew,eh) in cases {let result=RecordingVideoSize.fit(width:w,height:h,scale:s);precondition(result.width==ew && result.height==eh)}
+    print("Video dimensions passed");exit(0)
+}
 if arguments.contains("--check") {print("Outlook Recorder 1; macOS 14+; audio and optional screen video");exit(0)}
 guard arguments.count==4 || arguments.count==3 && arguments[1].hasPrefix("--self-test") else{exit(2)}
 if #available(macOS 14.0, *) {
