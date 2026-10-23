@@ -31,9 +31,10 @@ def save(job): write_json(folder(job['id'])/'job.json',job)
 
 
 def enqueue(project_id, file_id, title='', occurred_at='', retry=False):
-    files=task_files.listing('project',project_id)
+    project_id=project_id or ''
+    files=task_files.listing('project',project_id) if project_id else task_files.listing('library','recordings')
     item=next((f for f in files if f['id']==file_id and f.get('recording')),None)
-    if not item: raise ValueError('Choose a local recording attached to a project.')
+    if not item: raise ValueError('Choose a saved local recording.')
     ident=hashlib.sha256((project_id+':'+file_id).encode()).hexdigest()[:32]
     with _LOCK:
         job=read_json(folder(ident)/'job.json',{})
@@ -41,7 +42,7 @@ def enqueue(project_id, file_id, title='', occurred_at='', retry=False):
             if retry and job['state'] not in ACTIVE:
                 job.update(state='queued',message='Queued',error='');save(job)
             return job
-        job={'id':ident,'project_id':project_id,'file_id':file_id,'title':title or item['name'],'occurred_at':occurred_at or item.get('occurred_at',''),'state':'queued','message':'Queued','created':time.time(),'meeting_ids':[],'added':0}
+        job={'id':ident,'project_id':project_id,'file_id':file_id,'title':title or item['name'],'occurred_at':occurred_at or item.get('occurred_at',''),'state':'queued','message':'Queued','created':time.time(),'meeting_ids':[],'added':0,'library':not bool(project_id)}
         save(job);return job
 
 
@@ -80,6 +81,8 @@ def render(result):
 def persist_transcript(job,result):
     transcript=render(result)
     if len(transcript)>500000: raise ValueError('The transcript exceeds the project text limit. The full transcript remains saved in the recording job.')
+    if not job['project_id']:
+        job['published_transcript']=transcript;save(job);return
     with CONFIG_LOCK:
         rows=projects.list_projects(); project=next((p for p in rows if p['id']==job['project_id']),None)
         if not project: raise ValueError('The project was removed. Your recording and transcript are retained.')
@@ -124,9 +127,9 @@ def process(job, shutdown):
         job.update(state='processing',message='Preparing local transcription…');save(job)
         write_json(path/'progress.json',{'message':'Setting up local speech tools (first use may take several minutes)…','percent':0})
         python=runtime()
-        item=next((f for f in task_files.listing('project',job['project_id']) if f['id']==job['file_id']),None)
+        item=next((f for f in task_files.listing('library' if job.get('library') else 'project','recordings' if job.get('library') else job['project_id']) if f['id']==job['file_id']),None)
         if not item: raise ValueError('The recording attachment was removed.')
-        source=task_files.file_path(task_files.directory('project',job['project_id']),item)
+        source=task_files.file_path(task_files.directory('library' if job.get('library') else 'project','recordings' if job.get('library') else job['project_id']),item)
         environment={k:v for k,v in os.environ.items() if k in ('PATH','HOME','TMPDIR','LANG','SYSTEMROOT')}
         environment.update(OMP_NUM_THREADS='2',OPENBLAS_NUM_THREADS='2',HF_HUB_DISABLE_TELEMETRY='1',HF_HUB_DISABLE_IMPLICIT_TOKEN='1',HF_HUB_DISABLE_XET='1')
         with (path/'worker.log').open('wb') as log:
@@ -145,8 +148,11 @@ def process(job, shutdown):
         if not isinstance(result.get('segments'),list):raise ValueError('The speech engine returned an invalid transcript.')
     persist_transcript(job,result)
     if not result['segments']:job.update(state='complete',message='No speech detected',error='');save(job);return
-    job.update(state='finding_tasks',message='Finding project tasks…');save(job)
-    for ident in job['meeting_ids']:
+    job.update(state='finding_tasks',message='Finding tasks…');save(job)
+    if job.get('library'):
+        answer=meeting_tasks.extract_recording(job)
+        job['added']+=answer['added'];save(job)
+    for ident in ([] if job.get('library') else job['meeting_ids']):
         answer=meeting_tasks.extract({'project_id':job['project_id'],'meeting_id':ident})
         job['added']+=answer['added'];save(job)
     job.update(state='complete',message='Transcript and task suggestions ready',error='');save(job)
@@ -178,3 +184,25 @@ def scheduler(shutdown):
                     except Exception as exc:
                         current=load(job['id']);current.update(state='error',error=str(exc)[:600],message='Transcript saved; task suggestions need retry' if (folder(job['id'])/'result.json').exists() else 'Transcription needs attention');save(current)
             shutdown.wait(3)
+
+
+def assign_recording(file_id,project_id):
+    # Keep the original recording and job IDs stable when organizing it later.
+    if not _WORK.acquire(blocking=False):raise ValueError('Wait for transcription to finish before changing the project.')
+    try:
+        with _LOCK, task_files._LOCK:
+            task_files.directory('project',project_id)
+            destination=task_files.directory('library','recordings')
+            rows=read_json(destination/'index.json',{'files':[]})['files']
+            item=next((f for f in rows if f['id']==file_id),None)
+            if not item:raise ValueError('Recording not found.')
+            job=enqueue('',file_id)
+            if job['state'] in ACTIVE:raise ValueError('Wait for transcription to finish before changing the project.')
+            if job['project_id'] and job['project_id']!=project_id:raise ValueError('This recording already belongs to a different project.')
+            result=read_json(folder(job['id'])/'result.json',{})
+            if not result:raise ValueError('Transcribe this recording before assigning a project.')
+            job['project_id']=project_id
+            persist_transcript(job,result)
+            item['project_id']=project_id;write_json(destination/'index.json',{'files':rows})
+            return {'assigned':True}
+    finally:_WORK.release()

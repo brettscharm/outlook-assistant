@@ -21,6 +21,7 @@ EXTENSIONS = {'.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.pdf', '.txt',
 _LOCK = threading.RLock()
 
 def directory(kind, owner):
+    if kind == 'library' and owner == 'recordings':return ROOT/'library'/'recordings'
     if kind not in ('task', 'project') or not isinstance(owner,str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,100}',owner):
         raise ValueError('Choose a saved task or project.')
     rows = [t for group in load_tasks().values() for t in group] if kind == 'task' else list_projects()

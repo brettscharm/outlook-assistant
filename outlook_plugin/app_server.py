@@ -210,6 +210,7 @@ class AppRequestHandler(http.server.SimpleHTTPRequestHandler):
         if path=='/api/call-prompts':return self._send_json(call_prompts.command(data))
         if path=='/api/transcription':
             action=data.get('action')
+            if action=='assign':return self._send_json(transcription.assign_recording(data.get('file_id'),data.get('project_id')))
             if action=='speakers':return self._send_json(transcription.rename_speakers(data))
             if action in ('start','retry'):
                 return self._send_json(transcription.enqueue(data.get('project_id'),data.get('file_id'),retry=action=='retry'))

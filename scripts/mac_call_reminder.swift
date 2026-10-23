@@ -74,12 +74,11 @@ class Reminder:NSObject,NSApplicationDelegate {
         p.level = .floating;p.collectionBehavior=[.canJoinAllSpaces,.fullScreenAuxiliary];p.isFloatingPanel=true;p.hidesOnDeactivate=false;p.isReleasedWhenClosed=false;p.backgroundColor = .windowBackgroundColor;p.hasShadow=true
         let view=NSView(frame:NSRect(x:0,y:0,width:width,height:height));view.wantsLayer=true;view.layer?.cornerRadius=16;view.layer?.masksToBounds=true;p.contentView=view
         let title=NSTextField(labelWithString:"Record this call?");title.font = .systemFont(ofSize:18,weight:.semibold);title.frame=NSRect(x:20,y:196,width:320,height:25);view.addSubview(title)
-        message=NSTextField(wrappingLabelWithString:"\(currentName) is using your microphone.\nRecord audio to a project.");message.textColor = .secondaryLabelColor;message.frame=NSRect(x:20,y:145,width:320,height:42);view.addSubview(message)
-        project=NSPopUpButton(frame:NSRect(x:18,y:110,width:324,height:28));projectIDs=projects.compactMap{$0["id"]};project.addItems(withTitles:projects.map{$0["name"] ?? "Project"});project.setAccessibilityLabel("Save recording to project");view.addSubview(project)
+        message=NSTextField(wrappingLabelWithString:"\(currentName) is using your microphone.\nRecord audio and transcribe the call.");message.textColor = .secondaryLabelColor;message.frame=NSRect(x:20,y:145,width:320,height:42);view.addSubview(message)
+        project=NSPopUpButton(frame:NSRect(x:18,y:110,width:324,height:28));projectIDs=[""]+projects.compactMap{$0["id"]};project.addItems(withTitles:["No project"]+projects.map{$0["name"] ?? "Project"});project.setAccessibilityLabel("Save recording to project");view.addSubview(project)
         dismissButton=NSButton(title:"Not now",target:self,action:#selector(dismiss));dismissButton.bezelStyle = .rounded;dismissButton.frame=NSRect(x:20,y:63,width:100,height:32);view.addSubview(dismissButton)
         record=NSButton(title:"Record…",target:self,action:#selector(startRecording));record.bezelStyle = .rounded;record.frame=NSRect(x:226,y:63,width:114,height:32);record.isEnabled = !projectIDs.isEmpty;view.addSubview(record)
         let disable=NSButton(checkboxWithTitle:"Don’t ask to record calls",target:self,action:#selector(disableReminders));disable.frame=NSRect(x:20,y:22,width:310,height:24);view.addSubview(disable)
-        if projectIDs.isEmpty{message.stringValue="Create a project in Outlook Assistant first, then use Start recording."}
         let screen=NSScreen.main ?? NSScreen.screens.first
         if let frame=screen?.visibleFrame{p.setFrameOrigin(NSPoint(x:frame.maxX-width-20,y:frame.maxY-height-20))}
         panel=p;p.orderFrontRegardless()

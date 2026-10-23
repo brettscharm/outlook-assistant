@@ -290,7 +290,7 @@ Imports are saved locally, included in downloadable workspace backups, searchabl
 
 ### Start a recording manually
 
-On an Apple silicon Mac with **macOS 14 or later**, open **Recordings → Start recording**. Choose a saved project and optionally give the meeting a title. Call audio and your microphone are enabled by default; turn on **Include screen video** if you also want video. macOS’s picker lets you choose a screen or app. Audio-only mode saves no screen frames. Allow the requested screen/audio and microphone permissions, and let participants know you are recording.
+On an Apple silicon Mac with **macOS 14 or later**, open **Recordings → Start recording**. Choose **No project** or a saved project, and optionally give the meeting a title. Call audio and your microphone are enabled by default; turn on **Include screen video** if you also want video. macOS’s picker lets you choose a screen or app. Audio-only mode saves no screen frames. Allow the requested screen/audio and microphone permissions, and let participants know you are recording.
 
 Screen video uses the selected source’s Retina pixel dimensions, preserving its proportions, up to 4K (3,840 pixels on the long edge and 8.3 megapixels) at up to 30 fps. Smaller sources are not enlarged. The recorder shows the capture resolution; exports preserve it. Higher-quality video uses more disk space and can reach the 2 GB recording limit sooner. Text already blurry in a remote screen share cannot be restored by recording.
 
@@ -321,7 +321,7 @@ Validation: real local transcription and speaker separation on a synthetic two-v
 
 ### “Record this call?” reminders (2.38)
 
-Recording reminders are enabled by default on Apple silicon Macs with **macOS 14.2+**. A small native popup appears when Teams, Slack, Zoom, Chrome, Safari, Edge, Firefox, or Brave reports sustained microphone input. Choose a project and **Record…** to open macOS’s recording picker. This starts the same audio-and-microphone capture and automatic transcription workflow as **Start recording**. Nothing records until you click and select a source. The popup works while the main window is minimized, as long as the app/service remains running.
+Recording reminders are enabled by default on Apple silicon Macs with **macOS 14.2+**. A small native popup appears when Teams, Slack, Zoom, Chrome, Safari, Edge, Firefox, or Brave reports sustained microphone input. Choose **No project** or a project and **Record…** to open macOS’s recording picker. This starts the same audio-and-microphone capture and automatic transcription workflow as **Start recording**. Nothing records until you click and select a source. The popup works while the main window is minimized, as long as the app/service remains running.
 
 **Not now** dismisses the current microphone session. Short input pauses do not cause another prompt; after 90 seconds without that app’s input, a new session can qualify. The helper waits at least eight seconds before offering a reminder and ignores our recorder’s own audio. It suppresses reminders while a recording is active. Choose **Don’t ask to record calls** in the popup, or use **Recordings → Ask to record calls** to turn reminders off/on.
 
@@ -330,3 +330,5 @@ Detection reads public Core Audio process activity—not audio samples, camera f
 The native reminder is a notification-style window, not a Notification Center notification. It does not request notification permission and is not managed by macOS Focus filters; turn reminders off in Recordings if needed. Session dismissal metadata is kept privately in `.outlook_assistant_call_prompts.json`; the setting is in the app config. The helper polls every five seconds and exits when its app service stops or restarts.
 
 Developers: `bash scripts/build_call_reminder.sh` builds the bundled helper. `--probe` reads current supported-app microphone activity without starting capture; `--self-test` checks app attribution. Native popup controls were tested against a synthetic local endpoint that cannot record. Actual calls across each listed app/browser still need field testing.
+
+Recordings can be saved without a project. They appear in Recordings as **No project**, transcribe automatically, and generate task suggestions without a project. After transcription finishes, use the project selector on the recording card to associate it with a project. This preserves the recording and transcript instead of copying the media. Existing suggested or accepted tasks keep their current project; you can organize those separately. Local file uploads also support **No project**; links and pasted meeting transcripts still belong to a project.

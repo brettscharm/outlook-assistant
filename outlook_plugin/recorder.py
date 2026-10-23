@@ -33,7 +33,7 @@ def _finish(session,folder):
     suffix='.mp4' if session['video'] else '.m4a'
     source=folder/('recording'+suffix)
     with task_files._LOCK:
-        destination=task_files.directory('project',session['project_id'])
+        destination=task_files.directory('project',session['project_id']) if session['project_id'] else task_files.directory('library','recordings')
         files=read_json(destination/'index.json',{'files':[]})['files']
         if not any(item['id']==session['id'] for item in files):
             target=destination/'recordings'/(session['id']+suffix)
@@ -77,7 +77,8 @@ def start(data):
         if _UPDATING:raise ValueError('An app update is being installed. Start the recording after it finishes.')
         if snapshot()['active']:raise ValueError('A recording is already active. Stop it before starting another.')
         if not supported():raise ValueError('Recording requires an Apple silicon Mac with macOS 14 or later and the current app files.')
-        project=data.get('project_id');task_files.directory('project',project)
+        project=data.get('project_id') or ''
+        if project:task_files.directory('project',project)
         title=data.get('title','').strip() if isinstance(data.get('title',''),str) else ''
         if len(title)>160 or any(c in title for c in '/\\') or any(ord(c)<32 for c in title):raise ValueError('Use a recording title of up to 160 characters without slashes.')
         video=data.get('video',False);microphone=data.get('microphone',True)
