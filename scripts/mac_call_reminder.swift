@@ -90,8 +90,7 @@ class Reminder:NSObject,NSApplicationDelegate {
         let projectLabel=NSTextField(labelWithString:"Project");projectLabel.font = .systemFont(ofSize:12,weight:.medium);projectLabel.textColor = .secondaryLabelColor;projectLabel.frame=NSRect(x:22,y:102,width:65,height:18);view.addSubview(projectLabel)
         project=NSPopUpButton(frame:NSRect(x:90,y:96,width:250,height:28));projectIDs=[""]+projects.compactMap{$0["id"]};project.addItems(withTitles:["No project"]+projects.map{$0["name"] ?? "Project"});project.setAccessibilityLabel("Save recording to project");project.target=self;project.action=#selector(projectChanged);view.addSubview(project)
         record=NSButton(title:"Record call…",target:self,action:#selector(startRecording));record.bezelStyle = .rounded;record.controlSize = .large;record.bezelColor = .controlAccentColor;record.contentTintColor = .white;record.font = .systemFont(ofSize:13,weight:.semibold);record.frame=NSRect(x:16,y:47,width:328,height:36);view.addSubview(record)
-        let disable=NSButton(checkboxWithTitle:"Don’t ask again",target:self,action:#selector(disableReminders));disable.font = .systemFont(ofSize:11);disable.controlSize = .small;disable.frame=NSRect(x:22,y:17,width:170,height:21);view.addSubview(disable)
-        let hint=NSTextField(labelWithString:"Closes automatically");hint.font = .systemFont(ofSize:10);hint.textColor = .tertiaryLabelColor;hint.alignment = .right;hint.frame=NSRect(x:194,y:20,width:144,height:15);view.addSubview(hint)
+        let hint=NSTextField(labelWithString:"Closes automatically");hint.font = .systemFont(ofSize:10);hint.textColor = .tertiaryLabelColor;hint.alignment = .center;hint.frame=NSRect(x:22,y:20,width:316,height:15);view.addSubview(hint)
         let screen=NSScreen.main ?? NSScreen.screens.first
         if let frame=screen?.visibleFrame{p.setFrameOrigin(NSPoint(x:frame.maxX-width-20,y:frame.maxY-height-20))}
         panel=p;p.orderFrontRegardless()
@@ -107,7 +106,6 @@ class Reminder:NSObject,NSApplicationDelegate {
     }
     @objc func dismiss(){expiryTimer?.invalidate();expiryTimer=nil;panel?.orderOut(nil);currentID=""}
     @objc func projectChanged(){lifetime=ReminderLifetime();lastTick=Date()}
-    @objc func disableReminders(){Task { @MainActor in do{_=try await request("api/call-prompts",["action":"settings","enabled":false]);dismiss()}catch{message.stringValue=error.localizedDescription;lifetime=ReminderLifetime();lastTick=Date()}}}
     @objc func startRecording(){
         guard !starting,project.indexOfSelectedItem>=0,project.indexOfSelectedItem<projectIDs.count else{return}
         starting=true;record.isEnabled=false;dismissButton.isEnabled=false
