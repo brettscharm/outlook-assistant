@@ -23,6 +23,7 @@ final class Recorder: NSObject, NSApplicationDelegate, SCContentSharingPickerObs
     let directory: URL
     let video: Bool
     let microphone: Bool
+    let microphoneOnly: Bool
     let queue = DispatchQueue(label: "outlook.recorder.samples")
     var stream: SCStream?
     var mic: AVCaptureSession?
@@ -45,7 +46,7 @@ final class Recorder: NSObject, NSApplicationDelegate, SCContentSharingPickerObs
     var completionNote = ""
     var exported = false
     var videoSize = RecordingVideoSize(width:1920,height:1080)
-    init(directory: URL, video: Bool, microphone: Bool) { self.directory=directory;self.video=video;self.microphone=microphone }
+    init(directory: URL, video: Bool, microphone: Bool, microphoneOnly: Bool = false) { self.directory=directory;self.video=video;self.microphone=microphone;self.microphoneOnly=microphoneOnly }
     func report(_ state: String, _ message: String) {
         self.state=state;self.message=message
         label?.stringValue=message
@@ -63,6 +64,14 @@ final class Recorder: NSObject, NSApplicationDelegate, SCContentSharingPickerObs
         let menu=NSMenu();menu.addItem(withTitle:"Show recorder",action:#selector(showRecorder),keyEquivalent:"").target=self;menu.addItem(withTitle:"Stop and save",action:#selector(stopPressed),keyEquivalent:"").target=self;statusItem.menu=menu
         report("choosing","Choose a screen or app. Only audio is saved unless screen video was selected.")
         timer=Timer.scheduledTimer(withTimeInterval:1,repeats:true){[weak self] _ in self?.tick()}
+        if microphoneOnly {
+            report("starting","Preparing microphone…")
+            Task { @MainActor in
+                guard await AVCaptureDevice.requestAccess(for:.audio) else {finish("failed","Microphone access was denied. Enable it in System Settings to record in-person audio.");return}
+                do {try await start(nil)}catch{finish("failed",error.localizedDescription)}
+            }
+            return
+        }
         let picker=SCContentSharingPicker.shared
         var config=SCContentSharingPickerConfiguration();config.allowedPickerModes=[.singleDisplay,.singleApplication,.singleWindow];config.allowsChangingSelectedContent=false
         picker.defaultConfiguration=config;picker.add(self);picker.isActive=true;picker.present()
@@ -94,19 +103,21 @@ final class Recorder: NSObject, NSApplicationDelegate, SCContentSharingPickerObs
     func prepareWriter() throws -> AVAssetWriter {
         let output=try AVAssetWriter(outputURL:directory.appendingPathComponent("capture.mov"),fileType:.mov)
         func audioTrack()->AVAssetWriterInput {let track=AVAssetWriterInput(mediaType:.audio,outputSettings:[AVFormatIDKey:kAudioFormatMPEG4AAC,AVSampleRateKey:48000,AVNumberOfChannelsKey:2,AVEncoderBitRateKey:128000]);track.expectsMediaDataInRealTime=true;output.add(track);return track}
-        audioInput=audioTrack();if microphone{micInput=audioTrack()}
+        if !microphoneOnly{audioInput=audioTrack()};if microphone{micInput=audioTrack()}
         if video {let track=AVAssetWriterInput(mediaType:.video,outputSettings:[AVVideoCodecKey:AVVideoCodecType.h264,AVVideoWidthKey:videoSize.width,AVVideoHeightKey:videoSize.height,AVVideoCompressionPropertiesKey:[AVVideoAverageBitRateKey:videoSize.bitRate,AVVideoExpectedSourceFrameRateKey:30,AVVideoMaxKeyFrameIntervalKey:60,AVVideoProfileLevelKey:AVVideoProfileLevelH264HighAutoLevel]]);track.expectsMediaDataInRealTime=true;output.add(track);screenInput=track}
         writer=output
         return output
     }
-    func start(_ filter: SCContentFilter) async throws {
+    func start(_ filter: SCContentFilter?) async throws {
         guard !stopping else{return}
-        videoSize=RecordingVideoSize.fit(width:Double(filter.contentRect.width),height:Double(filter.contentRect.height),scale:Double(filter.pointPixelScale))
-        let config=SCStreamConfiguration();config.width=video ? videoSize.width : 1280;config.height=video ? videoSize.height : 720;config.scalesToFit=true;config.minimumFrameInterval=CMTime(value:1,timescale:30);config.queueDepth=4;config.capturesAudio=true;config.sampleRate=48000;config.channelCount=2;config.excludesCurrentProcessAudio=true;config.showsCursor=true
+        if let filter=filter {videoSize=RecordingVideoSize.fit(width:Double(filter.contentRect.width),height:Double(filter.contentRect.height),scale:Double(filter.pointPixelScale))}
         let output=try prepareWriter()
+        if let filter=filter {
+        let config=SCStreamConfiguration();config.width=video ? videoSize.width : 1280;config.height=video ? videoSize.height : 720;config.scalesToFit=true;config.minimumFrameInterval=CMTime(value:1,timescale:30);config.queueDepth=4;config.capturesAudio=true;config.sampleRate=48000;config.channelCount=2;config.excludesCurrentProcessAudio=true;config.showsCursor=true
         let capture=SCStream(filter:filter,configuration:config,delegate:self);self.stream=capture
         try capture.addStreamOutput(self,type:.audio,sampleHandlerQueue:queue)
         if video {try capture.addStreamOutput(self,type:.screen,sampleHandlerQueue:queue)}
+        }
         if microphone {
             let session=AVCaptureSession()
             guard let device=AVCaptureDevice.default(for:.audio) else {throw NSError(domain:"Recorder",code:1,userInfo:[NSLocalizedDescriptionKey:"No microphone is available."])}
@@ -115,9 +126,9 @@ final class Recorder: NSObject, NSApplicationDelegate, SCContentSharingPickerObs
             session.addInput(input);session.addOutput(sink);sink.setSampleBufferDelegate(self,queue:queue);mic=session
         }
         guard output.startWriting() else {throw output.error ?? NSError(domain:"Recorder",code:3)}
-        try await capture.startCapture()
+        try await stream?.startCapture()
         mic?.startRunning();started=Date();activity=ProcessInfo.processInfo.beginActivity(options:[.userInitiated,.idleSystemSleepDisabled],reason:"Recording a call")
-        report("recording",video ? "Recording screen (\(videoSize.width) × \(videoSize.height)), call audio\(microphone ? " and microphone" : ""). Use Stop to save." : "Recording call audio\(microphone ? " and microphone" : ""). No screen video is saved.")
+        report("recording",microphoneOnly ? "Recording in-person audio from your microphone. Use Stop to save." : video ? "Recording screen (\(videoSize.width) × \(videoSize.height)), call audio\(microphone ? " and microphone" : ""). Use Stop to save." : "Recording call audio\(microphone ? " and microphone" : ""). No screen video is saved.")
     }
     func append(_ sample: CMSampleBuffer,to input: AVAssetWriterInput?){
         guard let writer=writer,let input=input,!stopping,CMSampleBufferDataIsReady(sample) else{return}
@@ -135,10 +146,10 @@ final class Recorder: NSObject, NSApplicationDelegate, SCContentSharingPickerObs
     func stream(_ stream:SCStream,didStopWithError error:Error){DispatchQueue.main.async{self.sampleError=error.localizedDescription;self.stopPressed()}}
     @objc func stopPressed(){
         guard !stopping else{return};stopping=true
-        guard let stream=stream else{finish("cancelled","Recording cancelled.");return}
+        guard writer != nil else{finish("cancelled","Recording cancelled.");return}
         report("saving","Saving recording. Keep the recorder open…")
         Task { @MainActor in
-            try? await stream.stopCapture();mic?.stopRunning()
+            try? await stream?.stopCapture();mic?.stopRunning()
             queue.async { [self] in
                 guard let writer=writer,began else{DispatchQueue.main.async{self.finish("failed","No audio or video was captured.")};return}
                 screenInput?.markAsFinished();audioInput?.markAsFinished();micInput?.markAsFinished()
@@ -182,7 +193,7 @@ final class Recorder: NSObject, NSApplicationDelegate, SCContentSharingPickerObs
             let reader=try AVAssetReader(asset:asset),output=AVAssetReaderTrackOutput(track:track,outputSettings:[AVFormatIDKey:kAudioFormatLinearPCM]);reader.add(output)
             let writer=try prepareWriter();guard writer.startWriting(),reader.startReading() else{throw NSError(domain:"SelfTest",code:1)}
             while let sample=output.copyNextSampleBuffer(){
-                while !(audioInput!.isReadyForMoreMediaData && micInput!.isReadyForMoreMediaData) {try await Task.sleep(nanoseconds:1_000_000)}
+                while !((audioInput?.isReadyForMoreMediaData ?? true) && micInput!.isReadyForMoreMediaData) {try await Task.sleep(nanoseconds:1_000_000)}
                 append(sample,to:audioInput);append(sample,to:micInput)
             }
             if video {
@@ -220,10 +231,10 @@ guard arguments.count==4 || arguments.count==3 && arguments[1].hasPrefix("--self
 if #available(macOS 14.0, *) {
     let app=NSApplication.shared;app.setActivationPolicy(.accessory)
     if arguments[1].hasPrefix("--self-test") {
-        let recorder=Recorder(directory:URL(fileURLWithPath:arguments[2],isDirectory:true),video:arguments[1]=="--self-test-video",microphone:true)
+        let recorder=Recorder(directory:URL(fileURLWithPath:arguments[2],isDirectory:true),video:arguments[1]=="--self-test-video",microphone:true,microphoneOnly:arguments[1]=="--self-test-microphone")
         Task { @MainActor in await recorder.selfTest() };app.run()
     } else {
-        let recorder=Recorder(directory:URL(fileURLWithPath:arguments[1],isDirectory:true),video:arguments[2]=="video",microphone:arguments[3]=="mic")
+        let recorder=Recorder(directory:URL(fileURLWithPath:arguments[1],isDirectory:true),video:arguments[2]=="video",microphone:arguments[3]=="mic",microphoneOnly:arguments[2]=="microphone-only")
         app.delegate=recorder;app.run()
     }
 } else {exit(3)}

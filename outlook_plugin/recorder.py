@@ -81,13 +81,15 @@ def start(data):
         if project:task_files.directory('project',project)
         title=data.get('title','').strip() if isinstance(data.get('title',''),str) else ''
         if len(title)>160 or any(c in title for c in '/\\') or any(ord(c)<32 for c in title):raise ValueError('Use a recording title of up to 160 characters without slashes.')
-        video=data.get('video',False);microphone=data.get('microphone',True)
+        video=data.get('video',False);microphone=data.get('microphone',True);microphone_only=data.get('microphone_only',False)
+        if type(microphone_only) is not bool:raise ValueError('Choose a recording source.')
+        if microphone_only:video=False;microphone=True
         if type(video) is not bool or type(microphone) is not bool:raise ValueError('Choose recording options.')
         ROOT.mkdir(parents=True,exist_ok=True,mode=0o700)
         if shutil.disk_usage(ROOT).free<3_000_000_000:raise ValueError('Free at least 3 GB on this Mac before starting a recording.')
-        now=datetime.now(timezone.utc);session={'id':uuid.uuid4().hex,'project_id':project,'title':title or 'Recording '+datetime.now().strftime('%Y-%m-%d %H.%M'),'created':time.time(),'created_at':now.isoformat(),'video':video,'microphone':microphone}
+        now=datetime.now(timezone.utc);session={'id':uuid.uuid4().hex,'project_id':project,'title':title or 'Recording '+datetime.now().strftime('%Y-%m-%d %H.%M'),'created':time.time(),'created_at':now.isoformat(),'video':video,'microphone':microphone,'microphone_only':microphone_only}
         folder=_folder(session);folder.mkdir(mode=0o700);write_json(FILE,session)
-        try:subprocess.run(['/usr/bin/open','-n',str(APP),'--args',str(folder),'video' if video else 'audio','mic' if microphone else 'no-mic'],check=True,capture_output=True,timeout=15)
+        try:subprocess.run(['/usr/bin/open','-n',str(APP),'--args',str(folder),'microphone-only' if microphone_only else 'video' if video else 'audio','mic' if microphone else 'no-mic'],check=True,capture_output=True,timeout=15)
         except (OSError,subprocess.SubprocessError):
             write_json(folder/'status.json',{'state':'failed','message':'The recorder could not open. Reinstall the latest Mac app or check macOS security prompts.'})
             raise ValueError('The recorder could not open. Check macOS security prompts and try again.') from None

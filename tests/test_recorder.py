@@ -45,3 +45,9 @@ class RecorderTests(unittest.TestCase):
  def test_launch_timeout(self):
   self.start();saved=read_json(r.FILE,{});saved['created']=time.time()-100;write_json(r.FILE,saved)
   self.assertEqual(r.snapshot()['state'],'failed')
+
+ def test_microphone_only_forces_audio_and_skips_screen_source(self):
+  r.start({'microphone_only':True,'video':True,'microphone':False})
+  session=read_json(r.FILE,{})
+  self.assertTrue(session['microphone']);self.assertFalse(session['video'])
+  self.assertEqual(r.subprocess.run.call_args.args[0][-2:],['microphone-only','mic'])

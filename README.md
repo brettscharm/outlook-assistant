@@ -332,3 +332,9 @@ The native reminder is a notification-style window, not a Notification Center no
 Developers: `bash scripts/build_call_reminder.sh` builds the bundled helper. `--probe` reads current supported-app microphone activity without starting capture; `--self-test` checks app attribution. Native popup controls were tested against a synthetic local endpoint that cannot record. Actual calls across each listed app/browser still need field testing.
 
 Recordings can be saved without a project. They appear in Recordings as **No project**, transcribe automatically, and generate task suggestions without a project. After transcription finishes, use the project selector on the recording card to associate it with a project. This preserves the recording and transcript instead of copying the media. Existing suggested or accepted tasks keep their current project; you can organize those separately. Local file uploads also support **No project**; links and pasted meeting transcripts still belong to a project.
+
+### In-person audio
+
+Choose **Recordings → Start recording → In-person audio · microphone only**. This uses the default Mac microphone, asks only for microphone permission, and skips the screen picker and screen/audio capture. Stop & save produces an audio file, followed by local transcription and task suggestions. A project is optional.
+
+Capture writes to a temporary media file while recording; it does not currently create independently finalized checkpoints. A main-window crash need not stop the separate recorder, but a recorder crash or power loss can leave an incomplete, unplayable file. Recovery files are retained, not guaranteed recoverable. Periodic finalized segments would be needed for stronger crash recovery.
